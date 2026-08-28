@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS entradas (
     nombre_completo VARCHAR(120) NOT NULL,
     cedula VARCHAR(20) NOT NULL,
     ubicacion ENUM('Gradas','Mesas') NOT NULL,
+    mesa_numero SMALLINT DEFAULT NULL COMMENT 'NULL si Gradas, 1..20 si Mesas',
+    monto INT NOT NULL DEFAULT 0 COMMENT '5000 Gradas / 10000 Mesas',
     telefono VARCHAR(20) DEFAULT NULL COMMENT 'WhatsApp donde se envía el QR',
     comprobante_path VARCHAR(255) NOT NULL COMMENT 'ruta relativa en /uploads',
     qr_path VARCHAR(255) DEFAULT NULL COMMENT 'ruta relativa en /static/qrcodes',
@@ -16,7 +18,8 @@ CREATE TABLE IF NOT EXISTS entradas (
     fecha_aprobacion DATETIME DEFAULT NULL,
     fecha_uso DATETIME DEFAULT NULL,
     INDEX idx_estado (estado),
-    INDEX idx_cedula (cedula)
+    INDEX idx_cedula (cedula),
+    INDEX idx_mesa (mesa_numero)
 ) ENGINE=InnoDB;
 -- Si ya existe la tabla, agrega telefono
 -- ALTER TABLE entradas ADD COLUMN telefono VARCHAR(20) DEFAULT NULL AFTER ubicacion;

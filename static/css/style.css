@@ -370,10 +370,28 @@ button{font:inherit}
 .success-icon{width:64px; height:64px; border-radius:50%; background:var(--ok-bg); border:1px solid var(--ok-ring); color:var(--ok); display:grid; place-items:center}
 .success-card{display:flex; gap:12px; align-items:flex-start; text-align:left; background:var(--surface-2); border:1px solid var(--line); border-radius:16px; padding:14px; width:100%}
 .msg-foot{margin:0}
+/* mesas — gym zone 12 mesas */
+.mesa-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:10px;}
+.mesa-item{
+  aspect-ratio:1; border:1.5px solid var(--line); border-radius:14px; background:#fff;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  padding:10px; cursor:pointer; text-align:center;
+  transition:border-color 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+}
+.mesa-item .num{font-size:22px; font-weight:800; color:var(--ink); line-height:1;}
+.mesa-item .lbl{font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);}
+.mesa-item:hover{border-color:var(--ink-2); transform:translateY(-1px); box-shadow:0 6px 14px rgba(10,76,35,.08); background:#fff;}
+.mesa-item.selected{background:var(--ink); border-color:var(--ink); color:#fff; box-shadow:0 8px 18px rgba(10,76,35,.22);}
+.mesa-item.selected .num, .mesa-item.selected .lbl{color:#fff;}
+.mesa-item.ocupada{background:#f1f5f9; border-color:#e2e8f0; color:#94a3b8; cursor:not-allowed; opacity:.85;}
+.mesa-item.ocupada .num{color:#64748b;}
+.mesa-item.ocupada:hover{transform:none; box-shadow:none; border-color:#e2e8f0;}
 @media(max-width:640px){
   .wizard-form{padding:20px 16px}
   .wizard-head h2{font-size:20px}
+  .mesa-grid{grid-template-columns:repeat(3,1fr);}
 }
+@media(max-width:400px){ .mesa-grid{grid-template-columns:repeat(2,1fr);} }
 /* buttons — Emil: exact properties, never all, active scale 0.97, ease-out */
 .btn{
   appearance:none; border:1px solid var(--line); background:#fff; color:var(--ink);

@@ -5,43 +5,76 @@
   <div>
     <span class="eyebrow">Panel de control</span>
     <h1>Administración</h1>
-    <p>Revisa comprobantes, aprueba y genera el QR único. Un QR = una entrada.</p>
+    <p>Gestiona mesas, confirma pagos, genera QRs y controla finanzas por zona.</p>
   </div>
   <div class="kpis" id="kpis">
     <div class="kpi"><span>Pendientes</span><strong id="kpiPend">—</strong></div>
     <div class="kpi"><span>Aprobadas</span><strong id="kpiApro">—</strong></div>
     <div class="kpi"><span>Usadas</span><strong id="kpiUsad">—</strong></div>
+    <div class="kpi" style="background:#0a4c23; color:#fff; border-color:#0a4c23;"><span style="color:#f5f1e8;">Recaudado</span><strong id="kpiRec">—</strong></div>
   </div>
 </div>
 
 <div class="shell shell-admin">
   <div class="bezel reveal d2">
     <div class="bezel-inner">
-      <div class="admin-toolbar">
-        <div class="filters" id="filters">
-          <button class="active" data-f="">Todas</button>
-          <button data-f="Pendiente">Pendientes</button>
-          <button data-f="Aprobada">Aprobadas</button>
-          <button data-f="Usada">Usadas</button>
-        </div>
-        <div class="toolbar-actions">
-          <input id="search" class="search-input" placeholder="Buscar por nombre o cédula…" aria-label="Buscar">
-          <button class="btn sm" id="btnRefresh">Actualizar</button>
-        </div>
+      <!-- Tabs principales -->
+      <div class="admin-tabs" id="adminTabs" style="display:flex; gap:6px; padding:14px 14px 0; border-bottom:1px solid var(--line-2);">
+        <button class="btn sm primary" data-tab="tickets" id="tabBtnTickets">Tickets</button>
+        <button class="btn sm" data-tab="finanzas" id="tabBtnFinanzas">Finanzas</button>
       </div>
-      <div class="table-wrap">
-        <table id="tabla">
-          <thead><tr><th>Fecha</th><th>Cliente</th><th>Cédula</th><th>Localidad</th><th>Estado</th><th>Comprobante</th><th>Acción</th></tr></thead>
-          <tbody>
-            <tr class="skeleton-table hidden" id="skeleton"><td><span class="skeleton" style="width:70px; height:12px"></span></td><td><span class="skeleton" style="width:110px"></span></td><td><span class="skeleton" style="width:80px"></span></td><td><span class="skeleton" style="width:60px"></span></td><td><span class="skeleton" style="width:70px"></span></td><td><span class="skeleton" style="width:40px"></span></td><td><span class="skeleton" style="width:70px"></span></td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div id="empty" class="empty hidden">
-        <div class="empty-illustration" aria-hidden="true">
-          <svg class="icon-svg lg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+
+      <!-- Finanzas -->
+      <div id="tabFinanzas" class="admin-tab hidden" style="padding:18px;">
+        <div class="finanzas-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:18px;">
+          <div class="kpi"><span>Total entradas</span><strong id="fTotal">—</strong></div>
+          <div class="kpi"><span>Recaudado (Aprobadas+Usadas)</span><strong id="fRecaudado">—</strong></div>
+          <div class="kpi"><span>Por confirmar (Pendiente)</span><strong id="fPendiente">—</strong></div>
+          <div class="kpi"><span>Mesas ocupadas</span><strong id="fMesas">—</strong></div>
         </div>
-        <strong>Sin registros</strong><br><span class="muted">No hay entradas con ese filtro. Cuando lleguen solicitudes aparecerán aquí.</span>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:12px;">
+          <div style="background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px;"><canvas id="chartZona" height="160"></canvas></div>
+          <div style="background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px;"><canvas id="chartEstado" height="160"></canvas></div>
+        </div>
+        <div style="background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px; margin-top:18px;"><canvas id="chartMesas" height="120"></canvas></div>
+        <p class="muted small" style="margin-top:10px;">Gráficos actualizados al filtrar por zona. Usa Chart.js.</p>
+      </div>
+
+      <!-- Tickets -->
+      <div id="tabTickets" class="admin-tab" style="padding:0;">
+        <div class="admin-toolbar">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <div class="filters" id="filtersEstado">
+              <button class="active" data-f="">Todas</button>
+              <button data-f="Pendiente">Por confirmar</button>
+              <button data-f="Aprobada">Pagadas</button>
+              <button data-f="Usada">Usadas</button>
+            </div>
+            <div class="filters" id="filtersZona">
+              <button class="active" data-z="">Todas zonas</button>
+              <button data-z="Gradas">Gradas</button>
+              <button data-z="Mesas">Mesas</button>
+            </div>
+          </div>
+          <div class="toolbar-actions">
+            <input id="search" class="search-input" placeholder="Buscar nombre/cédula/mesa…" aria-label="Buscar">
+            <button class="btn sm" id="btnRefresh">Actualizar</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="tabla">
+            <thead><tr><th>Fecha</th><th>Cliente</th><th>Cédula</th><th>Zona</th><th>Mesa</th><th>Monto</th><th>Estado</th><th>Comprobante</th><th>Acción</th></tr></thead>
+            <tbody>
+              <tr class="skeleton-table hidden" id="skeleton"><td><span class="skeleton" style="width:70px; height:12px"></span></td><td><span class="skeleton" style="width:110px"></span></td><td><span class="skeleton" style="width:80px"></span></td><td><span class="skeleton" style="width:60px"></span></td><td><span class="skeleton" style="width:40px"></span></td><td><span class="skeleton" style="width:50px"></span></td><td><span class="skeleton" style="width:70px"></span></td><td><span class="skeleton" style="width:40px"></span></td><td><span class="skeleton" style="width:90px"></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="empty" class="empty hidden">
+          <div class="empty-illustration" aria-hidden="true">
+            <svg class="icon-svg lg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+          </div>
+          <strong>Sin registros</strong><br><span class="muted">No hay entradas con ese filtro.</span>
+        </div>
       </div>
     </div>
   </div>
@@ -63,8 +96,23 @@
       </div>
       <div class="qr-frame hidden" id="qrFrame"><img id="mImg" alt="Código QR de la entrada"></div>
       <p id="mQrLink" class="small muted break-all"></p>
-      <div class="modal-actions">
+      <!-- Ticket boleto preview para copiar imagen -->
+      <div id="boletoPreview" class="hidden" style="background:#f2ecdf; border-radius:14px; padding:16px; text-align:center; border:1px solid #d4ccc0;">
+        <div id="boletoCard" style="background:#f2ecdf; color:#17150f; border-radius:10px; padding:14px; border:1px solid rgba(0,0,0,.12);">
+          <div style="display:flex; justify-content:space-between; font-family:monospace; font-size:11px; border-bottom:2px dashed rgba(0,0,0,.25); padding-bottom:8px; margin-bottom:10px;"><span>CTP MATAPALO</span><span id="boletoNro">Nº —</span></div>
+          <div id="boletoQr" style="display:grid; place-items:center; background:#fff; border-radius:8px; padding:8px; margin:0 auto; width:190px; height:190px;"></div>
+          <div id="boletoCodigo" class="mono" style="font-weight:700; letter-spacing:.12em; margin-top:8px; font-size:14px;">--------</div>
+          <div style="margin-top:10px; font-size:12px;"><span class="muted" style="font-size:10px; letter-spacing:.06em; text-transform:uppercase;">Comprador</span><br><strong id="boletoNombre">—</strong><br><span class="muted" style="font-size:10px;">Cédula</span><br><span id="boletoCedula">—</span></div>
+          <div style="margin-top:8px; font-size:11px; font-weight:700; letter-spacing:.05em;">ENTRADA VÁLIDA · <span id="boletoUbicacion">—</span></div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button id="btnCopyImg" class="btn sm primary" style="flex:1;">Copiar imagen</button>
+          <button id="btnCopyCodigo" class="btn sm" style="flex:1;">Copiar código</button>
+        </div>
+      </div>
+      <div class="modal-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
         <button id="mAprobar" class="btn primary modal-cta">Aprobar y generar QR <span class="btn-icon" aria-hidden="true"><svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+        <button id="mDesbloquear" class="btn sm hidden">Desbloquear mesa</button>
       </div>
       <div id="mMsg" class="alert hidden" role="status"></div>
     </div>
@@ -72,30 +120,36 @@
 </div>
 {% endblock %}
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-let filtro='', query='', selId=null;
+let filtro='', zonaFiltro='', query='', selId=null, selRow=null;
 const tbody=document.querySelector('#tabla tbody'), empty=document.getElementById('empty'), skeleton=document.getElementById('skeleton');
 const modal=document.getElementById('modal'), mTitle=document.getElementById('mTitle'), mInfo=document.getElementById('mInfo'),
       mImg=document.getElementById('mImg'), qrFrame=document.getElementById('qrFrame'), mQrLink=document.getElementById('mQrLink'),
-      mMsg=document.getElementById('mMsg'), mAprobar=document.getElementById('mAprobar'), mCompLink=document.getElementById('mCompLink');
+      mMsg=document.getElementById('mMsg'), mAprobar=document.getElementById('mAprobar'), mCompLink=document.getElementById('mCompLink'),
+      mDesbloquear=document.getElementById('mDesbloquear'), boletoPreview=document.getElementById('boletoPreview');
+let chartZona=null, chartEstado=null, chartMesas=null;
 
 function renderKpis(rows){
   const c = s => rows.filter(r=>r.estado===s).length;
   document.getElementById('kpiPend').textContent=c('Pendiente');
   document.getElementById('kpiApro').textContent=c('Aprobada');
   document.getElementById('kpiUsad').textContent=c('Usada');
+  const recaudado = rows.filter(r=>r.estado==='Aprobada'||r.estado==='Usada').reduce((a,b)=>a+(Number(b.monto)||0),0);
+  document.getElementById('kpiRec').textContent='₡'+recaudado.toLocaleString('es-CR');
 }
 async function load(){
   skeleton.classList.remove('hidden');
   let url='/api/entradas?estado='+encodeURIComponent(filtro);
+  if(zonaFiltro) url+='&ubicacion='+encodeURIComponent(zonaFiltro);
   let r, rows;
   try{
     r=await fetch(url);
     if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
     rows=await r.json(); if(!Array.isArray(rows)) throw new Error(rows.msg||'Error');
-  }catch(e){ skeleton.classList.add('hidden'); tbody.innerHTML=`<tr><td colspan="7" class="empty">No se pudo cargar: ${e.message}</td></tr>`; return; }
+  }catch(e){ skeleton.classList.add('hidden'); tbody.innerHTML=`<tr><td colspan="9" class="empty">No se pudo cargar: ${e.message}</td></tr>`; return; }
   const q=query.trim().toLowerCase();
-  if(q) rows=rows.filter(x=> (x.nombre_completo+' '+x.cedula).toLowerCase().includes(q));
+  if(q) rows=rows.filter(x=> (x.nombre_completo+' '+x.cedula+' '+(x.mesa_numero||'')).toLowerCase().includes(q));
   renderKpis(rows);
   skeleton.classList.add('hidden');
   tbody.querySelectorAll('tr:not(#skeleton)').forEach(el=>el.remove());
@@ -104,27 +158,83 @@ async function load(){
   for(const x of rows){
     const tr=document.createElement('tr');
     const comp = x.comprobante_path ? `<a href="/${x.comprobante_path}" target="_blank" class="link-strong">Ver</a>` : '<span class="muted">—</span>';
-    const qr = x.qr_path ? `<a href="/${x.qr_path}" target="_blank" class="link-strong">QR</a>` : '<span class="muted">—</span>';
     const badge = `<span class="badge ${x.estado.toLowerCase()}">${x.estado}</span>`;
-    const btn = x.estado==='Pendiente'
-      ? `<button class="btn sm primary" data-aprobar="${x.id}">Aprobar</button> <button class="btn sm btn-danger" data-rechazar="${x.id}">Rechazar</button>`
-      : qr;
+    const mesa = x.ubicacion==='Mesas' ? (x.mesa_numero ? 'Mesa '+x.mesa_numero : '<span class="muted">—</span>') : '<span class="muted">Gradas</span>';
+    const monto = x.monto ? '₡'+Number(x.monto).toLocaleString('es-CR') : '—';
+    let btn='';
+    if(x.estado==='Pendiente'){
+      btn=`<button class="btn sm primary" data-aprobar="${x.id}">Aprobar</button> <button class="btn sm btn-danger" data-rechazar="${x.id}">Rechazar</button> <button class="btn sm" data-desbloquear="${x.id}">Desbloquear</button>`;
+    } else if(x.estado==='Aprobada'){
+      btn=`<button class="btn sm" data-ver="${x.id}">Ver ticket</button> <button class="btn sm" data-copyimg="${x.id}">Copiar imagen</button> <button class="btn sm" data-desbloquear="${x.id}">Desbloquear</button>`;
+    } else {
+      btn=`<span class="muted small">Usada</span>`;
+    }
     tr.innerHTML=`<td>${x.fecha_compra||''}</td>
       <td><strong>${x.nombre_completo}</strong></td><td class="mono" style="font-size:12px">${x.cedula}</td>
-      <td>${x.ubicacion}</td><td>${badge}</td><td>${comp}</td><td>${btn}</td>`;
+      <td>${x.ubicacion}</td><td class="mono">${mesa}</td><td class="mono">${monto}</td><td>${badge}</td><td>${comp}</td><td>${btn}</td>`;
     tbody.appendChild(tr);
   }
+  // actualizar finanzas si pestaña finanzas visible
+  if(!document.getElementById('tabFinanzas').classList.contains('hidden')) loadFinanzas();
 }
-document.querySelectorAll('#filters [data-f]').forEach(b=>b.addEventListener('click',()=>{
-  document.querySelectorAll('#filters [data-f]').forEach(x=>x.classList.remove('active'));
+async function loadFinanzas(){
+  try{
+    const r=await fetch('/api/finanzas');
+    if(r.status===401) return;
+    const j=await r.json(); if(!j.ok) return;
+    const k=j.kpi;
+    document.getElementById('fTotal').textContent=k.total_entradas||0;
+    document.getElementById('fRecaudado').textContent='₡'+Number(k.recaudado||0).toLocaleString('es-CR');
+    document.getElementById('fPendiente').textContent='₡'+Number(k.por_confirmar||0).toLocaleString('es-CR');
+    document.getElementById('fMesas').textContent=(j.mesas.ocupadas||0)+'/'+(j.mesas.total||12);
+    // chart zona
+    const porZona=j.por_zona||[];
+    const labelsZ=porZona.map(x=>x.ubicacion);
+    const dataZ=porZona.map(x=>Number(x.total||0));
+    if(chartZona) chartZona.destroy();
+    chartZona=new Chart(document.getElementById('chartZona'),{type:'bar',data:{labels:labelsZ,datasets:[{label:'Recaudado ₡',data:dataZ,backgroundColor:['#0a4c23','#1a6b3a']}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+    const agr=j.agrupado||[];
+    const estados=['Pendiente','Aprobada','Usada'];
+    const dataE=estados.map(e=> agr.filter(a=>a.estado===e).reduce((a,b)=>a+Number(b.total||0),0));
+    if(chartEstado) chartEstado.destroy();
+    chartEstado=new Chart(document.getElementById('chartEstado'),{type:'doughnut',data:{labels:estados,datasets:[{data:dataE,backgroundColor:['#d4a256','#0a4c23','#64748b']}]},options:{plugins:{legend:{position:'bottom'}}}});
+    // mesas ocupadas
+    const mesasData=[j.mesas.ocupadas||0, j.mesas.libres||0];
+    if(chartMesas) chartMesas.destroy();
+    chartMesas=new Chart(document.getElementById('chartMesas'),{type:'bar',data:{labels:['Ocupadas','Libres'],datasets:[{label:'Mesas',data:mesasData,backgroundColor:['#B42318','#0F7A52']}]},options:{indexAxis:'y',plugins:{legend:{display:false}}}});
+  }catch(e){ console.error(e); }
+}
+// tabs
+document.getElementById('tabBtnTickets').addEventListener('click',()=>{
+  document.getElementById('tabBtnTickets').className='btn sm primary';
+  document.getElementById('tabBtnFinanzas').className='btn sm';
+  document.getElementById('tabTickets').classList.remove('hidden');
+  document.getElementById('tabFinanzas').classList.add('hidden');
+});
+document.getElementById('tabBtnFinanzas').addEventListener('click',()=>{
+  document.getElementById('tabBtnFinanzas').className='btn sm primary';
+  document.getElementById('tabBtnTickets').className='btn sm';
+  document.getElementById('tabFinanzas').classList.remove('hidden');
+  document.getElementById('tabTickets').classList.add('hidden');
+  loadFinanzas();
+});
+document.querySelectorAll('#filtersEstado [data-f]').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#filtersEstado [data-f]').forEach(x=>x.classList.remove('active'));
   b.classList.add('active'); filtro=b.dataset.f; load();
+}));
+document.querySelectorAll('#filtersZona [data-z]').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#filtersZona [data-z]').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); zonaFiltro=b.dataset.z; load();
 }));
 document.getElementById('search').addEventListener('input',e=>{ query=e.target.value; load(); });
 document.getElementById('btnRefresh').onclick=load;
 tbody.addEventListener('click', async e=>{
-  const idA=e.target.dataset.aprobar, idR=e.target.dataset.rechazar;
+  const idA=e.target.closest('[data-aprobar]')?.dataset.aprobar, idR=e.target.closest('[data-rechazar]')?.dataset.rechazar, idD=e.target.closest('[data-desbloquear]')?.dataset.desbloquear, idV=e.target.closest('[data-ver]')?.dataset.ver, idC=e.target.closest('[data-copyimg]')?.dataset.copyimg;
   if(idA){ selId=idA; openModal(idA); }
   if(idR){ if(!confirm('¿Eliminar esta solicitud pendiente?')) return; const r=await fetch('/api/rechazar/'+idR,{method:'POST'}); if(r.status===401){location.href='/login?nxt='+encodeURIComponent(location.pathname); return;} const j=await r.json(); alert(j.msg); load(); }
+  if(idD){ if(!confirm('¿Desbloquear mesa y eliminar entrada?')) return; const r=await fetch('/api/desbloquear/'+idD,{method:'POST'}); const j=await r.json(); alert(j.msg); load(); }
+  if(idV){ selId=idV; openModal(idV); }
+  if(idC){ copiarTicketPorId(idC); }
 });
 async function openModal(id){
   let rows; try{
@@ -133,18 +243,36 @@ async function openModal(id){
     rows=await rr.json();
   }catch{ return; }
   const row=rows.find(x=>x.id===id); if(!row) return;
+  selId=id; selRow=row;
   mTitle.textContent=row.nombre_completo;
-  mInfo.textContent=`Cédula ${row.cedula} · ${row.ubicacion} · ${row.fecha_compra} · ${row.estado}`;
+  mInfo.textContent=`Cédula ${row.cedula} · ${row.ubicacion}${row.mesa_numero?' Mesa '+row.mesa_numero:''} · ${row.fecha_compra} · ${row.estado} · ₡${Number(row.monto||0).toLocaleString('es-CR')}`;
   mCompLink.href='/'+row.comprobante_path; mCompLink.classList.toggle('hidden', !row.comprobante_path);
   qrFrame.classList.add('hidden'); mImg.removeAttribute('src'); mQrLink.textContent='';
+  boletoPreview.classList.add('hidden');
   mMsg.className='alert hidden'; mMsg.textContent='';
-  mAprobar.disabled=false; mAprobar.innerHTML='Aprobar y generar QR <span class="btn-icon" aria-hidden="true"><svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+  mDesbloquear.classList.toggle('hidden', row.estado==='Usada');
+  if(row.estado==='Pendiente'){
+    mAprobar.style.display=''; mAprobar.disabled=false; mAprobar.innerHTML='Aprobar y generar QR <span class="btn-icon" aria-hidden="true"><svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+  } else {
+    mAprobar.style.display='none';
+    // mostrar ticket si ya aprobada
+    if(row.qr_path){
+      mImg.src='/'+row.qr_path; qrFrame.classList.remove('hidden');
+      mQrLink.innerHTML=`QR: <a href="/${row.qr_path}" target="_blank" class="link-strong">${row.qr_path}</a>`;
+      prepararBoleto(row);
+      boletoPreview.classList.remove('hidden');
+    }
+  }
   modal.classList.remove('hidden');
 }
 function closeModal(){ modal.classList.add('hidden'); }
 document.getElementById('mCerrar').onclick=closeModal;
 document.getElementById('modalBg').onclick=closeModal;
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+mDesbloquear.onclick=async()=>{
+  if(!confirm('¿Desbloquear esta mesa? Se eliminará la entrada.')) return;
+  const r=await fetch('/api/desbloquear/'+selId,{method:'POST'}); const j=await r.json(); alert(j.msg); closeModal(); load();
+};
 mAprobar.onclick=async()=>{
   mAprobar.disabled=true; mAprobar.textContent='Generando…';
   try{
@@ -154,10 +282,85 @@ mAprobar.onclick=async()=>{
     if(!r.ok || !j.ok) throw new Error(j.msg||'Error');
     mImg.src=j.qr_url; qrFrame.classList.remove('hidden');
     mQrLink.innerHTML=`QR listo: <a href="/${j.qr_path}" target="_blank" class="link-strong">${j.qr_path}</a> · ID ${j.id.slice(0,8)}…`;
-    mMsg.textContent='Aprobada. El QR es único y de un solo uso. Compártelo con el cliente.'; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
-    mAprobar.innerHTML='Hecho <svg class="icon-svg sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>'; load();
+    // preparar boleto para copiar
+    if(selRow){ selRow.qr_path=j.qr_path; prepararBoleto(selRow); boletoPreview.classList.remove('hidden'); }
+    mMsg.textContent='Aprobada. Copia la imagen y envíala por WhatsApp.'; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
+    mAprobar.innerHTML='Hecho ✓'; load();
   }catch(e){ mMsg.textContent=''+(e.message); mMsg.className='alert err'; mMsg.classList.remove('hidden'); mAprobar.disabled=false; mAprobar.innerHTML='Reintentar'; }
 };
+// boleto
+function prepararBoleto(row){
+  document.getElementById('boletoNro').textContent='Nº '+(row.id?row.id.slice(0,8).toUpperCase():'—');
+  document.getElementById('boletoCodigo').textContent=row.id||'--------';
+  document.getElementById('boletoNombre').textContent=row.nombre_completo||'—';
+  document.getElementById('boletoCedula').textContent=row.cedula||'—';
+  document.getElementById('boletoUbicacion').textContent=row.ubicacion+(row.mesa_numero?' Mesa '+row.mesa_numero:'');
+  const qrDiv=document.getElementById('boletoQr');
+  qrDiv.innerHTML='';
+  if(row.qr_path){
+    const img=document.createElement('img');
+    img.src='/'+row.qr_path;
+    img.style.width='180px'; img.style.height='180px'; img.style.objectFit='contain';
+    qrDiv.appendChild(img);
+  }
+}
+async function generarImagenBoleto(){
+  const card=document.getElementById('boletoCard');
+  const canvas=document.createElement('canvas');
+  const rect=card.getBoundingClientRect();
+  canvas.width=640; canvas.height=720;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#f2ecdf'; ctx.fillRect(0,0,640,720);
+  ctx.strokeStyle='rgba(23,21,15,.25)'; ctx.setLineDash([12,9]); ctx.lineWidth=3; ctx.strokeRect(14,14,612,692);
+  ctx.fillStyle='#17150f'; ctx.textAlign='center';
+  ctx.font='22px Poppins, sans-serif'; ctx.fillText('CTP MATAPALO',320,56);
+  ctx.font='11px monospace'; ctx.fillText(document.getElementById('boletoNro').textContent,320,78);
+  const qrImg=card.querySelector('#boletoQr img');
+  if(qrImg){
+    try{ if(qrImg.complete) {} else { await new Promise(r=>qrImg.onload=r); } }catch(e){}
+    ctx.fillStyle='#fff'; ctx.fillRect(170,110,300,300);
+    try{ ctx.drawImage(qrImg,180,120,280,280);}catch(e){}
+  }
+  ctx.fillStyle='#17150f'; ctx.font='14px monospace'; ctx.fillText(document.getElementById('boletoCodigo').textContent,320,450);
+  ctx.font='10px monospace'; ctx.fillStyle='rgba(23,21,15,.7)'; ctx.fillText('COMPRADOR',320,490);
+  ctx.font='16px Poppins, sans-serif'; ctx.fillStyle='#17150f'; ctx.fillText(document.getElementById('boletoNombre').textContent,320,512);
+  ctx.font='10px monospace'; ctx.fillStyle='rgba(23,21,15,.7)'; ctx.fillText('CÉDULA · '+document.getElementById('boletoUbicacion').textContent,320,540);
+  ctx.fillText(document.getElementById('boletoCedula').textContent,320,560);
+  ctx.font='11px monospace'; ctx.fillText('ENTRADA VÁLIDA · ADMITIR UNA PERSONA',320,610);
+  return new Promise(res=>canvas.toBlob(b=>res(b),'image/png'));
+}
+async function copiarImagenBoleto(){
+  const blob=await generarImagenBoleto();
+  const icon=document.getElementById('btnCopyImg');
+  try{
+    if(!navigator.clipboard || !window.ClipboardItem) throw new Error('no clipboard');
+    await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
+    const orig=icon.textContent;
+    icon.textContent='¡Copiado!';
+    setTimeout(()=>icon.textContent='Copiar imagen',1800);
+    mMsg.textContent='Imagen copiada — pégala en WhatsApp'; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
+  }catch(e){
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='entrada-'+(selRow?.id?.slice(0,8)||'ticket')+'.png'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    mMsg.textContent='Imagen descargada — adjúntala en WhatsApp'; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
+  }
+}
+document.getElementById('btnCopyImg').addEventListener('click', copiarImagenBoleto);
+document.getElementById('btnCopyCodigo').addEventListener('click',()=>{
+  const c=document.getElementById('boletoCodigo').textContent.trim();
+  navigator.clipboard.writeText(c).then(()=>{ const b=document.getElementById('btnCopyCodigo'); const o=b.textContent; b.textContent='¡Copiado!'; setTimeout(()=>b.textContent='Copiar código',1500); });
+});
+async function copiarTicketPorId(id){
+  try{
+    const rr=await fetch('/api/entradas'); const rows=await rr.json(); const row=rows.find(x=>x.id===id);
+    if(!row||!row.qr_path){ alert('Ticket aún no generado'); return; }
+    selRow=row; selId=id;
+    // abrir modal con preview y copiar
+    openModal(id);
+    setTimeout(()=>{ prepararBoleto(row); boletoPreview.classList.remove('hidden'); },300);
+  }catch(e){ alert('Error al cargar ticket'); }
+}
 load();
 </script>
 {% endblock %}

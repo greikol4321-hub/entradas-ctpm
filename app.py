@@ -1,6 +1,7 @@
 """
 Sistema CTPM — Venta y validación de entradas
 Soporta Postgres (Supabase) via DATABASE_URL o MySQL via variables DB_*
+Mesas numeradas + Finanzas
 """
 import os, uuid, pathlib, functools
 from datetime import datetime, timedelta
@@ -37,11 +38,16 @@ else:
 UPLOAD_FOLDER.mkdir(exist_ok=True)
 QR_FOLDER.mkdir(parents=True, exist_ok=True)
 ALLOWED_EXT = {".jpg",".jpeg",".png",".webp",".pdf"}
+def allowed(fname):
+    return pathlib.Path(fname).suffix.lower() in ALLOWED_EXT
 
 SINPE_NUMERO = os.getenv("SINPE_NUMERO", "8888-8888")
 SINPE_NOMBRE = os.getenv("SINPE_NOMBRE", "Asociación CTPM")
 PRECIO_GRADAS = "₡5.000"
 PRECIO_MESAS  = "₡10.000"
+PRECIO_GRADAS_VAL = 5000
+PRECIO_MESAS_VAL = 10000
+NUM_MESAS = 12
 DEMO_USER = "admin"
 DEMO_PASS = "admin123"
 
@@ -159,7 +165,7 @@ def ensure_admin_user():
 @app.get("/")
 def index():
     return render_template("index.html", sinpe_numero=SINPE_NUMERO, sinpe_nombre=SINPE_NOMBRE,
-                           precio_gradas=PRECIO_GRADAS, precio_mesas=PRECIO_MESAS)
+                           precio_gradas=PRECIO_GRADAS, precio_mesas=PRECIO_MESAS, precio_gradas_val=PRECIO_GRADAS_VAL, precio_mesas_val=PRECIO_MESAS_VAL, num_mesas=NUM_MESAS)
 
 @app.get("/login")
 def login():
@@ -182,7 +188,7 @@ def me():
 @login_required
 @role_required("admin")
 def admin():
-    return render_template("admin.html")
+    return render_template("admin.html", precio_gradas_val=PRECIO_GRADAS_VAL, precio_mesas_val=PRECIO_MESAS_VAL, num_mesas=NUM_MESAS)
 
 @app.get("/scanner")
 @login_required
@@ -198,7 +204,6 @@ def api_login():
     nxt = (data.get("nxt") or request.args.get("nxt") or "").strip()
     if not username or not password:
         return jsonify(ok=False, msg="Usuario y contraseña requeridos"), 400
-    # intenta BD
     try:
         u = fetch_one("SELECT id, username, password_hash, rol FROM usuarios WHERE username=%s", (username,))
         if u and check_password_hash(u["password_hash"], password):
@@ -210,7 +215,6 @@ def api_login():
             return jsonify(ok=True, msg="Bienvenido", rol=u["rol"], redirect=dest)
     except Exception:
         pass
-    # acceso por defecto cuando no hay BD
     if username==DEMO_USER and password==DEMO_PASS:
         session.permanent=True
         session["uid"]="demo-admin"
@@ -220,12 +224,25 @@ def api_login():
         return jsonify(ok=True, msg="Bienvenido", rol="admin", redirect=dest)
     return jsonify(ok=False, msg="Credenciales inválidas"), 401
 
+# --- API: mesas disponibles ---
+@app.get("/api/mesas")
+def mesas_disponibles():
+    try:
+        rows = fetch_all("SELECT mesa_numero FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')")
+        ocupadas = [r["mesa_numero"] for r in rows if r.get("mesa_numero")]
+        todas = list(range(1, NUM_MESAS+1))
+        libres = [n for n in todas if n not in ocupadas]
+        return jsonify(ok=True, ocupadas=ocupadas, libres=libres, total=NUM_MESAS)
+    except Exception as e:
+        return jsonify(ok=False, msg=str(e)), 500
+
 # --- API: compra ---
 @app.post("/api/comprar")
 def comprar():
     nombre = request.form.get("nombre","").strip()
     cedula = request.form.get("cedula","").strip()
     ubicacion = request.form.get("ubicacion","")
+    mesa_numero_raw = request.form.get("mesa_numero","").strip()
     telefono = request.form.get("telefono","").strip()
     file = request.files.get("comprobante")
     if not nombre or not cedula or ubicacion not in ("Gradas","Mesas"):
@@ -236,6 +253,24 @@ def comprar():
         return jsonify(ok=False, msg="Sube el comprobante SINPE"), 400
     if not allowed(file.filename):
         return jsonify(ok=False, msg="Formato no permitido (jpg/png/webp/pdf)"), 400
+    # Validar mesa
+    mesa_numero = None
+    monto = PRECIO_GRADAS_VAL if ubicacion=="Gradas" else PRECIO_MESAS_VAL
+    if ubicacion == "Mesas":
+        if not mesa_numero_raw:
+            return jsonify(ok=False, msg="Elige el número de mesa"), 400
+        try:
+            mesa_numero = int(mesa_numero_raw)
+        except:
+            return jsonify(ok=False, msg="Mesa inválida"), 400
+        if not (1 <= mesa_numero <= NUM_MESAS):
+            return jsonify(ok=False, msg=f"Mesa debe ser 1 a {NUM_MESAS}"), 400
+        # Verificar disponibilidad
+        ocup = fetch_all("SELECT id FROM entradas WHERE ubicacion='Mesas' AND mesa_numero=%s AND estado IN ('Pendiente','Aprobada')", (mesa_numero,))
+        if ocup:
+            return jsonify(ok=False, msg=f"Mesa {mesa_numero} ya está ocupada"), 409
+    else:
+        mesa_numero = None
     eid = str(uuid.uuid4())
     ext = pathlib.Path(file.filename).suffix.lower()
     fname = f"{eid}{ext}"
@@ -245,13 +280,17 @@ def comprar():
     try:
         if _is_pg():
             r = exec_sql(
-                "INSERT INTO entradas (id, nombre_completo, cedula, ubicacion, telefono, comprobante_path) VALUES (%s,%s,%s,%s,%s,%s)",
-                (eid, nombre, cedula, ubicacion, telefono, rel))
+                "INSERT INTO entradas (id, nombre_completo, cedula, ubicacion, mesa_numero, monto, telefono, comprobante_path) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
+                (eid, nombre, cedula, ubicacion, mesa_numero, monto, telefono, rel))
         else:
             r = exec_sql(
-                "INSERT INTO entradas (id, nombre_completo, cedula, ubicacion, comprobante_path, telefono) VALUES (%s,%s,%s,%s,%s,%s)",
-                (eid, nombre, cedula, ubicacion, rel, telefono))
+                "INSERT INTO entradas (id, nombre_completo, cedula, ubicacion, mesa_numero, monto, telefono, comprobante_path) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
+                (eid, nombre, cedula, ubicacion, mesa_numero, monto, telefono, rel))
         if isinstance(r, Exception):
+            # Detectar violación de índice único de mesa
+            msg = str(r)
+            if "uq_mesa_ocupada" in msg or "Duplicate" in msg:
+                return jsonify(ok=False, msg=f"Mesa {mesa_numero} ya fue tomada, elige otra"), 409
             return jsonify(ok=False, msg="Error al guardar en base de datos", id=eid)
         if r is None:
             return jsonify(ok=False, msg="Base de datos no disponible", id=eid)
@@ -264,11 +303,20 @@ def comprar():
 @login_required
 def listar():
     estado = request.args.get("estado","")
+    ubicacion = request.args.get("ubicacion","")
     try:
+        base = "SELECT id,nombre_completo,cedula,ubicacion,mesa_numero,monto,telefono,comprobante_path,qr_path,estado,fecha_compra,fecha_aprobacion,fecha_uso FROM entradas"
+        conds = []
+        params = []
         if estado in ("Pendiente","Aprobada","Usada"):
-            rows = fetch_all("SELECT id,nombre_completo,cedula,ubicacion,telefono,comprobante_path,qr_path,estado,fecha_compra,fecha_aprobacion,fecha_uso FROM entradas WHERE estado=%s ORDER BY fecha_compra DESC", (estado,))
-        else:
-            rows = fetch_all("SELECT id,nombre_completo,cedula,ubicacion,telefono,comprobante_path,qr_path,estado,fecha_compra,fecha_aprobacion,fecha_uso FROM entradas ORDER BY fecha_compra DESC")
+            conds.append("estado=%s"); params.append(estado)
+        if ubicacion in ("Gradas","Mesas"):
+            conds.append("ubicacion=%s"); params.append(ubicacion)
+        sql = base
+        if conds:
+            sql += " WHERE " + " AND ".join(conds)
+        sql += " ORDER BY fecha_compra DESC"
+        rows = fetch_all(sql, tuple(params))
         for r in rows:
             for k in ("fecha_compra","fecha_aprobacion","fecha_uso"):
                 if r.get(k):
@@ -278,6 +326,25 @@ def listar():
         return jsonify(rows)
     except Exception:
         return jsonify([])
+
+# --- API: finanzas ---
+@app.get("/api/finanzas")
+@login_required
+@role_required("admin")
+def finanzas():
+    try:
+        rows = fetch_all("SELECT estado, ubicacion, COUNT(*) as cnt, COALESCE(SUM(monto),0) as total FROM entradas GROUP BY estado, ubicacion")
+        # Totales globales
+        all_rows = fetch_all("SELECT COUNT(*) as total_entradas, COALESCE(SUM(CASE WHEN estado IN ('Aprobada','Usada') THEN monto ELSE 0 END),0) as recaudado, COALESCE(SUM(CASE WHEN estado='Pendiente' THEN monto ELSE 0 END),0) as por_confirmar, COALESCE(SUM(CASE WHEN estado='Usada' THEN 1 ELSE 0 END),0) as usadas FROM entradas")
+        kpi = all_rows[0] if all_rows else {"total_entradas":0,"recaudado":0,"por_confirmar":0,"usadas":0}
+        # Por zona
+        zona = fetch_all("SELECT ubicacion, COUNT(*) as cnt, COALESCE(SUM(monto),0) as total FROM entradas GROUP BY ubicacion")
+        # Mesas ocupadas/libres
+        ocupadas = fetch_all("SELECT COUNT(*) as cnt FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')")
+        ocup_cnt = ocupadas[0]["cnt"] if ocupadas else 0
+        return jsonify(ok=True, agrupado=rows, kpi=kpi, por_zona=zona, mesas={"ocupadas": ocup_cnt, "libres": NUM_MESAS - ocup_cnt, "total": NUM_MESAS})
+    except Exception as e:
+        return jsonify(ok=False, msg=str(e)), 500
 
 # --- API: aprobar + QR ---
 @app.post("/api/aprobar/<eid>")
@@ -315,6 +382,20 @@ def rechazar(eid):
         return jsonify(ok=False, msg=str(r)), 500
     return jsonify(ok=True, msg="Eliminada")
 
+@app.post("/api/desbloquear/<eid>")
+@login_required
+@role_required("admin")
+def desbloquear(eid):
+    # Libera mesa borrando la entrada (cualquier estado excepto Usada que ya liberó)
+    row = fetch_one("SELECT estado, ubicacion, mesa_numero FROM entradas WHERE id=%s", (eid,))
+    if not row: return jsonify(ok=False, msg="Entrada no existe"), 404
+    if row["estado"] == "Usada":
+        return jsonify(ok=False, msg="Entrada ya usada, no se puede desbloquear"), 400
+    r = exec_sql("DELETE FROM entradas WHERE id=%s", (eid,))
+    if isinstance(r, Exception):
+        return jsonify(ok=False, msg=str(r)), 500
+    return jsonify(ok=True, msg=f"Mesa {row.get('mesa_numero') or ''} liberada" if row.get("ubicacion")=="Mesas" else "Entrada eliminada")
+
 # --- API: validar ---
 @app.post("/api/validar")
 @login_required
@@ -327,10 +408,9 @@ def validar():
         if not row: return jsonify(ok=False, estado="NO_EXISTE", msg="Entrada no existe"), 404
         if row["estado"] == "Usada":
             return jsonify(ok=False, estado="USADA", msg="Entrada YA USADA",
-                          nombre=row["nombre_completo"], ubicacion=row["ubicacion"])
+                          nombre=row["nombre_completo"], ubicacion=row["ubicacion"], mesa_numero=row.get("mesa_numero"), monto=row.get("monto"))
         if row["estado"] == "Pendiente":
             return jsonify(ok=False, estado="PENDIENTE", msg="Entrada pendiente de aprobación"), 403
-        # Aprobada -> marcar Usada
         r = exec_sql("UPDATE entradas SET estado='Usada', fecha_uso=%s WHERE id=%s AND estado='Aprobada'",
                      (datetime.now(), eid))
         if isinstance(r, Exception):
@@ -339,11 +419,11 @@ def validar():
             row2 = fetch_one("SELECT estado FROM entradas WHERE id=%s", (eid,))
             if row2 and row2["estado"] == "Usada":
                 return jsonify(ok=False, estado="USADA", msg="Ya fue usada (carrera)",
-                              nombre=row["nombre_completo"], ubicacion=row["ubicacion"])
+                              nombre=row["nombre_completo"], ubicacion=row["ubicacion"], mesa_numero=row.get("mesa_numero"))
             return jsonify(ok=False, estado="PENDIENTE", msg="Entrada pendiente de aprobación",
                           nombre=row["nombre_completo"], ubicacion=row["ubicacion"])
         return jsonify(ok=True, estado="VALIDA", msg="¡ENTRADA VÁLIDA!",
-                      nombre=row["nombre_completo"], ubicacion=row["ubicacion"], cedula=row["cedula"])
+                      nombre=row["nombre_completo"], ubicacion=row["ubicacion"], cedula=row["cedula"], mesa_numero=row.get("mesa_numero"), monto=row.get("monto"))
     except Exception as e:
         return jsonify(ok=False, estado="ERROR", msg=f"Error: {e}"), 500
 
