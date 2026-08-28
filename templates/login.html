@@ -4,15 +4,15 @@
 <div class="login-shell">
   <div class="login-card reveal">
     <div class="login-brand">
-      <div class="login-logo" aria-hidden="true">CTPM</div>
+      <img src="{{ url_for('static', filename='img/logo_colegio_nuevo.png') }}" alt="CTP Matapalo" class="login-logo-img">
       <div>
         <strong>Entradas CTPM</strong>
-        <span>Panel administrativo</span>
+        <span>Colegio Técnico Profesional de Matapalo</span>
       </div>
     </div>
 
-    <h1>Bienvenido de vuelta</h1>
-    <p class="muted">Inicia sesión para revisar comprobantes, generar QRs y validar en puerta.</p>
+    <h1>Acceso administrativo</h1>
+    <p class="login-subtitle">Inicia sesión para revisar comprobantes, generar QRs y validar en puerta.</p>
 
     <form id="loginForm" class="stack">
       <input type="hidden" name="nxt" value="{{ nxt }}">

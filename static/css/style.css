@@ -51,18 +51,7 @@ body{
   text-rendering:optimizeLegibility;
   position:relative;
 }
-body::after{
-  content:"";
-  position:fixed;
-  top:25vh; bottom:10vh; left:15vw; right:15vw;
-  background-image:url('../img/logo_colegio_nuevo.png');
-  background-repeat:no-repeat;
-  background-position:center;
-  background-size:contain;
-  opacity:.14;
-  z-index:0;
-  pointer-events:none;
-}
+/* marca de agua removida por pedido — fondo limpio */
 a{color:inherit; text-decoration:none}
 img{max-width:100%; display:block}
 button{font:inherit}
@@ -112,20 +101,7 @@ button{font:inherit}
 }
 /* theme toggle — removido por pedido (solo claro) */
 
-/* topbar — floating island, backdrop-blur only on fixed */
-.topbar-wrap{position:sticky; top:0; z-index:40; padding:14px 16px 0}
-.topbar{
-  max-width:1120px; margin:0 auto;
-  display:flex; align-items:center; justify-content:space-between; gap:16px;
-  padding:10px 12px 10px 14px;
-  background:rgba(255,255,255,.88);
-  backdrop-filter:blur(16px) saturate(1.15);
-  border:1px solid rgba(10,76,35,.10);
-  border-radius:var(--radius-pill);
-  box-shadow:0 10px 30px rgba(10,76,35,.10);
-  transition:box-shadow 200ms var(--ease-out);
-}
-.topbar:hover{box-shadow:0 16px 36px rgba(10,76,35,.14)}
+/* topbar legacy removido — header crema institucional activo */
 .brand{display:flex; align-items:center; gap:12px}
 .brand-mark{
   width:44px; height:44px; display:grid; place-items:center;
@@ -229,16 +205,16 @@ button{font:inherit}
   content:""; position:absolute; inset:auto -40px -40px auto; width:200px; height:200px;
   background:radial-gradient(circle at center, rgba(10,76,35,.30), transparent 68%); pointer-events:none;
 }
-.price-card h3{margin:0; font-size:11px; letter-spacing:.1em; text-transform:uppercase; opacity:.62; font-weight:700}
+.price-card h3{margin:0; font-size:11px; letter-spacing:.1em; text-transform:uppercase; opacity:1; color:#f5f1e8; font-weight:700}
 .price-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; position:relative}
 .price-opt{
   background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.11); border-radius:16px; padding:14px;
   backdrop-filter:blur(8px); transition:transform 200ms var(--ease-out), background-color 200ms var(--ease-out), border-color 200ms var(--ease-out);
 }
 .price-opt:hover{transform:translateY(-2px); background:rgba(255,255,255,.11); border-color:rgba(255,255,255,.16)}
-.price-opt strong{display:block; font-size:11px; letter-spacing:.07em; text-transform:uppercase; opacity:.62}
-.price-opt span{font-family:"Poppins", sans-serif; font-weight:800; font-size:28px; line-height:1; letter-spacing:.01em; color:var(--ink); font-variant-numeric:tabular-nums}
-.price-opt small{display:block; font-size:11px; opacity:.56; margin-top:3px}
+.price-opt strong{display:block; font-size:11px; letter-spacing:.07em; text-transform:uppercase; opacity:1; color:#f5f1e8;}
+.price-opt span{font-family:"Poppins", sans-serif; font-weight:800; font-size:28px; line-height:1; letter-spacing:.01em; color:#fff; font-variant-numeric:tabular-nums}
+.price-opt small{display:block; font-size:11px; opacity:1; color:#f5f1e8; margin-top:3px}
 .info-card{
   background:var(--surface); border:1px solid var(--line); box-shadow:var(--shadow-soft); display:flex; gap:14px; align-items:flex-start;
   transition:transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
@@ -296,7 +272,7 @@ button{font:inherit}
   font-size:14px; font-weight:500; color:var(--ink); outline:none;
   transition:border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 160ms var(--ease-out);
 }
-.field input::placeholder{color:var(--muted-2)}
+.field input::placeholder{color:#6b7280}
 .field input:hover, .field select:hover{border-color:rgba(15,23,42,.14); background:#FFFEFB}
 .field input:focus, .field select:focus{border-color:var(--ink-2); box-shadow:0 0 0 4px rgba(10,76,35,.12), 0 2px 10px rgba(10,76,35,.06)}
 .field small{font-size:12px; color:var(--muted)}
@@ -530,7 +506,7 @@ tr:hover td{background:#FFFEFB}
 .result.ok .result-icon{background:var(--ok); color:#fff}
 .result.err .result-icon{background:var(--err); color:#fff}
 .result h2{margin:0; font-size:20px; letter-spacing:-.02em}
-.result p{margin:0; font-size:13px; opacity:.92}
+.result p{margin:0; font-size:13px; color:inherit; opacity:1;}
 .reader-idle{font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#475569}
 .reader-error{padding:18px; text-align:center; font-size:12px; color:#94A3B8; line-height:1.5}
 .scanner-badges{padding:0 18px; display:flex; gap:8px; flex-wrap:wrap}
@@ -581,7 +557,7 @@ tr:hover td{background:#FFFEFB}
 .text-ok{color:var(--ok)}
 .text-err{color:var(--err)}
 .watermark{position:absolute; right:12px; bottom:6px; font-family:"Poppins", sans-serif; font-weight:800; font-size:72px; line-height:1; color:rgba(10,76,35,.06); letter-spacing:.02em; pointer-events:none; user-select:none}
-.sinpe-note{margin:0; font-size:12px; opacity:.65; line-height:1.5}
+.sinpe-note{margin:0; font-size:12px; color:#333333; line-height:1.5}
 .btn-submit{align-self:flex-start; padding:14px 22px}
 .footer-legal{display:flex; gap:10px; margin-top:8px}
 .footer-legal a{font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); font-weight:700}
@@ -617,37 +593,37 @@ tr:hover td{background:#FFFEFB}
 /* z-index scale */
 .topbar-wrap{z-index:40} .modal{z-index:50} .noise{z-index:1} .skip-link{z-index:60}
 
-/* login — vibrant centered card on purple bg */
+/* login — institutional clean, alta legibilidad */
 .login-shell{
   min-height:80vh; display:grid; place-items:center; padding:32px 16px;
-  background:
-    radial-gradient(700px 380px at 50% -10%, rgba(10,76,35,.18), transparent 60%),
-    radial-gradient(900px 480px at 10% 100%, rgba(10,76,35,.10), transparent 60%),
-    linear-gradient(180deg, #ebe5d9 0%, #f5f1e8 100%);
+  background: var(--bg);
 }
 .login-card{
-  width:100%; max-width:440px; background:#fff; border:1px solid var(--line); border-radius:24px;
-  padding:28px; box-shadow:0 24px 60px rgba(10,76,35,.20), 0 1px 0 rgba(255,255,255,.9);
+  width:100%; max-width:420px; background:#ffffff; border:1px solid #d4ccc0; border-top:4px solid #0a4c23; border-radius:16px;
+  padding:32px 28px; box-shadow:0 12px 32px rgba(10,76,35,.14), 0 2px 8px rgba(10,76,35,.08);
 }
-.login-brand{display:flex; align-items:center; gap:12px; margin-bottom:18px}
-.login-logo{
-  width:48px; height:48px; border-radius:14px; display:grid; place-items:center;
-  background:linear-gradient(135deg, #0a4c23 0%, #0a4c23 100%); color:#fff; font-weight:800; letter-spacing:.04em; font-size:13px;
-  box-shadow:0 8px 20px rgba(10,76,35,.28), inset 0 1px 0 rgba(255,255,255,.18);
+.login-brand{display:flex; align-items:center; gap:14px; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid #e8e0d0;}
+.login-logo-img{
+  width:52px; height:52px; border-radius:12px; object-fit:contain; background:#fff; border:1px solid #e8e0d0; padding:4px;
 }
-.login-brand strong{display:block; font-size:14px; font-weight:800; letter-spacing:-.01em; color:var(--ink)}
-.login-brand span{font-size:12px; color:var(--muted); font-weight:500}
-.login-card h1{margin:0 0 6px; font-family:"Poppins", sans-serif; font-size:30px; letter-spacing:.01em; color:var(--ink)}
-.login-card .stack{margin-top:18px; gap:12px}
-.login-card .field label{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-2)}
+.login-brand strong{display:block; font-size:15px; font-weight:700; letter-spacing:-.01em; color:#0a4c23; line-height:1.2;}
+.login-brand span{font-size:12.5px; color:#333333; font-weight:500; line-height:1.3;}
+.login-card h1{margin:0; font-family:"Poppins", sans-serif; font-size:24px; font-weight:700; letter-spacing:-.02em; color:#0a4c23; line-height:1.2;}
+.login-subtitle{margin:8px 0 0; font-size:13.5px; color:#333333; line-height:1.6; font-weight:400;}
+.login-card .stack{margin-top:22px; gap:16px; display:flex; flex-direction:column;}
+.login-card .field label{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#0a4c23;}
 .login-card .field input{
-  width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid var(--line); background:#fff;
-  font-size:14px; color:var(--ink); outline:none;
+  width:100%; padding:12px 14px; border-radius:10px; border:1.5px solid #d4ccc0; background:#ffffff;
+  font-size:14px; color:#1a1a1a; outline:none;
   transition:border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
 }
-.login-card .field input:focus{border-color:var(--ink-2); box-shadow:0 0 0 4px rgba(10,76,35,.15)}
-.login-btn{width:100%; padding:13px 18px; font-size:15px; margin-top:6px}
-.login-foot{margin-top:18px; display:flex; flex-direction:column; gap:6px; font-size:13px; text-align:center}
-.login-foot a{color:var(--ink-2); font-weight:700; text-decoration:none}
-.login-foot a:hover{text-decoration:underline}
-@media(max-width:480px){ .login-shell{min-height:70vh; padding:20px 12px} .login-card{padding:22px} }
+.login-card .field input::placeholder{color:#6b7280;}
+.login-card .field input:hover{border-color:#b8a99a;}
+.login-card .field input:focus{border-color:#0a4c23; box-shadow:0 0 0 3px rgba(10,76,35,.15); background:#ffffff;}
+.login-btn{width:100%; padding:13px 18px; font-size:14px; font-weight:700; margin-top:4px; background:#0a4c23; color:#ffffff; border-color:#0a4c23;}
+.login-btn:hover{background:#1a6b3a; border-color:#1a6b3a; color:#ffffff;}
+.login-foot{margin-top:20px; display:flex; flex-direction:column; gap:8px; font-size:13px; text-align:center; color:#333333;}
+.login-foot a{color:#0a4c23; font-weight:700; text-decoration:underline; text-underline-offset:3px;}
+.login-foot a:hover{color:#1a6b3a;}
+.login-foot .muted{color:#333333;}
+@media(max-width:480px){ .login-shell{min-height:70vh; padding:20px 12px} .login-card{padding:24px 20px} }

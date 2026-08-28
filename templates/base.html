@@ -21,16 +21,9 @@
 <header class="header">
   <div class="header-container">
     <div class="header-logos-left">
-      <img src="{{ url_for('static', filename='img/LOGO_MEP-removebg-preview.png') }}" class="logo-mep" alt="MEP Costa Rica">
-      <div class="divider"></div>
-      <div class="logo-gobierno">
-        <strong>Dirección Regional de Educación Central del Pacífico</strong><br>
-        <strong>Circuito 02</strong><br>
-        <strong>Colegio Técnico Profesional de Matapalo</strong>
-      </div>
+      <a href="/" title="CTP Matapalo — Inicio"><img src="{{ url_for('static', filename='img/logo_colegio_nuevo.png') }}" class="logo-escudo" alt="Escudo CTP Matapalo"></a>
     </div>
     <div class="nav-right">
-      <a href="/" title="Inicio"><img src="{{ url_for('static', filename='img/logo_colegio_nuevo.png') }}" class="logo-escudo" alt="Escudo CTP Matapalo"></a>
       <nav class="nav" id="nav" aria-label="Principal">
         {% if session.get('uid') %}
           <a href="/" class="{% if request.path == '/' %}active{% endif %}">Comprar</a>
