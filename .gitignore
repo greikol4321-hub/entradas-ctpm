@@ -1,6 +1,7 @@
 .env
 __pycache__/
 *.pyc
+*.pyo
 server.log
 *.egg-info/
 .dist-info/
@@ -11,4 +12,8 @@ static/qrcodes/
 .DS_Store
 *.swp
 *.swo
-*.~
+*~
+.playwright-mcp/
+supabase/.temp/
+*.log
+.muse/
