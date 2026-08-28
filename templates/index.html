@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+{% block title %}Comprar entrada oficial — CTPM{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-copy reveal">
+    <span class="eyebrow dot">Venta oficial · QR único</span>
+    <h1>Tu entrada,<br><em>lista en minutos.</em></h1>
+    <p>Paga por SINPE Móvil, sube tu comprobante y recibe tu entrada con QR por WhatsApp. Validación instantánea en puerta.</p>
+    <div class="hero-points">
+      <span class="hero-point" style="transition-delay:80ms"><svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg> QR inviolable</span>
+      <span class="hero-point" style="transition-delay:140ms"><svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6h4"/></svg> Entrega en 48h</span>
+      <span class="hero-point" style="transition-delay:200ms"><svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg> SINPE Móvil</span>
+    </div>
+    <span aria-hidden="true" class="watermark">CTPM</span>
+  </div>
+  <div class="hero-side reveal d2">
+    <div class="price-card">
+      <h3>Localidades</h3>
+      <div class="price-grid">
+        <div class="price-opt">
+          <strong>Gradas</strong>
+          <span>{{ precio_gradas }}</span>
+          <small>Vista general · Acceso rápido</small>
+        </div>
+        <div class="price-opt">
+          <strong>Mesas</strong>
+          <span>{{ precio_mesas }}</span>
+          <small>Zona preferencial · Servicio cercano</small>
+        </div>
+      </div>
+      <p class="sinpe-note">Elige tu ubicación en el siguiente paso. El monto se calcula automático.</p>
+    </div>
+    <div class="info-card">
+      <div class="icon" aria-hidden="true"><svg class="icon-svg lg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v6l-7 4-7-4V7z"/><path d="M12 11l7-4M12 11v8M12 11l-7-4"/><circle cx="12" cy="8" r="1.2" fill="currentColor" stroke="none"/></svg></div>
+      <div>
+        <h4>Compra en 4 pasos</h4>
+        <p>Datos → Ubicación → Pago SINPE con referencia personalizada → Comprobante. Te llega por WhatsApp.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="form-wrap reveal d3">
+  <div class="bezel">
+    <div class="bezel-inner">
+      <div class="steps" id="steps">
+        <div class="step active" data-s="1"><span class="num">1</span><span class="label">Datos</span></div>
+        <div class="bar"><i id="bar" style="width:25%"></i></div>
+        <div class="step" data-s="2"><span class="num">2</span><span class="label">Ubicación</span></div>
+        <div class="bar"><i></i></div>
+        <div class="step" data-s="3"><span class="num">3</span><span class="label">Pago</span></div>
+        <div class="bar"><i></i></div>
+        <div class="step" data-s="4"><span class="num">4</span><span class="label">Comprobante</span></div>
+      </div>
+
+      <form id="formCompra" enctype="multipart/form-data" class="form-body wizard-form" novalidate>
+        <!-- PASO 1: Datos -->
+        <div class="wizard-step active" data-step="1">
+          <div class="wizard-head">
+            <h2>¿Quién compra?</h2>
+            <p class="muted">Usaremos estos datos para tu entrada y para enviarte el QR por WhatsApp.</p>
+          </div>
+          <div class="field">
+            <label for="nombre">Nombre completo *</label>
+            <input id="nombre" name="nombre" required placeholder="Ej: María Rojas Mora" autocomplete="name" minlength="3">
+            <small>Como aparece en tu cédula</small>
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label for="cedula">Cédula *</label>
+              <input id="cedula" name="cedula" required placeholder="1-2345-0678" inputmode="numeric" pattern="[0-9\- ]{8,20}" title="Ingresa tu cédula con o sin guiones">
+            </div>
+            <div class="field">
+              <label for="telefono">WhatsApp *</label>
+              <input id="telefono" name="telefono" required placeholder="8888 8888" inputmode="tel" pattern="[0-9 \-+]{8,15}" title="Número donde recibirás la entrada">
+              <small>Te enviaremos el QR aquí</small>
+            </div>
+          </div>
+          <p class="field-error hidden" id="err1"></p>
+          <button type="button" class="btn primary wizard-next" data-next="2">Continuar <span class="btn-icon" aria-hidden="true"><svg class="icon-svg sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span></button>
+        </div>
+
+        <!-- PASO 2: Ubicación -->
+        <div class="wizard-step" data-step="2">
+          <div class="wizard-head">
+            <h2>Elige tu ubicación</h2>
+            <p class="muted">Toca una opción. El precio y la referencia se generan automático.</p>
+          </div>
+          <div class="ubicacion-grid">
+            <label class="ubicacion-card" data-val="Gradas">
+              <input type="radio" name="ubicacion" value="Gradas" required hidden>
+              <div class="ubicacion-inner">
+                <span class="ubicacion-check" aria-hidden="true"><svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <strong>Gradas</strong>
+                <span class="price-big">{{ precio_gradas }}</span>
+                <small>Vista general · Acceso rápido · Ideal familias</small>
+              </div>
+            </label>
+            <label class="ubicacion-card" data-val="Mesas">
+              <input type="radio" name="ubicacion" value="Mesas" hidden>
+              <div class="ubicacion-inner">
+                <span class="ubicacion-check" aria-hidden="true"><svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <strong>Mesas</strong>
+                <span class="price-big">{{ precio_mesas }}</span>
+                <small>Zona preferencial · Servicio cercano · Cupo limitado</small>
+              </div>
+            </label>
+          </div>
+          <p class="field-error hidden" id="err2"></p>
+          <div class="wizard-nav">
+            <button type="button" class="btn wizard-prev">Atrás</button>
+            <button type="button" class="btn primary wizard-next" data-next="3">Continuar <span class="btn-icon" aria-hidden="true"><svg class="icon-svg sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span></button>
+          </div>
+        </div>
+
+        <!-- PASO 3: Pago -->
+        <div class="wizard-step" data-step="3">
+          <div class="wizard-head">
+            <h2>Paga por SINPE Móvil</h2>
+            <p class="muted">Envía el monto exacto y usa la <strong>referencia personalizada</strong> en el detalle del SINPE.</p>
+          </div>
+          <div class="sinpe" id="sinpeBox">
+            <div>
+              <h3>SINPE Móvil</h3>
+              <p>En el detalle escribe tu <strong style="color:#fff">referencia</strong>. Sin ella no podemos validar.</p>
+              <div class="monto" id="montoInfo">Selecciona ubicación</div>
+            </div>
+            <div class="sinpe-data">
+              <div class="sinpe-row">
+                <div>
+                  <span>Número SINPE</span><br><strong id="sinpeNum" class="mono">{{ sinpe_numero }}</strong>
+                </div>
+                <button type="button" id="copyNum" title="Copiar número" aria-label="Copiar número SINPE">
+                  <svg class="icon-svg sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                </button>
+              </div>
+              <div class="sinpe-row">
+                <div>
+                  <span>Titular</span><br><strong>{{ sinpe_nombre }}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ref-box">
+            <label class="ref-label">Referencia personalizada <span class="muted" style="font-weight:400; text-transform:none; letter-spacing:0">— cópiala y pégala en el detalle</span></label>
+            <div class="ref-row">
+              <strong id="refText" class="mono">—</strong>
+              <button type="button" id="copyRef" class="btn sm primary" aria-label="Copiar referencia"><svg class="icon-svg sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg> Copiar</button>
+            </div>
+            <small class="muted">Ejemplo: <span class="mono">CTPM-ROJAS-0678-GRADAS</span> — se genera con tus datos.</small>
+          </div>
+
+          <p class="field-error hidden" id="err3"></p>
+          <div class="wizard-nav">
+            <button type="button" class="btn wizard-prev">Atrás</button>
+            <button type="button" class="btn primary wizard-next" data-next="4">Ya pagué, continuar <span class="btn-icon" aria-hidden="true"><svg class="icon-svg sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span></button>
+          </div>
+        </div>
+
+        <!-- PASO 4: Comprobante -->
+        <div class="wizard-step" data-step="4">
+          <div class="wizard-head">
+            <h2>Sube tu comprobante</h2>
+            <p class="muted">Toma captura del SINPE donde se vea el monto, fecha y referencia.</p>
+          </div>
+          <label class="drop" id="drop">
+            <div class="drop-icon" aria-hidden="true"><svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg></div>
+            <div>
+              <strong>Arrastra tu captura aquí o toca para seleccionar</strong><br>
+              <span>JPG, PNG, WEBP o PDF · máx. 8 MB</span>
+            </div>
+            <input type="file" name="comprobante" id="comprobante" accept=".jpg,.jpeg,.png,.webp,.pdf" required>
+          </label>
+          <div class="file-meta hidden" id="fileMeta"></div>
+          <p class="field-error hidden" id="err4"></p>
+          <div class="wizard-nav">
+            <button type="button" class="btn wizard-prev">Atrás</button>
+            <button type="submit" class="btn primary btn-submit" id="btnEnviar">Enviar comprobante <span class="btn-icon" aria-hidden="true"><svg class="icon-svg sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span></button>
+          </div>
+          <div id="msg" class="alert hidden" role="status" aria-live="polite"></div>
+          <p class="small muted">Al enviar aceptas la revisión. Respuesta en máximo 48 horas por WhatsApp.</p>
+        </div>
+
+        <!-- ÉXITO -->
+        <div class="wizard-step" data-step="5" id="successStep">
+          <div class="success-wrap">
+            <div class="success-icon" aria-hidden="true"><svg class="icon-svg lg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/><circle cx="12" cy="12" r="10" stroke-width="1.6"/></svg></div>
+            <h2>¡Comprobante enviado!</h2>
+            <p class="muted">Gracias <strong id="successName">—</strong>. Hemos recibido tu comprobante para <strong id="successUbi">—</strong>.</p>
+            <div class="success-card">
+              <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              <div>
+                <strong>Te escribiremos por WhatsApp</strong><br>
+                <span class="muted small">En máximo 48 horas te enviaremos tu entrada con QR único al <span class="mono" id="successPhone">—</span>. Guarda este número: {{ sinpe_numero }}.</span>
+              </div>
+            </div>
+            <p class="small muted">Referencia usada: <span class="mono" id="successRef">—</span> · Revisa que el comprobante tenga el monto correcto.</p>
+            <a href="/" class="btn primary" onclick="location.reload(); return false;">Hacer otra compra</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const stepsEls=document.querySelectorAll('.step'), bars=document.querySelectorAll('.bar i'), wizardSteps=document.querySelectorAll('.wizard-step');
+const nombre=document.getElementById('nombre'), cedula=document.getElementById('cedula'), telefono=document.getElementById('telefono');
+const monto=document.getElementById('montoInfo'), refText=document.getElementById('refText');
+let current=1;
+function showStep(n){
+  current=n;
+  wizardSteps.forEach(s=> s.classList.toggle('active', parseInt(s.dataset.step)===n));
+  stepsEls.forEach((el,i)=>{
+    const num=i+1;
+    const isActive = num===Math.min(n,4);
+    const isDone = num < Math.min(n,4) || n===5;
+    el.classList.toggle('active', isActive);
+    el.classList.toggle('done', isDone);
+  });
+  // Fix: fill each bar segment progressively, not just first bar
+  bars.forEach((barEl, i)=>{
+    if(n===5) { barEl.style.width='100%'; }
+    else if(i < n-1) { barEl.style.width='100%'; }
+    else { barEl.style.width='0%'; }
+  });
+  window.scrollTo({top: document.querySelector('.form-wrap').offsetTop - 90, behavior:'smooth'});
+  if(n===3) updateRef();
+}
+function validateStep(n){
+  const err=document.getElementById('err'+n);
+  if(err) { err.classList.add('hidden'); err.textContent=''; }
+  if(n===1){
+    if(!nombre.value.trim() || nombre.value.trim().length<3) { showErr(1,'Ingresa tu nombre completo.'); return false; }
+    if(!cedula.value.trim() || !/^[0-9\- ]{8,20}$/.test(cedula.value.trim())) { showErr(1,'Ingresa una cédula válida.'); return false; }
+    if(!telefono.value.trim() || !/^[0-9 \-+]{8,15}$/.test(telefono.value.trim())) { showErr(1,'Ingresa tu WhatsApp donde recibirás la entrada.'); return false; }
+  }
+  if(n===2){
+    if(!document.querySelector('input[name="ubicacion"]:checked')) { showErr(2,'Elige Gradas o Mesas.'); return false; }
+  }
+  if(n===3){
+    // solo info, siempre pasa
+  }
+  if(n===4){
+    const f=document.getElementById('comprobante').files[0];
+    if(!f) { showErr(4,'Sube la captura del comprobante.'); return false; }
+    if(f.size > 8*1024*1024) { showErr(4,'Archivo muy grande (máx 8 MB).'); return false; }
+  }
+  return true;
+}
+function showErr(n,msg){
+  const el=document.getElementById('err'+n);
+  if(el){ el.textContent=msg; el.classList.remove('hidden'); el.classList.add('field-error'); }
+}
+document.querySelectorAll('.wizard-next').forEach(b=> b.addEventListener('click',()=>{
+  if(!validateStep(current)) return;
+  const nxt=parseInt(b.dataset.next) || current+1;
+  if(current===2){
+    // guarda ubicacion para ref y monto
+    const ub=document.querySelector('input[name="ubicacion"]:checked').value;
+    monto.textContent = ub==='Mesas' ? 'Monto a pagar: {{ precio_mesas }} · Mesas' : 'Monto a pagar: {{ precio_gradas }} · Gradas';
+    monto.className='monto';
+  }
+  showStep(nxt);
+}));
+document.querySelectorAll('.wizard-prev').forEach(b=> b.addEventListener('click',()=> showStep(current-1)));
+// ubicacion cards
+document.querySelectorAll('.ubicacion-card').forEach(card=>{
+  card.addEventListener('click',()=>{
+    document.querySelectorAll('.ubicacion-card').forEach(c=>c.classList.remove('selected'));
+    card.classList.add('selected');
+    card.querySelector('input').checked=true;
+  });
+});
+// referencia personalizada
+function updateRef(){
+  const n=(nombre.value.trim().split(/\s+/)[0]||'CTPM').toUpperCase().replace(/[^A-Z]/g,'').slice(0,8) || 'CTPM';
+  const c=cedula.value.replace(/\D/g,'').slice(-4).padStart(4,'0');
+  const u=(document.querySelector('input[name="ubicacion"]:checked')?.value||'').toUpperCase().slice(0,5) || 'GRAD';
+  const ref=`CTPM-${n}-${c}-${u}`;
+  refText.textContent=ref;
+}
+['input','change'].forEach(ev=>{
+  nombre.addEventListener(ev, updateRef);
+  cedula.addEventListener(ev, updateRef);
+});
+document.querySelectorAll('input[name="ubicacion"]').forEach(r=> r.addEventListener('change', updateRef));
+// copiar
+function setupCopy(btnId, textId){
+  const btn=document.getElementById(btnId), getText=()=>document.getElementById(textId).textContent.trim();
+  if(!btn) return;
+  btn.addEventListener('click', async(e)=>{
+    const el=e.currentTarget; const orig=el.innerHTML;
+    const t=getText(); if(!t || t==='—') return;
+    await navigator.clipboard.writeText(t);
+    el.innerHTML='<svg class="icon-svg sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Copiado';
+    el.style.background='rgba(15,122,82,.92)'; el.style.borderColor='rgba(15,122,82,.92)'; el.style.color='#fff';
+    setTimeout(()=>{ el.innerHTML=orig; el.style.background=''; el.style.borderColor=''; el.style.color=''; }, 1400);
+  });
+}
+setupCopy('copyNum','sinpeNum');
+setupCopy('copyRef','refText');
+// file
+const drop=document.getElementById('drop'), input=document.getElementById('comprobante'), meta=document.getElementById('fileMeta');
+function showFile(f){
+  if(!f){ meta.classList.add('hidden'); return; }
+  meta.innerHTML = `<em class="mono">${f.name}</em> <span>${(f.size/1024).toFixed(0)} KB</span> <button type="button" id="clearFile" class="btn sm">Quitar</button>`;
+  meta.classList.remove('hidden');
+  document.getElementById('clearFile').onclick=()=>{ input.value=''; meta.classList.add('hidden'); };
+}
+drop.addEventListener('click',()=>input.click());
+drop.addEventListener('dragover',e=>{e.preventDefault(); drop.classList.add('drag')});
+drop.addEventListener('dragleave',()=>drop.classList.remove('drag'));
+drop.addEventListener('drop',e=>{e.preventDefault(); drop.classList.remove('drag'); if(e.dataTransfer.files.length){ input.files=e.dataTransfer.files; showFile(e.dataTransfer.files[0]); }});
+input.addEventListener('change',e=> showFile(e.target.files[0]));
+// submit
+document.getElementById('formCompra').addEventListener('submit', async e=>{
+  e.preventDefault();
+  if(!validateStep(4)) return;
+  const btn=document.getElementById('btnEnviar'), msg=document.getElementById('msg');
+  btn.disabled=true; const old=btn.innerHTML; btn.innerHTML='Enviando… <span class="btn-icon"><svg class="icon-svg sm spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></span>';
+  msg.className='alert hidden'; msg.textContent='';
+  try{
+    const r=await fetch('/api/comprar',{method:'POST', body:new FormData(e.target)});
+    const j=await r.json();
+    if(!r.ok || !j.ok) throw new Error(j.msg||'No se pudo enviar');
+    // éxito -> muestra paso 5
+    document.getElementById('successName').textContent=nombre.value.trim().split(' ')[0]||nombre.value.trim();
+    document.getElementById('successPhone').textContent=telefono.value.trim();
+    document.getElementById('successRef').textContent=refText.textContent;
+    document.getElementById('successUbi').textContent=document.querySelector('input[name="ubicacion"]:checked')?.value||'';
+    showStep(5);
+    // opcional: actualiza mensaje global también
+    msg.textContent=j.msg; msg.className='alert ok'; msg.classList.remove('hidden');
+  }catch(err){ msg.textContent=err.message; msg.className='alert err'; msg.classList.remove('hidden'); }
+  finally{ btn.disabled=false; btn.innerHTML=old; }
+});
+showStep(1);
+</script>
+{% endblock %}

@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Administración — Entradas CTPM{% endblock %}
+{% block content %}
+<div class="admin-head reveal">
+  <div>
+    <span class="eyebrow">Panel de control</span>
+    <h1>Administración</h1>
+    <p>Revisa comprobantes, aprueba y genera el QR único. Un QR = una entrada.</p>
+  </div>
+  <div class="kpis" id="kpis">
+    <div class="kpi"><span>Pendientes</span><strong id="kpiPend">—</strong></div>
+    <div class="kpi"><span>Aprobadas</span><strong id="kpiApro">—</strong></div>
+    <div class="kpi"><span>Usadas</span><strong id="kpiUsad">—</strong></div>
+  </div>
+</div>
+
+<div class="shell shell-admin">
+  <div class="bezel reveal d2">
+    <div class="bezel-inner">
+      <div class="admin-toolbar">
+        <div class="filters" id="filters">
+          <button class="active" data-f="">Todas</button>
+          <button data-f="Pendiente">Pendientes</button>
+          <button data-f="Aprobada">Aprobadas</button>
+          <button data-f="Usada">Usadas</button>
+        </div>
+        <div class="toolbar-actions">
+          <input id="search" class="search-input" placeholder="Buscar por nombre o cédula…" aria-label="Buscar">
+          <button class="btn sm" id="btnRefresh">Actualizar</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="tabla">
+          <thead><tr><th>Fecha</th><th>Cliente</th><th>Cédula</th><th>Localidad</th><th>Estado</th><th>Comprobante</th><th>Acción</th></tr></thead>
+          <tbody>
+            <tr class="skeleton-table hidden" id="skeleton"><td><span class="skeleton" style="width:70px; height:12px"></span></td><td><span class="skeleton" style="width:110px"></span></td><td><span class="skeleton" style="width:80px"></span></td><td><span class="skeleton" style="width:60px"></span></td><td><span class="skeleton" style="width:70px"></span></td><td><span class="skeleton" style="width:40px"></span></td><td><span class="skeleton" style="width:70px"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="empty" class="empty hidden">
+        <div class="empty-illustration" aria-hidden="true">
+          <svg class="icon-svg lg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+        </div>
+        <strong>Sin registros</strong><br><span class="muted">No hay entradas con ese filtro. Cuando lleguen solicitudes aparecerán aquí.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modal" class="modal hidden" aria-modal="true" role="dialog">
+  <div class="modal-backdrop" id="modalBg"></div>
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <h3 id="mTitle">Aprobar entrada</h3>
+        <p id="mInfo" class="muted"></p>
+      </div>
+      <button class="btn sm" id="mCerrar" aria-label="Cerrar"><svg class="icon-svg sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div id="mPreview" class="modal-preview">
+        <a id="mCompLink" href="#" target="_blank" class="btn sm btn-ghost">Ver comprobante <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 17L17 7M17 7H9M17 7v8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      </div>
+      <div class="qr-frame hidden" id="qrFrame"><img id="mImg" alt="Código QR de la entrada"></div>
+      <p id="mQrLink" class="small muted break-all"></p>
+      <div class="modal-actions">
+        <button id="mAprobar" class="btn primary modal-cta">Aprobar y generar QR <span class="btn-icon" aria-hidden="true"><svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      </div>
+      <div id="mMsg" class="alert hidden" role="status"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let filtro='', query='', selId=null;
+const tbody=document.querySelector('#tabla tbody'), empty=document.getElementById('empty'), skeleton=document.getElementById('skeleton');
+const modal=document.getElementById('modal'), mTitle=document.getElementById('mTitle'), mInfo=document.getElementById('mInfo'),
+      mImg=document.getElementById('mImg'), qrFrame=document.getElementById('qrFrame'), mQrLink=document.getElementById('mQrLink'),
+      mMsg=document.getElementById('mMsg'), mAprobar=document.getElementById('mAprobar'), mCompLink=document.getElementById('mCompLink');
+
+function renderKpis(rows){
+  const c = s => rows.filter(r=>r.estado===s).length;
+  document.getElementById('kpiPend').textContent=c('Pendiente');
+  document.getElementById('kpiApro').textContent=c('Aprobada');
+  document.getElementById('kpiUsad').textContent=c('Usada');
+}
+async function load(){
+  skeleton.classList.remove('hidden');
+  let url='/api/entradas?estado='+encodeURIComponent(filtro);
+  let r, rows;
+  try{
+    r=await fetch(url);
+    if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
+    rows=await r.json(); if(!Array.isArray(rows)) throw new Error(rows.msg||'Error');
+  }catch(e){ skeleton.classList.add('hidden'); tbody.innerHTML=`<tr><td colspan="7" class="empty">No se pudo cargar: ${e.message}</td></tr>`; return; }
+  const q=query.trim().toLowerCase();
+  if(q) rows=rows.filter(x=> (x.nombre_completo+' '+x.cedula).toLowerCase().includes(q));
+  renderKpis(rows);
+  skeleton.classList.add('hidden');
+  tbody.querySelectorAll('tr:not(#skeleton)').forEach(el=>el.remove());
+  if(!rows.length){ empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  for(const x of rows){
+    const tr=document.createElement('tr');
+    const comp = x.comprobante_path ? `<a href="/${x.comprobante_path}" target="_blank" class="link-strong">Ver</a>` : '<span class="muted">—</span>';
+    const qr = x.qr_path ? `<a href="/${x.qr_path}" target="_blank" class="link-strong">QR</a>` : '<span class="muted">—</span>';
+    const badge = `<span class="badge ${x.estado.toLowerCase()}">${x.estado}</span>`;
+    const btn = x.estado==='Pendiente'
+      ? `<button class="btn sm primary" data-aprobar="${x.id}">Aprobar</button> <button class="btn sm btn-danger" data-rechazar="${x.id}">Rechazar</button>`
+      : qr;
+    tr.innerHTML=`<td>${x.fecha_compra||''}</td>
+      <td><strong>${x.nombre_completo}</strong></td><td class="mono" style="font-size:12px">${x.cedula}</td>
+      <td>${x.ubicacion}</td><td>${badge}</td><td>${comp}</td><td>${btn}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+document.querySelectorAll('#filters [data-f]').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#filters [data-f]').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); filtro=b.dataset.f; load();
+}));
+document.getElementById('search').addEventListener('input',e=>{ query=e.target.value; load(); });
+document.getElementById('btnRefresh').onclick=load;
+tbody.addEventListener('click', async e=>{
+  const idA=e.target.dataset.aprobar, idR=e.target.dataset.rechazar;
+  if(idA){ selId=idA; openModal(idA); }
+  if(idR){ if(!confirm('¿Eliminar esta solicitud pendiente?')) return; const r=await fetch('/api/rechazar/'+idR,{method:'POST'}); if(r.status===401){location.href='/login?nxt='+encodeURIComponent(location.pathname); return;} const j=await r.json(); alert(j.msg); load(); }
+});
+async function openModal(id){
+  let rows; try{
+    const rr=await fetch('/api/entradas');
+    if(rr.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
+    rows=await rr.json();
+  }catch{ return; }
+  const row=rows.find(x=>x.id===id); if(!row) return;
+  mTitle.textContent=row.nombre_completo;
+  mInfo.textContent=`Cédula ${row.cedula} · ${row.ubicacion} · ${row.fecha_compra} · ${row.estado}`;
+  mCompLink.href='/'+row.comprobante_path; mCompLink.classList.toggle('hidden', !row.comprobante_path);
+  qrFrame.classList.add('hidden'); mImg.removeAttribute('src'); mQrLink.textContent='';
+  mMsg.className='alert hidden'; mMsg.textContent='';
+  mAprobar.disabled=false; mAprobar.innerHTML='Aprobar y generar QR <span class="btn-icon" aria-hidden="true"><svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+  modal.classList.remove('hidden');
+}
+function closeModal(){ modal.classList.add('hidden'); }
+document.getElementById('mCerrar').onclick=closeModal;
+document.getElementById('modalBg').onclick=closeModal;
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+mAprobar.onclick=async()=>{
+  mAprobar.disabled=true; mAprobar.textContent='Generando…';
+  try{
+    const r=await fetch('/api/aprobar/'+selId,{method:'POST'});
+    if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
+    const j=await r.json();
+    if(!r.ok || !j.ok) throw new Error(j.msg||'Error');
+    mImg.src=j.qr_url; qrFrame.classList.remove('hidden');
+    mQrLink.innerHTML=`QR listo: <a href="/${j.qr_path}" target="_blank" class="link-strong">${j.qr_path}</a> · ID ${j.id.slice(0,8)}…`;
+    mMsg.textContent='Aprobada. El QR es único y de un solo uso. Compártelo con el cliente.'; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
+    mAprobar.innerHTML='Hecho <svg class="icon-svg sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>'; load();
+  }catch(e){ mMsg.textContent=''+(e.message); mMsg.className='alert err'; mMsg.classList.remove('hidden'); mAprobar.disabled=false; mAprobar.innerHTML='Reintentar'; }
+};
+load();
+</script>
+{% endblock %}

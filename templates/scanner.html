@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Validación en puerta — CTPM{% endblock %}
+{% block content %}
+<div class="scanner-shell">
+  <div class="bezel reveal">
+    <div class="bezel-inner scanner-card">
+      <div class="scanner-head">
+        <span class="eyebrow">Control de acceso · Tiempo real</span>
+        <h1>Validación en puerta</h1>
+        <p>Apunta al QR. El sistema marca la entrada como <strong>Usada</strong> al primer escaneo. Pantalla <strong class="text-ok">verde</strong> = acceso, <strong class="text-err">roja</strong> = denegado.</p>
+      </div>
+      <div class="reader-wrap">
+        <div id="reader" class="reader">
+          <span class="reader-idle">Cámara inactiva</span>
+        </div>
+      </div>
+      <div class="controls">
+        <button id="btnStart" class="btn primary"><svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/></svg> Iniciar cámara</button>
+        <button id="btnStop" class="btn">Detener</button>
+        <input id="manualId" placeholder="Pegar ID manualmente (UUID del QR)" aria-label="ID manual">
+        <button id="btnManual" class="btn">Validar <svg class="icon-svg sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+      </div>
+      <div id="result" class="result hidden" role="status" aria-live="polite">
+        <div id="resultIcon" class="result-icon" aria-hidden="true"></div>
+        <h2 id="resultTitle"></h2>
+        <p id="resultMsg"></p>
+        <p id="resultMeta" class="small muted"></p>
+      </div>
+      <div class="scanner-badges">
+        <span class="badge pendiente">Pendiente = denegado</span>
+        <span class="badge usada">Usada = denegado</span>
+        <span class="badge aprobada">Aprobada = acceso</span>
+      </div>
+      <p class="small muted scanner-foot">Requiere HTTPS o <code>localhost</code> para acceder a la cámara. En iPhone usa Safari.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+const result=document.getElementById('result'), rTitle=document.getElementById('resultTitle'),
+      rMsg=document.getElementById('resultMsg'), rMeta=document.getElementById('resultMeta'), rIcon=document.getElementById('resultIcon');
+let html5Qr=null, lastId=null, lastAt=0;
+
+function show(ok, title, msg, meta=''){
+  result.className = 'result ' + (ok ? 'ok' : 'err');
+  rIcon.innerHTML = ok
+    ? '<svg class="icon-svg lg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>'
+    : '<svg class="icon-svg lg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+  rTitle.textContent = title; rMsg.textContent = msg; rMeta.textContent = meta;
+  result.classList.remove('hidden');
+  result.scrollIntoView({behavior:'smooth', block:'nearest'});
+  if(navigator.vibrate) navigator.vibrate(ok ? 80 : [80,60,80]);
+  document.documentElement.style.background = ok ? '#ECFDF5' : '#FEF2F2';
+  setTimeout(()=>document.documentElement.style.background='', 800);
+}
+async function validar(id){
+  id=(id||'').trim(); if(!id) return show(false,'QR vacío','Escanea un código válido');
+  const now=Date.now(); if(id===lastId && now-lastAt<1800) return;
+  lastId=id; lastAt=now;
+  try{
+    const r=await fetch('/api/validar',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})});
+    if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
+    const j=await r.json();
+    if(j.ok) show(true, j.msg, `${j.nombre} — ${j.ubicacion}`, `Cédula ${j.cedula} · ${id.slice(0,8)}… · acceso concedido`);
+    else {
+      const msg = j.msg || 'Denegado';
+      const extra = j.nombre ? `${j.nombre} — ${j.ubicacion}` : `ID ${id.slice(0,8)}…`;
+      show(false, msg, j.estado||'', extra);
+    }
+  }catch(e){ show(false,'Error de red', e.message); }
+}
+document.getElementById('btnStart').onclick=async()=>{
+  if(html5Qr) return;
+  const el=document.getElementById('reader'); el.innerHTML='';
+  html5Qr=new Html5Qrcode("reader");
+  try{
+    await html5Qr.start({facingMode:"environment"}, {fps:10, qrbox:{width:260, height:260}},
+      (decoded)=> validar(decoded.trim()), ()=>{});
+  }catch(e){
+    el.innerHTML='<span class="reader-error">No se pudo iniciar la cámara: '+e.message+'<br>Usa el campo manual.</span>';
+    html5Qr=null;
+  }
+};
+document.getElementById('btnStop').onclick=async()=>{
+  if(!html5Qr) return;
+  try{ await html5Qr.stop(); html5Qr.clear(); }catch{}
+  html5Qr=null; document.getElementById('reader').innerHTML='<span class="reader-idle">Cámara inactiva</span>';
+};
+document.getElementById('btnManual').onclick=()=> validar(document.getElementById('manualId').value);
+document.getElementById('manualId').addEventListener('keydown',e=>{ if(e.key==='Enter') validar(e.target.value); });
+</script>
+{% endblock %}
