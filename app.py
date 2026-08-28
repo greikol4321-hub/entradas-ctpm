@@ -441,42 +441,6 @@ def uploads(fname):
 def not_found(e):
     return render_template("404.html"), 404
 
-@app.get("/api/debug")
-def debug():
-    import traceback
-    try:
-        dsn = _pg_dsn() or ""
-        safe = dsn.split("@")[-1] if "@" in dsn else dsn
-        # raw psycopg without dict_row
-        raw = {}
-        try:
-            import psycopg
-            conn2 = psycopg.connect(dsn, connect_timeout=5)
-            cur2 = conn2.cursor()
-            cur2.execute("SELECT id, nombre_completo, cedula, ubicacion, mesa_numero, monto, estado FROM entradas ORDER BY fecha_compra DESC LIMIT 2")
-            cols = [c[0] for c in cur2.description]
-            fetched = cur2.fetchall()
-            raw = {"cols": cols, "fetched": [list(r) for r in fetched], "fetched_str": str(fetched[:1])}
-            cur2.close(); conn2.close()
-        except Exception as e2:
-            raw = {"err": str(e2), "tb": traceback.format_exc()}
-        # also try via REST
-        rest_rows = []
-        rest_err = None
-        try:
-            import urllib.request, json as js
-            url = "https://jyfmimxzhpvcezwilkdd.supabase.co/rest/v1/entradas?select=id,nombre_completo,cedula&limit=2"
-            headers = {"apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5Zm1pbXh6aHB2Y2V6d2lsa2RkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5NDQzMDEsImV4cCI6MjEwMzUyMDMwMX0.a1PvzU7FqTX8fgS7W_GI4ssd1JeGrRNiYbCOCp7G2Rc", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5Zm1pbXh6aHB2Y2V6d2lsa2RkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5NDQzMDEsImV4cCI6MjEwMzUyMDMwMX0.a1PvzU7FqTX8fgS7W_GI4ssd1JeGrRNiYbCOCp7G2Rc"}
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=5) as r:
-                rest_rows = js.loads(r.read().decode())
-        except Exception as e3:
-            rest_err = str(e3)
-        rows = fetch_all("SELECT id, nombre_completo, cedula, ubicacion, mesa_numero, monto, estado FROM entradas ORDER BY fecha_compra DESC LIMIT 5")
-        return jsonify(ok=True, rows=rows, count=len(rows), db=db_kind(), safe_dsn=safe, raw=raw, rest_rows=rest_rows, rest_err=rest_err)
-    except Exception as e:
-        return jsonify(ok=False, msg=str(e), tb=traceback.format_exc(), db=db_kind()), 500
-
 @app.get("/health")
 def health():
     conn = db()
