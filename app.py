@@ -69,9 +69,10 @@ def db():
     if _is_pg():
         dsn = _pg_dsn()
         try:
-            conn = psycopg.connect(dsn, row_factory=dict_row, autocommit=False, connect_timeout=3)
+            conn = psycopg.connect(dsn, row_factory=dict_row, autocommit=False, connect_timeout=10)
             return conn
-        except Exception:
+        except Exception as e:
+            print(f"[CTPM] db connect failed: {e}")
             return None
     if _is_mysql():
         cfg = dict(host=os.getenv("DB_HOST","localhost"),
