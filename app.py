@@ -351,6 +351,29 @@ def finanzas():
         print(f"[CTPM] finanzas error: {e}\n{traceback.format_exc()}")
         return jsonify(ok=False, msg=str(e), tb=traceback.format_exc()), 500
 
+# --- QR servir en Vercel (/tmp) y local (static) ---
+@app.get("/static/qrcodes/<path:fname>")
+@app.get("/qrcodes/<path:fname>")
+def serve_qr(fname):
+    # Vercel guarda en /tmp/qrcodes, local en static/qrcodes — servir desde QR_FOLDER y regenerar si falta
+    fpath = QR_FOLDER / fname
+    if not fpath.exists():
+        eid = pathlib.Path(fname).stem
+        row = fetch_one("SELECT id FROM entradas WHERE id=%s", (eid,))
+        if row:
+            try:
+                qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=12, border=6)
+                qr.add_data(eid)
+                qr.make(fit=True)
+                img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
+                fpath.parent.mkdir(parents=True, exist_ok=True)
+                img.save(fpath)
+            except Exception:
+                pass
+    if fpath.exists():
+        return send_from_directory(QR_FOLDER, fname)
+    return "QR no encontrado", 404
+
 # --- API: aprobar + QR ---
 @app.post("/api/aprobar/<eid>")
 @login_required
@@ -361,15 +384,20 @@ def aprobar(eid):
         if not row: return jsonify(ok=False, msg="Entrada no existe"), 404
         if row["estado"] != "Pendiente":
             return jsonify(ok=False, msg=f"Ya está {row['estado']}"), 400
-        img = qrcode.make(eid)
+        # QR alta calidad: H, box 12, borde 6, fit
+        qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=12, border=6)
+        qr.add_data(eid)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
         qr_name = f"{eid}.png"
         qr_path = QR_FOLDER / qr_name
-        img.save(qr_path)
+        qr_path.parent.mkdir(parents=True, exist_ok=True)
+        img.save(qr_path, "PNG")
         qr_rel = f"static/qrcodes/{qr_name}"
         exec_sql("UPDATE entradas SET estado='Aprobada', qr_path=%s, fecha_aprobacion=%s WHERE id=%s",
                  (qr_rel, datetime.now(), eid))
         return jsonify(ok=True, msg="Aprobada y QR generado",
-                      qr_url=url_for("static", filename=f"qrcodes/{qr_name}"),
+                      qr_url=url_for("serve_qr", fname=qr_name),
                       qr_path=qr_rel, id=eid)
     except Exception as e:
         return jsonify(ok=False, msg=f"Error: {e}"), 500
