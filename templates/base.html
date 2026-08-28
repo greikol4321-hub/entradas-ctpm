@@ -7,41 +7,46 @@
 <meta property="og:title" content="Entradas CTPM — Venta oficial">
 <meta property="og:description" content="Pago por SINPE Móvil · QR único · Validación instantánea">
 <meta property="og:type" content="website">
-<meta name="theme-color" content="#0F172A">
+<meta name="theme-color" content="#0a4c23">
 <title>{% block title %}Entradas CTPM — Venta oficial{% endblock %}</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230F172A'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='700' font-size='11' letter-spacing='.5'%3ECTPM%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='img/logo_colegio_nuevo.png') }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;500;600;700&family=Fragment+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Fragment+Mono&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
 <a href="#main" class="skip-link">Saltar al contenido</a>
 <div class="noise" aria-hidden="true"></div>
-<header class="topbar-wrap">
-  <div class="topbar">
-    <a href="/" class="brand" aria-label="CTPM Inicio">
-      <span class="brand-mark" aria-hidden="true">CTPM</span>
-      <span class="brand-text">
-        <strong>Colegio Técnico Profesional</strong>
-        <span>Matapalo — Entradas Oficiales</span>
-      </span>
-    </a>
-    <nav class="nav" id="nav" aria-label="Principal">
-      {% if session.get('uid') %}
-        <a href="/" class="{% if request.path == '/' %}active{% endif %}">Comprar</a>
-        {% if session.get('rol') == 'admin' %}
-          <a href="/admin" class="{% if request.path == '/admin' %}active{% endif %}">Administración</a>
+<header class="header">
+  <div class="header-container">
+    <div class="header-logos-left">
+      <img src="{{ url_for('static', filename='img/LOGO_MEP-removebg-preview.png') }}" class="logo-mep" alt="MEP Costa Rica">
+      <div class="divider"></div>
+      <div class="logo-gobierno">
+        <strong>Dirección Regional de Educación Central del Pacífico</strong><br>
+        <strong>Circuito 02</strong><br>
+        <strong>Colegio Técnico Profesional de Matapalo</strong>
+      </div>
+    </div>
+    <div class="nav-right">
+      <a href="/" title="Inicio"><img src="{{ url_for('static', filename='img/logo_colegio_nuevo.png') }}" class="logo-escudo" alt="Escudo CTP Matapalo"></a>
+      <nav class="nav" id="nav" aria-label="Principal">
+        {% if session.get('uid') %}
+          <a href="/" class="{% if request.path == '/' %}active{% endif %}">Comprar</a>
+          {% if session.get('rol') == 'admin' %}
+            <a href="/admin" class="{% if request.path == '/admin' %}active{% endif %}">Administración</a>
+          {% endif %}
+          <a href="/scanner" class="{% if request.path == '/scanner' %}active{% endif %}">Validación</a>
+          <span class="nav-user" aria-label="Usuario {{ session.get('username') }}">{{ session.get('username') }} · {{ session.get('rol') }}</span>
+          <a href="/logout" class="btn sm">Salir</a>
+        {% else %}
+          <a href="/" class="{% if request.path == '/' %}active{% endif %}">Comprar</a>
+          <a href="/login" class="btn sm primary nav-cta">Acceso administrativo</a>
         {% endif %}
-        <a href="/scanner" class="{% if request.path == '/scanner' %}active{% endif %}">Validación</a>
-        <span class="nav-user" aria-label="Usuario {{ session.get('username') }}">{{ session.get('username') }} · {{ session.get('rol') }}</span>
-        <a href="/logout" class="btn sm">Salir</a>
-      {% else %}
-        <a href="/" class="{% if request.path == '/' %}active{% endif %}">Comprar entrada</a>
-        <a href="/login" class="btn sm primary nav-cta">Acceso administrativo</a>
-      {% endif %}
-    </nav>
-    <button class="nav-toggle" aria-label="Abrir menú" aria-expanded="false" id="navToggle"><span></span><span></span></button>
+      </nav>
+      <button class="nav-toggle" aria-label="Abrir menú" aria-expanded="false" id="navToggle"><span></span><span></span></button>
+    </div>
   </div>
   <div class="mobile-nav hidden" id="mobileNav" aria-label="Menú móvil">
     {% if session.get('uid') %}

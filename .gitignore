@@ -17,3 +17,4 @@ static/qrcodes/
 supabase/.temp/
 *.log
 .muse/
+.vercel
