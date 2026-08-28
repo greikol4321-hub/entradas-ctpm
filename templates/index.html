@@ -110,6 +110,7 @@
             <label class="ref-label" style="margin-bottom:8px; display:block;">Elige tu mesa <span class="muted" style="font-weight:400; text-transform:none;">— toca un número disponible</span></label>
             <div id="mesaGrid" class="mesa-grid"></div>
             <p class="field-error hidden" id="errMesa" style="margin-top:8px;"></p>
+            <div id="mesaInfo" class="hidden" style="margin-top:10px; padding:10px 12px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:10px; font-size:13px; color:#065f46; text-align:center; font-weight:600;"></div>
             <input type="hidden" name="mesa_numero" id="mesa_numero">
           </div>
           <p class="field-error hidden" id="err2"></p>
@@ -243,7 +244,17 @@ function renderMesas(){
       document.querySelectorAll('.mesa-item').forEach(m=>m.classList.remove('selected'));
       div.classList.add('selected');
       if(errMesa){ errMesa.classList.add('hidden'); errMesa.textContent=''; }
+      const info=document.getElementById('mesaInfo');
+      if(info){ info.textContent=`✓ Mesa ${i} seleccionada — pulsa Continuar abajo para seguir`; info.classList.remove('hidden'); }
       updateRef();
+      // auto-scroll al botón Continuar para que el usuario sepa qué hacer
+      setTimeout(()=>{
+        const nextBtn=document.querySelector('.wizard-step[data-step="2"] .wizard-next');
+        if(nextBtn){
+          nextBtn.scrollIntoView({behavior:'smooth', block:'center'});
+          nextBtn.animate([{transform:'scale(1)'},{transform:'scale(1.04)'},{transform:'scale(1)'}],{duration:320, easing:'ease-out'});
+        }
+      }, 180);
     });
     mesaGrid.appendChild(div);
   }
@@ -322,11 +333,18 @@ document.querySelectorAll('.ubicacion-card').forEach(card=>{
     const ub=card.dataset.val;
     if(ub==='Mesas'){
       mesaWrap.classList.remove('hidden');
-      cargarMesas();
+      cargarMesas().then(()=>{
+        setTimeout(()=>{
+          mesaWrap.scrollIntoView({behavior:'smooth', block:'start'});
+          const nextBtn=document.querySelector('.wizard-step[data-step="2"] .wizard-next');
+          if(nextBtn) nextBtn.style.boxShadow='0 0 0 3px rgba(10,76,35,.25)';
+        }, 300);
+      });
     } else {
       mesaWrap.classList.add('hidden');
       mesaInput.value='';
       if(errMesa){ errMesa.classList.add('hidden'); errMesa.textContent=''; }
+      const info2=document.getElementById('mesaInfo'); if(info2){ info2.classList.add('hidden'); info2.textContent=''; }
     }
     updateRef();
   });
