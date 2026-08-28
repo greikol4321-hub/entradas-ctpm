@@ -257,7 +257,8 @@ async function openModal(id){
     mAprobar.style.display='none';
     // mostrar ticket si ya aprobada
     if(row.qr_path){
-      mImg.src='/'+row.qr_path; qrFrame.classList.remove('hidden');
+      // solo boleto (1 QR), ocultar frame duplicado
+      qrFrame.classList.add('hidden');
       mQrLink.innerHTML=`QR: <a href="/${row.qr_path}" target="_blank" class="link-strong">${row.qr_path}</a>`;
       prepararBoleto(row);
       boletoPreview.classList.remove('hidden');
@@ -280,7 +281,8 @@ mAprobar.onclick=async()=>{
     if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
     const j=await r.json();
     if(!r.ok || !j.ok) throw new Error(j.msg||'Error');
-    mImg.src=j.qr_url; qrFrame.classList.remove('hidden');
+    // solo boleto (1 QR) — ocultar frame duplicado
+    mImg.src=j.qr_url; qrFrame.classList.add('hidden');
     mQrLink.innerHTML=`QR listo: <a href="/${j.qr_path}" target="_blank" class="link-strong">${j.qr_path}</a> · ID ${j.id.slice(0,8)}…`;
     // preparar boleto para copiar
     if(selRow){ selRow.qr_path=j.qr_path; prepararBoleto(selRow); boletoPreview.classList.remove('hidden'); }

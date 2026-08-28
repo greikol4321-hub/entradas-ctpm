@@ -265,12 +265,12 @@ button{font:inherit}
 .form-body{padding:24px 22px; display:flex; flex-direction:column; gap:22px}
 .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
 @media(max-width:640px){ .grid2{grid-template-columns:1fr} }
-.field{display:flex; flex-direction:column; gap:7px}
-.field label{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-2)}
+.field{display:flex; flex-direction:column; gap:5px}
+.field label{font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-2)}
 .field input, .field select{
-  width:100%; padding:13px 14px; border-radius:14px; border:1px solid var(--line); background:#fff;
-  font-size:14px; font-weight:500; color:var(--ink); outline:none;
-  transition:border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 160ms var(--ease-out);
+  width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:#fff;
+  font-size:13px; font-weight:500; color:var(--ink); outline:none;
+  transition:border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out), background-color 160ms var(--ease-out);
 }
 .field input::placeholder{color:#6b7280}
 .field input:hover, .field select:hover{border-color:rgba(15,23,42,.14); background:#FFFEFB}
@@ -343,11 +343,11 @@ button{font:inherit}
 .file-meta{font-size:12px; color:var(--muted); margin-top:6px; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
 .file-meta em{font-style:normal; background:#fff; border:1px solid var(--line); padding:4px 8px; border-radius:999px; font-size:11px; font-weight:700; box-shadow:0 1px 4px rgba(15,23,42,.04)}
 
-/* wizard — móvil por pantallas, 4 pasos */
-.wizard-form{padding:24px 22px}
-.wizard-step{display:none; flex-direction:column; gap:18px; animation:fadeIn 240ms var(--ease-out)}
+/* wizard — compacto para fácil escritura */
+.wizard-form{padding:18px 16px}
+.wizard-step{display:none; flex-direction:column; gap:14px; animation:fadeIn 240ms var(--ease-out)}
 .wizard-step.active{display:flex}
-.wizard-head h2{margin:0; font-family:"Poppins", sans-serif; font-size:32px; font-weight:800; letter-spacing:-.02em; color:var(--ink)}
+.wizard-head h2{margin:0; font-family:"Poppins", sans-serif; font-size:24px; font-weight:700; letter-spacing:-.02em; color:var(--ink)}
 .wizard-head p{margin:6px 0 0}
 .field-error{color:var(--err); font-size:12px; font-weight:600; background:var(--err-bg); border:1px solid var(--err-ring); padding:10px 12px; border-radius:12px}
 .wizard-nav{display:flex; gap:10px; justify-content:space-between; align-items:center; margin-top:4px}
