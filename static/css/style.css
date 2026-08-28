@@ -469,16 +469,16 @@ tr:hover td{background:#FFFEFB}
 .badge.usada{background:#F1F5F9; color:#64748B; border-color:#E2E8F0}
 
 /* modal — Emil: 200-500ms, ease-out, appear from 0.95 scale, not from nothing */
-.modal{position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; padding:16px}
-.modal-backdrop{position:absolute; inset:0; background:rgba(15,23,42,.42); backdrop-filter:blur(10px); animation:fadeIn 200ms var(--ease-out)}
+.modal{position:fixed; inset:0; z-index:50; display:flex; align-items:flex-start; justify-content:center; padding:16px; overflow-y:auto; overscroll-behavior:contain;}
+.modal-backdrop{position:fixed; inset:0; background:rgba(15,23,42,.42); backdrop-filter:blur(10px); animation:fadeIn 200ms var(--ease-out)}
 @keyframes fadeIn{from{opacity:0} to{opacity:1}}
 .modal-card{
   position:relative; width:100%; max-width:520px; background:var(--surface); border-radius:24px; border:1px solid var(--line);
   box-shadow:var(--shadow-lift); overflow:hidden; animation:pop 320ms var(--ease-out);
-  transform-origin:center center;
+  transform-origin:center center; margin:auto 0; max-height:90vh; overflow-y:auto; overscroll-behavior:contain;
 }
 @keyframes pop{from{opacity:0; transform:translateY(8px) scale(0.96)} to{opacity:1; transform:none}}
-.modal-head{padding:20px 20px 14px; border-bottom:1px solid var(--line-2); display:flex; justify-content:space-between; gap:12px; background:linear-gradient(180deg, #FFFEFB, var(--surface))}
+.modal-head{position:sticky; top:0; z-index:1; padding:20px 20px 14px; border-bottom:1px solid var(--line-2); display:flex; justify-content:space-between; gap:12px; background:linear-gradient(180deg, #FFFEFB, var(--surface))}
 .modal-head h3{margin:0; font-size:16px; font-weight:800; letter-spacing:-.015em}
 .modal-head p{margin:4px 0 0; font-size:12px; color:var(--muted)}
 .modal-body{padding:18px 20px; display:flex; flex-direction:column; gap:14px}
