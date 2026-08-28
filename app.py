@@ -443,11 +443,28 @@ def not_found(e):
 
 @app.get("/api/debug")
 def debug():
+    import traceback
     try:
+        dsn = _pg_dsn() or ""
+        # mask password
+        safe = dsn.split("@")[-1] if "@" in dsn else dsn
+        # direct psycopg test
+        direct_rows = []
+        direct_err = None
+        try:
+            import psycopg
+            from psycopg.rows import dict_row
+            conn2 = psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5)
+            cur2 = conn2.cursor()
+            cur2.execute("SELECT id, nombre_completo, cedula FROM entradas ORDER BY fecha_compra DESC LIMIT 2")
+            cols2 = [c[0] for c in cur2.description]
+            direct_rows = [dict(zip(cols2, r)) for r in cur2.fetchall()]
+            cur2.close(); conn2.close()
+        except Exception as e2:
+            direct_err = f"{e2}\n{traceback.format_exc()}"
         rows = fetch_all("SELECT id, nombre_completo, cedula, ubicacion, mesa_numero, monto, estado FROM entradas ORDER BY fecha_compra DESC LIMIT 5")
-        return jsonify(ok=True, rows=rows, count=len(rows), db=db_kind())
+        return jsonify(ok=True, rows=rows, count=len(rows), db=db_kind(), safe_dsn=safe, direct_rows=direct_rows, direct_err=direct_err)
     except Exception as e:
-        import traceback
         return jsonify(ok=False, msg=str(e), tb=traceback.format_exc(), db=db_kind()), 500
 
 @app.get("/health")
