@@ -69,7 +69,7 @@ def db():
     if _is_pg():
         dsn = _pg_dsn()
         try:
-            conn = psycopg.connect(dsn, row_factory=dict_row, autocommit=False, connect_timeout=10)
+            conn = psycopg.connect(dsn, connect_timeout=10)
             return conn
         except Exception as e:
             print(f"[CTPM] db connect failed: {e}")
