@@ -325,7 +325,9 @@ def listar():
                     if isinstance(v, datetime):
                         r[k] = v.strftime("%Y-%m-%d %H:%M")
         return jsonify(rows)
-    except Exception:
+    except Exception as e:
+        import traceback
+        print(f"[CTPM] listar error: {e}\n{traceback.format_exc()}")
         return jsonify([])
 
 # --- API: finanzas ---
@@ -345,7 +347,9 @@ def finanzas():
         ocup_cnt = ocupadas[0]["cnt"] if ocupadas else 0
         return jsonify(ok=True, agrupado=rows, kpi=kpi, por_zona=zona, mesas={"ocupadas": ocup_cnt, "libres": NUM_MESAS - ocup_cnt, "total": NUM_MESAS})
     except Exception as e:
-        return jsonify(ok=False, msg=str(e)), 500
+        import traceback
+        print(f"[CTPM] finanzas error: {e}\n{traceback.format_exc()}")
+        return jsonify(ok=False, msg=str(e), tb=traceback.format_exc()), 500
 
 # --- API: aprobar + QR ---
 @app.post("/api/aprobar/<eid>")
@@ -436,6 +440,15 @@ def uploads(fname):
 @app.errorhandler(404)
 def not_found(e):
     return render_template("404.html"), 404
+
+@app.get("/api/debug")
+def debug():
+    try:
+        rows = fetch_all("SELECT id, nombre_completo, cedula, ubicacion, mesa_numero, monto, estado FROM entradas ORDER BY fecha_compra DESC LIMIT 5")
+        return jsonify(ok=True, rows=rows, count=len(rows), db=db_kind())
+    except Exception as e:
+        import traceback
+        return jsonify(ok=False, msg=str(e), tb=traceback.format_exc(), db=db_kind()), 500
 
 @app.get("/health")
 def health():
