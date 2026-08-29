@@ -3,9 +3,9 @@ Sistema CTPM — Venta y validación de entradas
 Soporta Postgres (Supabase) via DATABASE_URL o MySQL via variables DB_*
 Mesas numeradas + Finanzas
 """
-import os, uuid, pathlib, functools, secrets, string
+import os, uuid, pathlib, functools, secrets, string, io
 from datetime import datetime, timedelta
-from flask import Flask, request, jsonify, render_template, send_from_directory, url_for, session, redirect
+from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, url_for, session, redirect
 from werkzeug.security import generate_password_hash, check_password_hash
 import qrcode
 from dotenv import load_dotenv
@@ -50,6 +50,51 @@ PRECIO_MESAS_VAL = 10000
 NUM_MESAS = 12
 DEMO_USER = "admin"
 DEMO_PASS = "admin123"
+
+# --- Supabase Storage (para que "Ver" comprobante no 404 en Vercel /tmp efímero) ---
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://jyfmimxzhpvcezwilkdd.supabase.co")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SERVICE_ROLE_KEY")
+# buckets creados en migración 20260104000000
+COMPROBANTES_BUCKET = "comprobantes"
+QRCODES_BUCKET = "qrcodes"
+
+def _supabase_headers(ct="application/octet-stream"):
+    if not SUPABASE_SERVICE_KEY: return {}
+    return {"apikey": SUPABASE_SERVICE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}", "Content-Type": ct}
+
+def supabase_upload(bucket, fname, data_bytes, content_type="application/octet-stream"):
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        return False
+    try:
+        import urllib.request, urllib.error
+        url = f"{SUPABASE_URL}/storage/v1/object/{bucket}/{fname}"
+        req = urllib.request.Request(url, data=data_bytes, method="POST", headers=_supabase_headers(content_type))
+        # si ya existe, intentar PUT (upsert)
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return resp.status in (200,201)
+        except urllib.error.HTTPError as e:
+            if e.code in (409, 400):  # ya existe, probar PUT
+                req2 = urllib.request.Request(url, data=data_bytes, method="PUT", headers=_supabase_headers(content_type))
+                with urllib.request.urlopen(req2, timeout=10) as resp2:
+                    return resp2.status in (200,201)
+            return False
+    except Exception as e:
+        print(f"[storage] upload {bucket}/{fname} err: {e}")
+        return False
+
+def supabase_download(bucket, fname):
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        return None
+    try:
+        import urllib.request
+        url = f"{SUPABASE_URL}/storage/v1/object/{bucket}/{fname}"
+        req = urllib.request.Request(url, headers={"apikey": SUPABASE_SERVICE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.read(), resp.headers.get_content_type() or "application/octet-stream"
+    except Exception as e:
+        # print(f"[storage] download {bucket}/{fname} err: {e}")
+        return None
 
 # --- Código corto fácil de escribir ---
 # 6 chars, sin 0/O/1/I/L/U para evitar confusión, solo mayúsculas + 2-9. 32^6 = 1B combos.
@@ -295,6 +340,15 @@ def comprar():
     dest = UPLOAD_FOLDER / fname
     file.save(dest)
     rel = f"uploads/{fname}"
+    # subir a Supabase Storage para que "Ver" no 404 en Vercel (/tmp efímero) — fallback silencioso si no hay keys
+    try:
+        # leer bytes del archivo guardado (file ya guardado, pero también intentar file.read)
+        data_bytes = dest.read_bytes() if dest.exists() else None
+        if data_bytes:
+            ct = "image/jpeg" if ext in (".jpg",".jpeg") else "image/png" if ext==".png" else "image/webp" if ext==".webp" else "application/pdf" if ext==".pdf" else "application/octet-stream"
+            supabase_upload(COMPROBANTES_BUCKET, fname, data_bytes, ct)
+    except Exception as e:
+        print(f"[comprar] supabase upload warn: {e}")
     try:
         if _is_pg():
             r = exec_sql(
@@ -498,7 +552,16 @@ def validar():
 @app.get("/uploads/<path:fname>")
 @login_required
 def uploads(fname):
-    return send_from_directory(UPLOAD_FOLDER, fname)
+    # 1) intentar local (/tmp o static)
+    fpath = UPLOAD_FOLDER / fname
+    if fpath.exists():
+        return send_from_directory(UPLOAD_FOLDER, fname)
+    # 2) fallback Supabase Storage (fix "Ver" 404 en Vercel)
+    data = supabase_download(COMPROBANTES_BUCKET, fname)
+    if data:
+        content, ctype = data
+        return send_file(io.BytesIO(content), mimetype=ctype, download_name=fname)
+    return "Comprobante no encontrado", 404
 
 @app.errorhandler(404)
 def not_found(e):
