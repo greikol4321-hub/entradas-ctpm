@@ -494,8 +494,9 @@ if(btnQrDownload) btnQrDownload.onclick=async()=>{
   try{
     const blob=await generarTicketBlob();
     const url=URL.createObjectURL(blob);
-    const safeNombre=(ticketNombre.textContent.trim().replace(/[^a-zA-Z0-9]/g,'_').slice(0,15)||'Ticket');
-    const fname=`Ticket_${ticketNumero.textContent.replace('#','')}_${safeNombre}_${ticketCodigo.textContent.trim()}.png`;
+    const safeNombre=(ticketNombre.textContent.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-').replace(/[^a-zA-Z0-9\-]/g,'').slice(0,25)||'Ticket');
+    const numPng=ticketNumero.textContent.replace('#','').padStart(3,'0');
+    const fname=`${ticketCodigo.textContent.trim()}_${safeNombre}_${numPng}.png`;
     const a=document.createElement('a'); a.href=url; a.download=fname; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url), 3000);
     mMsg.textContent='Ticket PNG descargado: '+fname; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
@@ -545,9 +546,10 @@ if(btnQrPdf) btnQrPdf.onclick=async()=>{
     pdf.setFillColor(245,241,232); pdf.rect(0,93,65,7,'F'); pdf.setDrawColor(216,207,186); pdf.line(0,93,65,93);
     pdf.setFontSize(3); pdf.setTextColor(90,90,90); pdf.text('CTPM 2026  \u2022  Papel de seguridad', 3, 97, {align:'left'});
     pdf.text('SINPE MOVIL: 8888-8888', 62, 97, {align:'right'});
-    // nombre archivo con numero y nombre y codigo
-    const safeNombre=nombre.replace(/[^a-zA-Z0-9]/g,'_').slice(0,15)||'Entrada';
-    const fname=`Entrada_${numero.replace('#','')}_${safeNombre}_${code}.pdf`;
+    // nombre archivo: codigo primero (ej: QJPFG_Maria-Rojas-Mora_001.pdf)
+    const safeNombre=nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-').replace(/[^a-zA-Z0-9\-]/g,'').slice(0,25)||'Entrada';
+    const numPdf=numero.replace('#','').padStart(3,'0');
+    const fname=`${code}_${safeNombre}_${numPdf}.pdf`;
     pdf.save(fname);
     mMsg.textContent='PDF exportado: '+fname; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
   }catch(e){
