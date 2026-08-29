@@ -442,7 +442,7 @@ async function generarTicketBlob(){
   }
   // centro detalles premium
   ctx.textAlign='left';
-  ctx.fillStyle='#17150f'; ctx.font='bold 8.5px Poppins, sans-serif'; ctx.fillText('GRAN CENA DE GALA ANUAL - MATAPALO 2026', 184, 68);
+  ctx.fillStyle='#17150f'; ctx.font='bold 8.5px Poppins, sans-serif'; ctx.fillText('GRAN BAILE DE GALA - MATAPALO 2026', 184, 68);
   ctx.font='600 6px Poppins, sans-serif'; ctx.fillStyle='#7a6e5a'; ctx.fillText('ANIVERSARIO LIV DE FUNDADORES', 184, 78);
   ctx.fillStyle='#0a4c23'; ctx.font='bold 15px monospace'; ctx.fillText(code, 184, 98);
   ctx.fillStyle='#17150f'; ctx.font='bold 11px Poppins, sans-serif'; ctx.fillText(nombre, 184, 116);
@@ -517,7 +517,7 @@ if(btnQrPdf) btnQrPdf.onclick=async()=>{
     pdf.setDrawColor(10,76,35); pdf.rect(4,14,24,24);
     pdf.addImage(qrDataUrl, 'PNG', 5, 15, 22, 22);
     // evento
-    pdf.setFontSize(4); pdf.setTextColor(23,21,15); pdf.text('GRAN CENA DE GALA ANUAL - MATAPALO 2026', 32, 18);
+    pdf.setFontSize(4); pdf.setTextColor(23,21,15); pdf.text('GRAN BAILE DE GALA - MATAPALO 2026', 32, 18);
     pdf.setFontSize(3); pdf.setTextColor(122,110,90); pdf.text('ANIVERSARIO LIV DE FUNDADORES', 32, 20.5);
     pdf.setFontSize(9); pdf.setTextColor(10,76,35); pdf.text(code, 32, 25.5);
     pdf.setFontSize(5.5); pdf.setTextColor(20,20,20); pdf.text(nombre, 32, 29);
