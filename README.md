@@ -1,8 +1,8 @@
-# 🎟️ Entradas CTPM — Venta con QR y SINPE Móvil
+# Entradas CTPM — Venta con QR y SINPE Móvil
 
-Vende entradas para el Gran Baile de Gala del CTP Matapalo sin filas ni enredos. El que compra paga por SINPE, sube el comprobante y en 48h recibe su entrada con QR por WhatsApp. En la puerta, el QR se valida una sola vez.
+Vende entradas para el Gran Baile de Gala del CTP Matapalo sin filas. Sin enredos. La persona elige si quiere Gradas o Mesas, paga por SINPE Móvil con una referencia que ya lleva su nombre y su mesa, sube la captura y listo. Eso sí, no ve la entrada al instante. La verdad es que preferimos revisarla antes. En 48 horas como mucho le llega el QR por WhatsApp y en la puerta se valida una sola vez, nada de reventa.
 
-**Hecho para familias y personal del colegio, no para revender.**
+Hecho para familias y para el personal del colegio. Al fin y al cabo es una fiesta del cole, no una boletera.
 
 [![Deploy](https://img.shields.io/badge/deploy-Vercel-black?style=flat-square)](https://entradas-ctpm.vercel.app)
 [![Stack](https://img.shields.io/badge/Flask-3.1-000000?style=flat-square)](#stack)
@@ -10,63 +10,63 @@ Vende entradas para el Gran Baile de Gala del CTP Matapalo sin filas ni enredos.
 
 ---
 
-### Cómo funciona, en 3 pasos
+### Cómo funciona
 
-**1. El cliente compra** en `/` — elige Gradas (₡5.000) o Mesas (₡10.000), toca su mesa en el mapa del gimnasio (las sillas miran a la mesa, verde disponible / rojo ocupada / naranja seleccionada), paga por SINPE con referencia `CTPM-NOMBRE-XXXX-MESAS-M3` y sube la captura. No ve la entrada todavía, solo un recibo: “Comprobante recibido — te escribimos por WhatsApp”.
+No hay mucho misterio, son tres momentos y ya está.
 
-**2. El admin revisa** en `/admin` — filtra por estado (Pendiente/Pagada/Usada) y zona, ve el comprobante, aprueba y se genera el ticket vertical (360×520) con QR de 5 letras (`QJPFG`). Lo descarga como `QJPFG_Maria-Rojas-Mora_001.png` o PDF y lo manda por WhatsApp. No se autogenera para el cliente.
+**1. Compra en `/`.** El cliente entra, pone nombre, cédula — solo tiene que escribir números, los guiones salen solos tipo `1-2345-0678` — elige Gradas (₡5.000) o Mesas (₡10.000). Si toca Mesas se abre el plano real del gimnasio, con 12 mesas y cada una con 6 sillas que miran al centro. Verde es disponible, rojo ocupada, naranja la que acabas de tocar. Paga por SINPE con algo así como `CTPM-GREIKOL-0347-MESAS-M3` y sube la foto del comprobante. Le queda un recibo que dice “Comprobante recibido — te escribimos por WhatsApp”, no la entrada. A propósito.
 
-**3. El portero valida** en `/scanner` — abre la cámara, escanea, ve pantalla verde “VÁLIDA” o roja “USADA / NO EXISTE / PENDIENTE”. Una entrada = un uso.
+**2. Revisión en `/admin`.** Mira, ahí el admin filtra por Pendiente, Pagada o Usada, y por zona. Abre el comprobante, si todo cuadra le da a Aprobar. En ese instante se genera el ticket vertical — 360 por 520, más o menos como una tarjeta, con el QR de 5 letras tipo `QJPFG` bien grande — y lo deja listo para descargar como `QJPFG_Maria-Rojas-Mora_001.png` o PDF. Después lo manda a mano por WhatsApp. No se autogenera nada para el cliente, nos parecía más seguro así.
+
+**3. Validación en `/scanner`.** El portero abre la cámara del celular, escanea y la pantalla canta: verde “VÁLIDA” o roja “USADA / NO EXISTE / PENDIENTE”. Una entrada, un uso. Vamos, sin segundas vueltas.
 
 ---
 
-### Mapa de mesas VIP — solo mesas
+### El mapa — solo mesas, pero bien hecho
 
-12 mesas, 6 sillas cada una (icono de silla real del MCP `lucide:armchair`, giradas 0°–300° mirando al centro). Responsive: 4 columnas en PC, 3 en tablet, 2 en móvil. Demo local: `preview-mesas.html` o directo en el paso 2 del wizard.
+Antes eran 12 botones grises que decían Mesa 1, Mesa 2... funcionaba, aunque claro, nadie se ubicaba. Ahora es el plano del gimnasio de Matapalo con el `ESCENARIO — VIP` arriba y `GENERAL` abajo. Cada mesa es un círculo crema con 6 sillas de verdad — icono `lucide:armchair` del MCP, giradas para que miren al centro (0° a 300°). En PC se ven 4 por fila, en tablet 3 y en móvil 2. Sin librerías raras, solo CSS.
 
-> Antes era una grilla de botones `Mesa 1…12`. Ahora es el plano del gimnasio con `ESCENARIO — VIP` arriba y `GENERAL` abajo, para que nadie se pierda.
+### Con qué está hecho
 
-### Stack
+- **Backend:** Flask 3.1 con `psycopg` al pooler de Supabase Postgres, `qrcode[pil]` y `Pillow` para el QR. Sin ORM, a pelo, porque para 12 mesas no hace falta más.
+- **Frontend:** Jinja y Vanilla JS. El CSS vive en un solo archivo con tokens tipo `--ink:#0a4c23`, ese verde del colegio que ya conoces.
+- **Infra:** Vercel serverless. Los comprobantes y los QR quedan en Supabase Storage, en buckets privados `comprobantes`/`qrcodes`; en Vercel viven un rato en `/tmp` y ya está.
+- **Seguridad, lo justo:** saneo con `esc()` en `admin.html` para no comerse un XSS si alguien pone `<img>` en el nombre, rate-limit en memoria (5 intentos por minuto para comprar, 10 para login), cabeceras `CSP/HSTS/X-Frame`, RLS cerrado a `authenticated/service_role` y una tablita `auditoria` donde queda quién aprobó o validó qué.
 
-- **Backend:** Flask 3.1 + `psycopg` (Supabase Postgres pooler) + `qrcode[pil]` + `Pillow`
-- **Frontend:** Jinja + Vanilla JS, CSS con tokens `--ink:#0a4c23` (verde institucional), sin frameworks
-- **Infra:** Vercel (serverless), Supabase Storage `comprobantes`/`qrcodes` (privados), `SESSION_COOKIE_SECURE` solo en prod
-- **Seguridad:** `esc()` para XSS en `admin.html`, rate-limit en memoria (5/min comprar, 10/min login), headers `CSP/HSTS/X-Frame`, RLS `authenticated,service_role`, auditoría en `public.auditoria`
-
-### Estructura
+### Cómo está ordenado
 
 ```
 Entradas CTPM/
-├── app.py                 # Flask, QR, validación, rate-limit
-├── supabase/migrations/   # 00000_init → 00006_auditoria
+├── app.py                 # todo el Flask — rutas, QR, validación, límites
+├── supabase/migrations/   # 00001_init → 00006_auditoria
 ├── templates/
-│   ├── index.html         # wizard 4 pasos + mapa mesas
-│   ├── admin.html         # tabla + modal ticket vertical + finanzas
-│   └── scanner.html       # validación con html5-qrcode
+│   ├── index.html         # wizard de 4 pasos + mapa
+│   ├── admin.html         # tabla, modal vertical y finanzas sin Chart.js
+│   └── scanner.html       # html5-qrcode
 ├── static/css/style.css   # mapa, tickets, responsive
-└── uploads/ static/qrcodes/  # .gitignore, viven en /tmp en Vercel
+└── uploads/ static/qrcodes/  # ignorados en git, en Vercel van a /tmp
 ```
 
-### Correr local
+### Para correrlo acá
 
 ```bash
-# 1. DB: ya está en Supabase, solo poné tu .env con DATABASE_URL
+# 1. La base ya está en Supabase, solo poné tu .env con DATABASE_URL
 # 2. Python
 python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt  # todas pineadas ==
+venv\Scripts\activate  # Windows
+pip install -r requirements.txt  # todo pineado con == , 99/100 en audit
 
-# 3. Corre
+# 3. Dale
 python app.py  # http://localhost:5000
-# /admin → admin/admin123  |  /scanner → valida
+# /admin → admin/admin123  |  /scanner → valida (necesita https o localhost para la cámara)
 ```
 
-Variables en Vercel (Production): `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `FLASK_SECRET`, `SINPE_NUMERO`, `SINPE_NOMBRE`. En local basta con `.env`.
+En Vercel (Production) van `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `FLASK_SECRET`, `SINPE_NUMERO` y `SINPE_NOMBRE`. En local con `.env` alcanza.
 
-### Notas cortas
+### Detalles que importan
 
-- `uploads/` y `qrcodes/` están en `.gitignore` — en Vercel viven en `/tmp`.
-- QR = código de 5 chars (`23456789ABCDEFGHJKMNPQRSTVWXYZ` sin 0/O/I), fácil de dictar si no carga la imagen.
-- `Dependabot` activo (pip semanal) — te abre PRs si hay CVE.
+- `uploads/` y `qrcodes/` están en `.gitignore`; en Vercel no hay disco, por eso se suben a Supabase al vuelo.
+- El QR no es un UUID largo, son 5 caracteres de `23456789ABCDEFGHJKMNPQRSTVWXYZ` — sin 0, O, I, para no confundirse. Sobran, son 33 millones de combinaciones para un baile de cientos.
+- Dependabot está activo, cada lunes te propone bump de `Pillow` o lo que toque si hay CVE. No hace ruido si no hace falta.
 
-Hecho con cuidado para el CTP Matapalo — si algo no se entiende, se cambia el texto, no se añade un manual.
+Hecho con cuidado para el CTP Matapalo. Si algo no se entiende a la primera, es que hay que reescribirlo, no añadirle otro párrafo.
