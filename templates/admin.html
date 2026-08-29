@@ -24,7 +24,7 @@
         <button class="btn sm" data-tab="finanzas" id="tabBtnFinanzas">Finanzas</button>
       </div>
 
-      <!-- Finanzas -->
+      <!-- Finanzas — sin Chart.js, 0KB externo, render nativo CSS -->
       <div id="tabFinanzas" class="admin-tab hidden" style="padding:18px;">
         <div class="finanzas-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:18px;">
           <div class="kpi"><span>Total entradas</span><strong id="fTotal">—</strong></div>
@@ -32,12 +32,12 @@
           <div class="kpi"><span>Por confirmar (Pendiente)</span><strong id="fPendiente">—</strong></div>
           <div class="kpi"><span>Mesas ocupadas</span><strong id="fMesas">—</strong></div>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:12px;">
-          <div style="background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px;"><canvas id="chartZona" height="160"></canvas></div>
-          <div style="background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px;"><canvas id="chartEstado" height="160"></canvas></div>
+        <div class="finanzas-charts" style="display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:12px;">
+          <div class="fin-card"><div class="fin-card-head"><h4>Recaudado por zona</h4><span class="muted small">Gradas vs Mesas</span></div><div id="chartZona" class="chart-bars"></div></div>
+          <div class="fin-card"><div class="fin-card-head"><h4>Por estado</h4><span class="muted small">Pendiente / Aprobada / Usada</span></div><div id="chartEstado" class="chart-estado"></div></div>
         </div>
-        <div style="background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px; margin-top:18px;"><canvas id="chartMesas" height="120"></canvas></div>
-        <p class="muted small" style="margin-top:10px;">Gráficos actualizados al filtrar por zona. Usa Chart.js.</p>
+        <div class="fin-card" style="margin-top:18px;"><div class="fin-card-head"><h4>Ocupación de mesas</h4><span class="muted small">12 mesas totales</span></div><div id="chartMesas" class="chart-mesas"></div></div>
+        <p class="muted small" style="margin-top:10px;">Gráficos nativos CSS — sin librerías, sin 200KB de Chart.js.</p>
       </div>
 
       <!-- Tickets -->
@@ -120,7 +120,6 @@
 </div>
 {% endblock %}
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 let filtro='', zonaFiltro='', query='', selId=null, selRow=null;
 const tbody=document.querySelector('#tabla tbody'), empty=document.getElementById('empty'), skeleton=document.getElementById('skeleton');
@@ -128,8 +127,6 @@ const modal=document.getElementById('modal'), mTitle=document.getElementById('mT
       mImg=document.getElementById('mImg'), qrFrame=document.getElementById('qrFrame'), mQrLink=document.getElementById('mQrLink'),
       mMsg=document.getElementById('mMsg'), mAprobar=document.getElementById('mAprobar'), mCompLink=document.getElementById('mCompLink'),
       mDesbloquear=document.getElementById('mDesbloquear'), boletoPreview=document.getElementById('boletoPreview');
-let chartZona=null, chartEstado=null, chartMesas=null;
-
 function renderKpis(rows){
   const c = s => rows.filter(r=>r.estado===s).length;
   document.getElementById('kpiPend').textContent=c('Pendiente');
@@ -169,9 +166,9 @@ async function load(){
     } else {
       btn=`<span class="muted small">Usada</span>`;
     }
-    tr.innerHTML=`<td>${x.fecha_compra||''}</td>
-      <td><strong>${x.nombre_completo}</strong></td><td class="mono" style="font-size:12px">${x.cedula}</td>
-      <td>${x.ubicacion}</td><td class="mono">${mesa}</td><td class="mono">${monto}</td><td>${badge}</td><td>${comp}</td><td><div>${btn}</div></td>`;
+    tr.innerHTML=`<td data-label="Fecha">${x.fecha_compra||''}</td>
+      <td data-label="Cliente"><strong>${x.nombre_completo}</strong></td><td data-label="Cédula" class="mono" style="font-size:12px">${x.cedula}</td>
+      <td data-label="Zona">${x.ubicacion}</td><td data-label="Mesa" class="mono">${mesa}</td><td data-label="Monto" class="mono">${monto}</td><td data-label="Estado">${badge}</td><td data-label="Comprobante">${comp}</td><td data-label="Acción"><div>${btn}</div></td>`;
     tbody.appendChild(tr);
   }
   // actualizar finanzas si pestaña finanzas visible
@@ -187,21 +184,40 @@ async function loadFinanzas(){
     document.getElementById('fRecaudado').textContent='₡'+Number(k.recaudado||0).toLocaleString('es-CR');
     document.getElementById('fPendiente').textContent='₡'+Number(k.por_confirmar||0).toLocaleString('es-CR');
     document.getElementById('fMesas').textContent=(j.mesas.ocupadas||0)+'/'+(j.mesas.total||12);
-    // chart zona
+    // zona — barras nativas sin librería
     const porZona=j.por_zona||[];
-    const labelsZ=porZona.map(x=>x.ubicacion);
-    const dataZ=porZona.map(x=>Number(x.total||0));
-    if(chartZona) chartZona.destroy();
-    chartZona=new Chart(document.getElementById('chartZona'),{type:'bar',data:{labels:labelsZ,datasets:[{label:'Recaudado ₡',data:dataZ,backgroundColor:['#0a4c23','#1a6b3a']}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+    const maxZ=Math.max(1, ...porZona.map(x=>Number(x.total||0)));
+    const cZona=document.getElementById('chartZona');
+    if(!porZona.length){ cZona.innerHTML='<p class="muted small" style="padding:12px 0; text-align:center;">Sin datos aún</p>'; }
+    else {
+      cZona.innerHTML=porZona.map(x=>{
+        const v=Number(x.total||0), pct=Math.round(v/maxZ*100);
+        const col=x.ubicacion==='Mesas'?'#0a4c23':'#1a6b3a';
+        return `<div class="bar-row"><span class="bar-label">${x.ubicacion}</span><span class="bar-value">₡${v.toLocaleString('es-CR')}</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${col};"></div></div></div>`;
+      }).join('');
+    }
+    // estado — donut nativo con conic-gradient
     const agr=j.agrupado||[];
-    const estados=['Pendiente','Aprobada','Usada'];
-    const dataE=estados.map(e=> agr.filter(a=>a.estado===e).reduce((a,b)=>a+Number(b.total||0),0));
-    if(chartEstado) chartEstado.destroy();
-    chartEstado=new Chart(document.getElementById('chartEstado'),{type:'doughnut',data:{labels:estados,datasets:[{data:dataE,backgroundColor:['#d4a256','#0a4c23','#64748b']}]},options:{plugins:{legend:{position:'bottom'}}}});
-    // mesas ocupadas
-    const mesasData=[j.mesas.ocupadas||0, j.mesas.libres||0];
-    if(chartMesas) chartMesas.destroy();
-    chartMesas=new Chart(document.getElementById('chartMesas'),{type:'bar',data:{labels:['Ocupadas','Libres'],datasets:[{label:'Mesas',data:mesasData,backgroundColor:['#B42318','#0F7A52']}]},options:{indexAxis:'y',plugins:{legend:{display:false}}}});
+    const estados=[['Pendiente','#d4a256'],['Aprobada','#0a4c23'],['Usada','#64748b']];
+    const vals=estados.map(([e])=> agr.filter(a=>a.estado===e).reduce((a,b)=>a+Number(b.total||0),0));
+    const totalE=vals.reduce((a,b)=>a+b,0)||1;
+    const cEstado=document.getElementById('chartEstado');
+    if(totalE<=1 && vals.every(v=>v===0)){ cEstado.innerHTML='<p class="muted small" style="padding:12px 0; text-align:center;">Sin datos aún</p>'; }
+    else {
+      let acc=0;
+      const stops=vals.map((v,i)=>{
+        const pct=v/totalE*100;
+        const start=acc; acc+=pct;
+        return `${estados[i][1]} ${start}% ${acc}%`;
+      }).join(', ');
+      const totalFmt='₡'+vals.reduce((a,b)=>a+b,0).toLocaleString('es-CR');
+      cEstado.innerHTML=`<div class="donut" style="background:conic-gradient(${stops});"><div class="donut-center"><span>${totalFmt}</span></div></div><div class="legend">${estados.map(([e,col],i)=>`<span class="legend-item"><span class="legend-dot" style="background:${col}"></span>${e} ₡${vals[i].toLocaleString('es-CR')}</span>`).join('')}</div>`;
+    }
+    // mesas — barra segmentada nativa
+    const ocup=j.mesas.ocupadas||0, libres=j.mesas.libres||0, totalM=ocup+libres||1;
+    const pctO=Math.round(ocup/totalM*100);
+    const cMesas=document.getElementById('chartMesas');
+    cMesas.innerHTML=`<div class="mesa-track"><div class="mesa-seg" style="width:${pctO}%; background:#B42318;">${ocup?ocup+' ocup.':''}</div><div class="mesa-seg" style="width:${100-pctO}%; background:#0F7A52;">${libres?libres+' libres':''}</div></div><div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; color:var(--muted); margin-top:6px;"><span>${ocup} ocupadas</span><span>${libres} libres</span><span>${totalM} total</span></div>`;
   }catch(e){ console.error(e); }
 }
 // tabs
