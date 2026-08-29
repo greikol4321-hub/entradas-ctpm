@@ -196,12 +196,15 @@
             <h2>¡Comprobante enviado!</h2>
             <p class="muted">Gracias <strong id="successName">—</strong>. Hemos recibido tu comprobante para <strong id="successUbi">—</strong>.</p>
             <div class="ref-box" style="background:#fff; border:2px dashed #0a4c23; border-radius:16px; padding:16px; text-align:center; width:100%;">
-              <span style="font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#0a4c23;">Tu código — guárdalo</span>
-              <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-top:6px;">
-                <strong id="successCodigo" class="mono" style="font-size:32px; letter-spacing:.16em; color:#0a4c23; line-height:1;">—</strong>
-                <button type="button" id="copyCodigo" class="btn sm primary" style="padding:8px 12px; font-size:12px;">Copiar</button>
+              <span style="font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#0a4c23;">Tu entrada — guárdala</span>
+              <div style="display:flex; flex-direction:column; align-items:center; gap:2px; margin-top:8px;">
+                <span id="successNumero" class="mono" style="font-size:14px; font-weight:800; letter-spacing:.08em; color:var(--muted);">#001</span>
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <strong id="successCodigo" class="mono" style="font-size:32px; letter-spacing:.16em; color:#0a4c23; line-height:1;">—</strong>
+                  <button type="button" id="copyCodigo" class="btn sm primary" style="padding:8px 12px; font-size:12px;">Copiar</button>
+                </div>
               </div>
-              <small class="muted" style="display:block; margin-top:6px;">5 letras/números, fácil de dictar en puerta si tu QR no carga. Ej: <span class="mono">A7K9P</span></small>
+              <small class="muted" style="display:block; margin-top:6px;">Entrada <span class="mono" id="successNumeroSmall">N° —</span> · Código 5 letras/números, fácil de dictar en puerta si tu QR no carga. Ej: <span class="mono">A7K9P</span></small>
             </div>
             <div class="success-card">
               <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
@@ -418,6 +421,8 @@ document.getElementById('formCompra').addEventListener('submit', async e=>{
     document.getElementById('successRef').textContent=refText.textContent;
     document.getElementById('successUbi').textContent=document.querySelector('input[name="ubicacion"]:checked')?.value||'';
     const cEl=document.getElementById('successCodigo'); if(cEl) cEl.textContent=j.codigo||'—';
+    const nEl=document.getElementById('successNumero'); if(nEl) nEl.textContent=j.numero ? '#'+String(j.numero).padStart(3,'0') : '#—';
+    const nSmall=document.getElementById('successNumeroSmall'); if(nSmall) nSmall.textContent=j.numero ? 'N° '+String(j.numero).padStart(3,'0') : 'N° —';
     const btnCopy=document.getElementById('copyCodigo'); if(btnCopy && j.codigo){
       btnCopy.onclick=async()=>{
         await navigator.clipboard.writeText(j.codigo);

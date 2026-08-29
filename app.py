@@ -312,9 +312,12 @@ def comprar():
             return jsonify(ok=False, msg="Error al guardar en base de datos", id=eid)
         if r is None:
             return jsonify(ok=False, msg="Base de datos no disponible", id=eid)
+        # obtener numero correlativo generado por DB
+        row_num = fetch_one("SELECT numero FROM entradas WHERE id=%s", (eid,))
+        numero = row_num.get("numero") if row_num else None
     except Exception:
         return jsonify(ok=False, msg="Error interno del servidor", id=eid)
-    return jsonify(ok=True, msg=f"Comprobante recibido. Tu código es {codigo}. Te enviaremos tu entrada por WhatsApp en máximo 48 horas.", id=eid, codigo=codigo)
+    return jsonify(ok=True, msg=f"Comprobante recibido. Tu código es {codigo} · Entrada N° {numero or ''}. Te enviaremos tu QR por WhatsApp en máximo 48 horas.", id=eid, codigo=codigo, numero=numero)
 
 # --- API: listar ---
 @app.get("/api/entradas")
@@ -323,7 +326,7 @@ def listar():
     estado = request.args.get("estado","")
     ubicacion = request.args.get("ubicacion","")
     try:
-        base = "SELECT id,codigo,nombre_completo,cedula,ubicacion,mesa_numero,monto,telefono,comprobante_path,qr_path,estado,fecha_compra,fecha_aprobacion,fecha_uso FROM entradas"
+        base = "SELECT id,numero,codigo,nombre_completo,cedula,ubicacion,mesa_numero,monto,telefono,comprobante_path,qr_path,estado,fecha_compra,fecha_aprobacion,fecha_uso FROM entradas"
         conds = []
         params = []
         if estado in ("Pendiente","Aprobada","Usada"):
@@ -423,9 +426,9 @@ def aprobar(eid):
         qr_rel = f"static/qrcodes/{qr_name}"
         exec_sql("UPDATE entradas SET estado='Aprobada', qr_path=%s, fecha_aprobacion=%s WHERE id=%s",
                  (qr_rel, datetime.now(), row["id"]))
-        return jsonify(ok=True, msg=f"Aprobada — código {codigo}",
+        return jsonify(ok=True, msg=f"Aprobada — N° {row.get('numero')} · código {codigo}",
                       qr_url=url_for("serve_qr", fname=qr_name),
-                      qr_path=qr_rel, id=row["id"], codigo=codigo)
+                      qr_path=qr_rel, id=row["id"], codigo=codigo, numero=row.get("numero"))
     except Exception as e:
         return jsonify(ok=False, msg=f"Error: {e}"), 500
 
@@ -471,7 +474,7 @@ def validar():
         if not row: return jsonify(ok=False, estado="NO_EXISTE", msg="Entrada no existe"), 404
         if row["estado"] == "Usada":
             return jsonify(ok=False, estado="USADA", msg="Entrada YA USADA",
-                          nombre=row["nombre_completo"], ubicacion=row["ubicacion"], mesa_numero=row.get("mesa_numero"), monto=row.get("monto"), codigo=row.get("codigo"))
+                          nombre=row["nombre_completo"], ubicacion=row["ubicacion"], mesa_numero=row.get("mesa_numero"), monto=row.get("monto"), codigo=row.get("codigo"), numero=row.get("numero"))
         if row["estado"] == "Pendiente":
             return jsonify(ok=False, estado="PENDIENTE", msg="Entrada pendiente de aprobación"), 403
         # usar id interno para update (codigo es solo alias humano)
@@ -488,7 +491,7 @@ def validar():
             return jsonify(ok=False, estado="PENDIENTE", msg="Entrada pendiente de aprobación",
                           nombre=row["nombre_completo"], ubicacion=row["ubicacion"])
         return jsonify(ok=True, estado="VALIDA", msg="¡ENTRADA VÁLIDA!",
-                      nombre=row["nombre_completo"], ubicacion=row["ubicacion"], cedula=row["cedula"], mesa_numero=row.get("mesa_numero"), monto=row.get("monto"), codigo=row.get("codigo"))
+                      nombre=row["nombre_completo"], ubicacion=row["ubicacion"], cedula=row["cedula"], mesa_numero=row.get("mesa_numero"), monto=row.get("monto"), codigo=row.get("codigo"), numero=row.get("numero"))
     except Exception as e:
         return jsonify(ok=False, estado="ERROR", msg=f"Error: {e}"), 500
 

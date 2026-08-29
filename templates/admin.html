@@ -63,9 +63,9 @@
         </div>
         <div class="table-wrap">
           <table id="tabla">
-            <thead><tr><th>Fecha</th><th>Código</th><th>Cliente</th><th>Cédula</th><th>Zona</th><th>Mesa</th><th>Monto</th><th>Estado</th><th>Comprobante</th><th>Acción</th></tr></thead>
+            <thead><tr><th>#</th><th>Fecha</th><th>Código</th><th>Cliente</th><th>Cédula</th><th>Zona</th><th>Mesa</th><th>Monto</th><th>Estado</th><th>Comprobante</th><th>Acción</th></tr></thead>
             <tbody>
-              <tr class="skeleton-table hidden" id="skeleton"><td><span class="skeleton" style="width:70px; height:12px"></span></td><td><span class="skeleton" style="width:60px"></span></td><td><span class="skeleton" style="width:110px"></span></td><td><span class="skeleton" style="width:80px"></span></td><td><span class="skeleton" style="width:60px"></span></td><td><span class="skeleton" style="width:40px"></span></td><td><span class="skeleton" style="width:50px"></span></td><td><span class="skeleton" style="width:70px"></span></td><td><span class="skeleton" style="width:40px"></span></td><td><span class="skeleton" style="width:90px"></span></td></tr>
+              <tr class="skeleton-table hidden" id="skeleton"><td><span class="skeleton" style="width:30px; height:12px"></span></td><td><span class="skeleton" style="width:70px; height:12px"></span></td><td><span class="skeleton" style="width:60px"></span></td><td><span class="skeleton" style="width:110px"></span></td><td><span class="skeleton" style="width:80px"></span></td><td><span class="skeleton" style="width:60px"></span></td><td><span class="skeleton" style="width:40px"></span></td><td><span class="skeleton" style="width:50px"></span></td><td><span class="skeleton" style="width:70px"></span></td><td><span class="skeleton" style="width:40px"></span></td><td><span class="skeleton" style="width:90px"></span></td></tr>
             </tbody>
           </table>
         </div>
@@ -90,31 +90,33 @@
       </div>
       <button class="btn sm" id="mCerrar" aria-label="Cerrar"><svg class="icon-svg sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
-    <div class="modal-body">
-      <div id="mPreview" class="modal-preview">
+    <div class="modal-body" style="display:flex; flex-direction:column; gap:14px; align-items:center; text-align:center;">
+      <div id="mPreview" class="modal-preview" style="width:100%; display:flex; justify-content:center;">
         <a id="mCompLink" href="#" target="_blank" class="btn sm btn-ghost">Ver comprobante <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 17L17 7M17 7H9M17 7v8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
       </div>
-      <div class="qr-frame hidden" id="qrFrame"><img id="mImg" alt="Código QR de la entrada"></div>
-      <p id="mQrLink" class="small muted break-all"></p>
-      <!-- Ticket boleto preview para copiar imagen -->
-      <div id="boletoPreview" class="hidden" style="background:#f2ecdf; border-radius:14px; padding:16px; text-align:center; border:1px solid #d4ccc0;">
-        <div id="boletoCard" style="background:#f2ecdf; color:#17150f; border-radius:10px; padding:14px; border:1px solid rgba(0,0,0,.12);">
-          <div style="display:flex; justify-content:space-between; font-family:monospace; font-size:11px; border-bottom:2px dashed rgba(0,0,0,.25); padding-bottom:8px; margin-bottom:10px;"><span>CTP MATAPALO</span><span id="boletoNro">Nº —</span></div>
-          <div id="boletoQr" style="display:grid; place-items:center; background:#fff; border-radius:8px; padding:8px; margin:0 auto; width:190px; height:190px;"></div>
-          <div id="boletoCodigo" class="mono" style="font-weight:700; letter-spacing:.12em; margin-top:8px; font-size:14px;">--------</div>
-          <div style="margin-top:10px; font-size:12px;"><span class="muted" style="font-size:10px; letter-spacing:.06em; text-transform:uppercase;">Comprador</span><br><strong id="boletoNombre">—</strong><br><span class="muted" style="font-size:10px;">Cédula</span><br><span id="boletoCedula">—</span></div>
-          <div style="margin-top:8px; font-size:11px; font-weight:700; letter-spacing:.05em;">ENTRADA VÁLIDA · <span id="boletoUbicacion">—</span></div>
-        </div>
-        <div style="display:flex; gap:8px; margin-top:10px;">
-          <button id="btnCopyImg" class="btn sm primary" style="flex:1;">Copiar imagen</button>
-          <button id="btnCopyCodigo" class="btn sm" style="flex:1;">Copiar código</button>
-        </div>
+      <!-- QR solo — limpio, grande -->
+      <div class="qr-frame hidden" id="qrFrame" style="width:300px; height:300px; max-width:90vw; max-height:90vw; background:#fff; border:1px solid var(--line); border-radius:16px; padding:10px; display:grid; place-items:center; box-shadow:0 8px 20px rgba(15,23,42,.08);">
+        <img id="mImg" alt="Código QR" style="width:100%; height:100%; object-fit:contain; border-radius:8px;">
       </div>
-      <div class="modal-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
+      <div id="qrSoloMeta" class="hidden" style="display:flex; flex-direction:column; gap:4px; align-items:center;">
+        <span id="qrSoloNumero" class="mono" style="font-size:13px; font-weight:800; letter-spacing:.08em; color:var(--ink);">#001</span>
+        <span id="qrSoloCodigo" class="mono" style="font-size:22px; font-weight:800; letter-spacing:.16em; color:var(--ink);">A7K9P</span>
+        <span id="qrSoloNombre" style="font-size:13px; font-weight:600;">—</span>
+        <span id="qrSoloDetalle" class="muted small">—</span>
+      </div>
+      <p id="mQrLink" class="small muted break-all hidden" style="font-size:11px; max-width:300px;"></p>
+      <!-- boleto legacy oculto (para copiar imagen si se necesita) -->
+      <div id="boletoPreview" class="hidden" style="display:none;">
+        <div id="boletoCard"><span id="boletoNro"></span><div id="boletoQr"></div><span id="boletoCodigo"></span><span id="boletoNombre"></span><span id="boletoCedula"></span><span id="boletoUbicacion"></span></div>
+        <button id="btnCopyImg" style="display:none;">Copiar</button><button id="btnCopyCodigo" style="display:none;">Copiar</button>
+      </div>
+      <div class="modal-actions" style="display:flex; gap:8px; flex-wrap:wrap; width:100%; justify-content:center;">
         <button id="mAprobar" class="btn primary modal-cta">Aprobar y generar QR <span class="btn-icon" aria-hidden="true"><svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
         <button id="mDesbloquear" class="btn sm hidden">Desbloquear mesa</button>
+        <button id="btnQrCopy" class="btn sm hidden">Copiar QR</button>
+        <button id="btnQrDownload" class="btn sm hidden">Descargar</button>
       </div>
-      <div id="mMsg" class="alert hidden" role="status"></div>
+      <div id="mMsg" class="alert hidden" role="status" style="width:100%;"></div>
     </div>
   </div>
 </div>
@@ -126,7 +128,10 @@ const tbody=document.querySelector('#tabla tbody'), empty=document.getElementByI
 const modal=document.getElementById('modal'), mTitle=document.getElementById('mTitle'), mInfo=document.getElementById('mInfo'),
       mImg=document.getElementById('mImg'), qrFrame=document.getElementById('qrFrame'), mQrLink=document.getElementById('mQrLink'),
       mMsg=document.getElementById('mMsg'), mAprobar=document.getElementById('mAprobar'), mCompLink=document.getElementById('mCompLink'),
-      mDesbloquear=document.getElementById('mDesbloquear'), boletoPreview=document.getElementById('boletoPreview');
+      mDesbloquear=document.getElementById('mDesbloquear'), boletoPreview=document.getElementById('boletoPreview'),
+      qrSoloMeta=document.getElementById('qrSoloMeta'), qrSoloNumero=document.getElementById('qrSoloNumero'), qrSoloCodigo=document.getElementById('qrSoloCodigo'),
+      qrSoloNombre=document.getElementById('qrSoloNombre'), qrSoloDetalle=document.getElementById('qrSoloDetalle'),
+      btnQrCopy=document.getElementById('btnQrCopy'), btnQrDownload=document.getElementById('btnQrDownload');
 function renderKpis(rows){
   const c = s => rows.filter(r=>r.estado===s).length;
   document.getElementById('kpiPend').textContent=c('Pendiente');
@@ -144,9 +149,9 @@ async function load(){
     r=await fetch(url);
     if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
     rows=await r.json(); if(!Array.isArray(rows)) throw new Error(rows.msg||'Error');
-  }catch(e){ skeleton.classList.add('hidden'); tbody.innerHTML=`<tr><td colspan="10" class="empty">No se pudo cargar: ${e.message}</td></tr>`; return; }
+  }catch(e){ skeleton.classList.add('hidden'); tbody.innerHTML=`<tr><td colspan="11" class="empty">No se pudo cargar: ${e.message}</td></tr>`; return; }
   const q=query.trim().toLowerCase();
-  if(q) rows=rows.filter(x=> (x.nombre_completo+' '+x.cedula+' '+(x.mesa_numero||'')+' '+(x.codigo||'')).toLowerCase().includes(q));
+  if(q) rows=rows.filter(x=> (x.numero+' '+x.nombre_completo+' '+x.cedula+' '+(x.mesa_numero||'')+' '+(x.codigo||'')).toLowerCase().includes(q));
   renderKpis(rows);
   skeleton.classList.add('hidden');
   tbody.querySelectorAll('tr:not(#skeleton)').forEach(el=>el.remove());
@@ -160,6 +165,7 @@ async function load(){
     const monto = x.monto ? '₡'+Number(x.monto).toLocaleString('es-CR') : '—';
     const fallbackCode = x.codigo || (x.id ? x.id.slice(0,5).toUpperCase() : '—');
     const codigoCell = `<span class="mono" style="font-weight:800; letter-spacing:.14em; font-size:13px; background:var(--surface-2); border:1px solid var(--line); padding:5px 9px; border-radius:8px; display:inline-block;">${fallbackCode}</span>`;
+    const numeroCell = x.numero ? `<span class="mono" style="font-weight:800; color:var(--ink);">#${String(x.numero).padStart(3,'0')}</span>` : '<span class="muted">—</span>';
     let btn='';
     if(x.estado==='Pendiente'){
       btn=`<button class="btn sm primary" data-aprobar="${x.id}">Aprobar</button> <button class="btn sm btn-danger" data-rechazar="${x.id}">Rechazar</button> <button class="btn sm" data-desbloquear="${x.id}">Desbloquear</button>`;
@@ -168,7 +174,7 @@ async function load(){
     } else {
       btn=`<span class="muted small">Usada</span>`;
     }
-    tr.innerHTML=`<td data-label="Fecha">${x.fecha_compra||''}</td><td data-label="Código">${codigoCell}</td>
+    tr.innerHTML=`<td data-label="N°">${numeroCell}</td><td data-label="Fecha">${x.fecha_compra||''}</td><td data-label="Código">${codigoCell}</td>
       <td data-label="Cliente"><strong>${x.nombre_completo}</strong></td><td data-label="Cédula" class="mono" style="font-size:12px">${x.cedula}</td>
       <td data-label="Zona">${x.ubicacion}</td><td data-label="Mesa" class="mono">${mesa}</td><td data-label="Monto" class="mono">${monto}</td><td data-label="Estado">${badge}</td><td data-label="Comprobante">${comp}</td><td data-label="Acción"><div>${btn}</div></td>`;
     tbody.appendChild(tr);
@@ -263,24 +269,30 @@ async function openModal(id){
   const row=rows.find(x=>x.id===id || x.codigo===id); if(!row) return;
   selId=row.id; selRow=row;
   const codeShort = row.codigo || (row.id?row.id.slice(0,5).toUpperCase():'—');
-  mTitle.textContent=row.nombre_completo + ' · ' + codeShort;
-  mInfo.textContent=`Código ${codeShort} · Cédula ${row.cedula} · ${row.ubicacion}${row.mesa_numero?' Mesa '+row.mesa_numero:''} · ${row.fecha_compra} · ${row.estado} · ₡${Number(row.monto||0).toLocaleString('es-CR')}`;
+  const numeroStr = row.numero ? '#'+String(row.numero).padStart(3,'0') : '#—';
+  mTitle.textContent='Entrada '+numeroStr+' · '+codeShort;
+  mInfo.textContent=`${row.nombre_completo} · Cédula ${row.cedula} · ${row.ubicacion}${row.mesa_numero?' Mesa '+row.mesa_numero:''} · ${row.fecha_compra} · ${row.estado} · ₡${Number(row.monto||0).toLocaleString('es-CR')}`;
   mCompLink.href='/'+row.comprobante_path; mCompLink.classList.toggle('hidden', !row.comprobante_path);
-  qrFrame.classList.add('hidden'); mImg.removeAttribute('src'); mQrLink.textContent='';
+  // reset solo QR
+  qrFrame.classList.add('hidden'); qrSoloMeta.classList.add('hidden'); mImg.removeAttribute('src'); mQrLink.textContent=''; mQrLink.classList.add('hidden');
+  btnQrCopy.classList.add('hidden'); btnQrDownload.classList.add('hidden');
   boletoPreview.classList.add('hidden');
   mMsg.className='alert hidden'; mMsg.textContent='';
   mDesbloquear.classList.toggle('hidden', row.estado==='Usada');
   if(row.estado==='Pendiente'){
-    mAprobar.style.display=''; mAprobar.disabled=false; mAprobar.innerHTML='Aprobar y generar QR <span class="btn-icon" aria-hidden="true"><svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+    mAprobar.classList.remove('hidden'); mAprobar.style.display=''; mAprobar.disabled=false; mAprobar.innerHTML='Aprobar y generar QR <span class="btn-icon" aria-hidden="true"><svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
   } else {
-    mAprobar.style.display='none';
-    // mostrar ticket si ya aprobada
+    mAprobar.classList.add('hidden'); mAprobar.style.display='none';
     if(row.qr_path){
-      // solo boleto (1 QR), ocultar frame duplicado
-      qrFrame.classList.add('hidden');
-      mQrLink.innerHTML=`QR: <a href="/${row.qr_path}" target="_blank" class="link-strong">${row.qr_path}</a>`;
+      // SOLO QR — limpio, grande
+      mImg.src='/'+row.qr_path; qrFrame.classList.remove('hidden');
+      qrSoloNumero.textContent=numeroStr; qrSoloCodigo.textContent=codeShort; qrSoloNombre.textContent=row.nombre_completo;
+      qrSoloDetalle.textContent=row.ubicacion + (row.mesa_numero?' Mesa '+row.mesa_numero:'') + ' · ₡'+Number(row.monto||0).toLocaleString('es-CR');
+      qrSoloMeta.classList.remove('hidden');
+      mQrLink.innerHTML=`<a href="/${row.qr_path}" target="_blank" class="link-strong">Abrir QR</a> · ${numeroStr}`;
+      mQrLink.classList.remove('hidden');
+      btnQrCopy.classList.remove('hidden'); btnQrDownload.classList.remove('hidden');
       prepararBoleto(row);
-      boletoPreview.classList.remove('hidden');
     }
   }
   modal.classList.remove('hidden');
@@ -300,14 +312,35 @@ mAprobar.onclick=async()=>{
     if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
     const j=await r.json();
     if(!r.ok || !j.ok) throw new Error(j.msg||'Error');
-    // solo boleto (1 QR) — ocultar frame duplicado
-    mImg.src=j.qr_url; qrFrame.classList.add('hidden');
-    mQrLink.innerHTML=`QR listo: <a href="/${j.qr_path}" target="_blank" class="link-strong">${j.qr_path}</a> · Código <strong class="mono">${j.codigo}</strong>`;
-    // preparar boleto para copiar con código corto
-    if(selRow){ selRow.qr_path=j.qr_path; selRow.codigo=j.codigo; prepararBoleto(selRow); boletoPreview.classList.remove('hidden'); }
-    mMsg.innerHTML=`Aprobada. Código <strong class="mono">${j.codigo}</strong> — copia la imagen y envíala por WhatsApp.`; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
-    mAprobar.innerHTML='Hecho ✓'; load();
+    // solo QR — limpio
+    mImg.src=j.qr_url; qrFrame.classList.remove('hidden');
+    const numStr = j.numero ? '#'+String(j.numero).padStart(3,'0') : '#—';
+    qrSoloNumero.textContent=numStr; qrSoloCodigo.textContent=j.codigo; qrSoloNombre.textContent=selRow?selRow.nombre_completo:''; 
+    qrSoloDetalle.textContent=(selRow?selRow.ubicacion:'')+(selRow?.mesa_numero?' Mesa '+selRow.mesa_numero:'');
+    qrSoloMeta.classList.remove('hidden');
+    mQrLink.innerHTML=`QR listo: <a href="/${j.qr_path}" target="_blank" class="link-strong">Abrir QR</a> · ${numStr} · <strong class="mono">${j.codigo}</strong>`;
+    mQrLink.classList.remove('hidden');
+    btnQrCopy.classList.remove('hidden'); btnQrDownload.classList.remove('hidden');
+    if(selRow){ selRow.qr_path=j.qr_path; selRow.codigo=j.codigo; selRow.numero=j.numero; prepararBoleto(selRow); }
+    mMsg.innerHTML=`Aprobada ${numStr} · Código <strong class="mono">${j.codigo}</strong> — QR solo, listo para enviar por WhatsApp.`; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
+    mAprobar.classList.add('hidden'); load();
   }catch(e){ mMsg.textContent=''+(e.message); mMsg.className='alert err'; mMsg.classList.remove('hidden'); mAprobar.disabled=false; mAprobar.innerHTML='Reintentar'; }
+};
+// QR solo — copiar / descargar
+if(btnQrCopy) btnQrCopy.onclick=async()=>{
+  try{
+    const blob=await fetch(mImg.src).then(r=>r.blob());
+    if(navigator.clipboard && window.ClipboardItem){
+      await navigator.clipboard.write([new ClipboardItem({[blob.type]: blob})]);
+      const old=btnQrCopy.textContent; btnQrCopy.textContent='¡Copiado!'; setTimeout(()=>btnQrCopy.textContent=old,1400);
+      mMsg.textContent='QR copiado — pégalo en WhatsApp'; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
+    } else throw new Error('no clipboard');
+  }catch(e){
+    window.open(mImg.src, '_blank');
+  }
+};
+if(btnQrDownload) btnQrDownload.onclick=()=>{
+  const a=document.createElement('a'); a.href=mImg.src; a.download=(qrSoloCodigo.textContent||'qr')+'.png'; a.click();
 };
 // boleto — código corto 5 chars fácil de escribir
 function prepararBoleto(row){
