@@ -171,7 +171,7 @@ async function load(){
     }
     tr.innerHTML=`<td>${x.fecha_compra||''}</td>
       <td><strong>${x.nombre_completo}</strong></td><td class="mono" style="font-size:12px">${x.cedula}</td>
-      <td>${x.ubicacion}</td><td class="mono">${mesa}</td><td class="mono">${monto}</td><td>${badge}</td><td>${comp}</td><td>${btn}</td>`;
+      <td>${x.ubicacion}</td><td class="mono">${mesa}</td><td class="mono">${monto}</td><td>${badge}</td><td>${comp}</td><td><div>${btn}</div></td>`;
     tbody.appendChild(tr);
   }
   // actualizar finanzas si pestaña finanzas visible
