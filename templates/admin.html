@@ -108,10 +108,7 @@
           <div style="background:#fff; border:1px solid #e8e0d0; border-radius:12px; padding:10px; width:220px; height:220px; display:grid; place-items:center;">
             <img id="ticketQrImg" alt="QR Ticket" style="width:100%; height:100%; object-fit:contain; image-rendering: crisp-edges;">
           </div>
-          <div>
-            <div id="ticketCodigo" class="mono" style="font-size:20px; font-weight:800; letter-spacing:.16em; color:#0a4c23; line-height:1;">A7K9P</div>
-            <div style="font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:#9CA3AF; margin-top:2px;">Código de acceso</div>
-          </div>
+          <div id="ticketCodigo" class="mono" style="font-size:20px; font-weight:800; letter-spacing:.16em; color:#0a4c23; line-height:1;">A7K9P</div>
           <div style="width:100%; height:1px; background:repeating-linear-gradient(90deg, #d4ccc0 0 6px, transparent 6px 10px); margin:2px 0;"></div>
           <div>
             <div id="ticketNombre" style="font-size:14px; font-weight:700; color:#17150f; line-height:1.2;">—</div>
@@ -121,7 +118,7 @@
           <div style="font-size:9px; color:#9CA3AF; line-height:1.4; margin-top:2px;">Válida para 1 persona • Presenta este ticket en puerta<br><span style="color:#5a5a5a; font-weight:600;">No requiere impresión</span></div>
         </div>
         <div style="background:#f5f1e8; border-top:1px dashed #d4ccc0; padding:8px 16px; display:flex; justify-content:space-between; align-items:center; font-size:9px; color:#5a5a5a;">
-          <span>CTPM 2026</span><span class="mono" style="letter-spacing:.06em;">#001</span><span>SINPE 8888-8888</span>
+          <span>CTPM 2026</span><span id="ticketNumeroBottom" class="mono" style="letter-spacing:.06em;">#001</span><span>SINPE 8888-8888</span>
         </div>
       </div>
       <!-- QR solo fallback oculto para compatibilidad -->
@@ -158,7 +155,8 @@ const modal=document.getElementById('modal'), mTitle=document.getElementById('mT
       qrSoloNombre=document.getElementById('qrSoloNombre'), qrSoloDetalle=document.getElementById('qrSoloDetalle'),
       btnQrCopy=document.getElementById('btnQrCopy'), btnQrDownload=document.getElementById('btnQrDownload'), btnQrPdf=document.getElementById('btnQrPdf'),
       ticketPreview=document.getElementById('ticketPreview'), ticketQrImg=document.getElementById('ticketQrImg'), ticketNumero=document.getElementById('ticketNumero'),
-      ticketCodigo=document.getElementById('ticketCodigo'), ticketNombre=document.getElementById('ticketNombre'), ticketCedula=document.getElementById('ticketCedula'), ticketDetalle=document.getElementById('ticketDetalle');
+      ticketCodigo=document.getElementById('ticketCodigo'), ticketNombre=document.getElementById('ticketNombre'), ticketCedula=document.getElementById('ticketCedula'), ticketDetalle=document.getElementById('ticketDetalle'),
+      ticketNumeroBottom=document.getElementById('ticketNumeroBottom');
 function renderKpis(rows){
   const c = s => rows.filter(r=>r.estado===s).length;
   document.getElementById('kpiPend').textContent=c('Pendiente');
@@ -317,7 +315,7 @@ async function openModal(id){
       // ticket completo con nombre/numero/codigo como el otro sistema
       const qrSrc='/'+row.qr_path;
       mImg.src=qrSrc; if(ticketQrImg) ticketQrImg.src=qrSrc; qrFrame.classList.add('hidden');
-      ticketNumero.textContent=numeroStr; ticketCodigo.textContent=codeShort; ticketNombre.textContent=row.nombre_completo;
+      ticketNumero.textContent=numeroStr; if(ticketNumeroBottom) ticketNumeroBottom.textContent=numeroStr; ticketCodigo.textContent=codeShort; ticketNombre.textContent=row.nombre_completo;
       ticketCedula.textContent='Cedula '+row.cedula; ticketDetalle.textContent=row.ubicacion + (row.mesa_numero?' Mesa '+row.mesa_numero:'') + ' · CRC '+Number(row.monto||0).toLocaleString('es-CR');
       // compat: también llenar qrSolo para PDF legacy
       qrSoloNumero.textContent=numeroStr; qrSoloCodigo.textContent=codeShort; qrSoloNombre.textContent=row.nombre_completo; qrSoloDetalle.textContent=ticketDetalle.textContent;
@@ -349,7 +347,7 @@ mAprobar.onclick=async()=>{
     const qrSrc=j.qr_url;
     mImg.src=qrSrc; if(ticketQrImg) ticketQrImg.src=qrSrc; qrFrame.classList.add('hidden');
     const numStr = j.numero ? '#'+String(j.numero).padStart(3,'0') : '#—';
-    ticketNumero.textContent=numStr; ticketCodigo.textContent=j.codigo; ticketNombre.textContent=selRow?selRow.nombre_completo:''; 
+    ticketNumero.textContent=numStr; if(ticketNumeroBottom) ticketNumeroBottom.textContent=numStr; ticketCodigo.textContent=j.codigo; ticketNombre.textContent=selRow?selRow.nombre_completo:''; 
     ticketCedula.textContent=selRow?('Cedula '+selRow.cedula):''; ticketDetalle.textContent=(selRow?selRow.ubicacion:'')+(selRow?.mesa_numero?' Mesa '+selRow.mesa_numero:'')+' · CRC '+(selRow?Number(selRow.monto||0).toLocaleString('es-CR'):'');
     qrSoloNumero.textContent=numStr; qrSoloCodigo.textContent=j.codigo; // compat
     ticketPreview.classList.remove('hidden');
@@ -389,9 +387,8 @@ async function generarTicketBlob(){
     ctx.strokeStyle='#e8e0d0'; ctx.lineWidth=1; ctx.strokeRect(210,72,260,260);
     try{ ctx.drawImage(qrImg,220,82,240,240);}catch(e){}
   }
-  // codigo
-  ctx.fillStyle='#0a4c23'; ctx.textAlign='center'; ctx.font='bold 20px monospace'; ctx.fillText(code,340,368);
-  ctx.font='600 7px Poppins, sans-serif'; ctx.fillStyle='#9CA3AF'; ctx.fillText('CODIGO DE ACCESO',340,380);
+  // codigo grande sin label dev
+  ctx.fillStyle='#0a4c23'; ctx.textAlign='center'; ctx.font='bold 22px monospace'; ctx.fillText(code,340,372);
   // nombre
   ctx.fillStyle='#17150f'; ctx.font='bold 14px Poppins, sans-serif'; ctx.fillText(nombre,340,406);
   ctx.font='10px monospace'; ctx.fillStyle='#5a5a5a'; ctx.fillText(cedula,340,422);
@@ -470,11 +467,10 @@ if(btnQrPdf) btnQrPdf.onclick=async()=>{
     }catch(e){}
     // 45mm QR centrado
     pdf.addImage(qrDataUrl, 'PNG', 17.5, 23, 45, 45);
-    // codigo grande
+    // codigo grande sin label dev
     pdf.setFontSize(16); pdf.setTextColor(10,76,35); pdf.text(code, 40, 74, {align:'center'});
-    pdf.setFontSize(6); pdf.setTextColor(100,100,100); pdf.text('CODIGO 5 LETRAS/NUMEROS', 40, 77, {align:'center'});
     // nombre
-    pdf.setFontSize(8); pdf.setTextColor(20,20,20); pdf.text(nombre, 40, 84, {align:'center'});
+    pdf.setFontSize(8); pdf.setTextColor(20,20,20); pdf.text(nombre, 40, 83, {align:'center'});
     pdf.setFontSize(6); pdf.setTextColor(90,90,90); pdf.text(safeCedula, 40, 87, {align:'center'});
     // detalle zona/mesa sin caracteres raros
     pdf.setFontSize(7); pdf.setTextColor(10,76,35); pdf.text(safeDetalle, 40, 92, {align:'center'});
