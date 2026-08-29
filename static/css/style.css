@@ -673,7 +673,7 @@ tr:hover td{background:#FFFEFB}
 .login-foot a:hover{color:#1a6b3a;}
 .login-foot .muted{color:#333333;}
 @media(max-width:480px){ .login-shell{min-height:70vh; padding:20px 12px} .login-card{padding:24px 20px} }
-/* Admin table mobile — scroll en tablet, ticket-cards premium en cel (ui-ux-pro-max: avoid h-scroll) */
+/* Admin table mobile — tabla con scroll horizontal + filtros intactos */
 @media(max-width:768px){
   .shell-admin{ max-width:100%; }
   .shell-admin .bezel-inner{ max-width:100%; overflow:hidden; }
@@ -696,29 +696,7 @@ tr:hover td{background:#FFFEFB}
   .filters{ width:100%; max-width:100%; overflow-x:auto; overflow-y:hidden; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; scrollbar-width:none; gap:6px; }
   .filters::-webkit-scrollbar{ display:none; }
   .filters button{ flex-shrink:0; white-space:nowrap; }
-  .toolbar-actions{ flex-direction:row; align-items:center; gap:8px; }
-  .search-input{ flex:1; min-width:0; width:auto; }
-}
-@media(max-width:640px){
-  /* Phone: no h-scroll — ticket card (Data-Dense Dashboard, 44px targets, 16px readable) */
-  .shell-admin .table-wrap{ border:none; background:transparent; overflow:visible; padding:0; }
-  .shell-admin table{ min-width:0; width:100%; display:block; border-collapse:separate; }
-  .shell-admin thead{ display:none; }
-  .shell-admin tbody{ display:block; }
-  .shell-admin tr{ display:block; background:#fff; border:1px solid #d8cfba; border-left:4px solid #0a4c23; border-radius:16px; margin-bottom:14px; overflow:hidden; box-shadow:0 4px 16px rgba(15,23,42,.06); position:relative; }
-  .shell-admin tr:hover td{ background:transparent; }
-  .shell-admin td{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:11px 14px; border-bottom:1px dashed #ece6d8; white-space:normal; text-align:right; font-size:13px; box-sizing:border-box; }
-  .shell-admin td::before{ content:attr(data-label); font-weight:700; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:#7a6e5a; text-align:left; flex-shrink:0; max-width:42%; }
-  .shell-admin td[data-label="N°"]{ background:linear-gradient(180deg, #0f3a1f 0%, #0a4c23 100%); border-bottom:none; padding:10px 14px; }
-  .shell-admin td[data-label="N°"]::before{ color:rgba(255,255,255,.7); }
-  .shell-admin td[data-label="N°"] span{ color:#fff !important; }
-  .shell-admin td[data-label="Código"]{ justify-content:center; background:#fdfbf3; border-bottom:1px solid #e8e0d0; padding:12px; }
-  .shell-admin td[data-label="Código"]::before{ display:none; }
-  .shell-admin td[data-label="Código"] span{ font-size:14px !important; letter-spacing:.12em !important; padding:7px 14px !important; border-radius:10px !important; }
-  .shell-admin td[data-label="Cliente"] strong{ font-size:15px; color:#17150f; }
-  .shell-admin td[data-label="Acción"]{ border-bottom:none; background:#f8fafc; padding:12px; }
-  .shell-admin td[data-label="Acción"]::before{ display:none; }
-  .shell-admin td[data-label="Acción"] > div{ width:100%; display:flex; gap:8px; flex-wrap:wrap; }
-  .shell-admin td[data-label="Acción"] .btn{ flex:1 1 90px; min-height:44px; justify-content:center; padding:10px 12px; font-size:13px; }
-  .shell-admin .skeleton-table{ display:none; }
+  .toolbar-actions{ display:flex; flex-direction:row; align-items:center; gap:8px; width:100%; }
+  .toolbar-actions .search-input{ flex:1 1 0; min-width:0; width:auto; }
+  .toolbar-actions .btn{ flex-shrink:0; white-space:nowrap; }
 }
