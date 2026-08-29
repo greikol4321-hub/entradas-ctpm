@@ -224,7 +224,7 @@ async function load(){
   empty.classList.add('hidden');
   for(const x of rows){
     const tr=document.createElement('tr');
-    const comp = x.comprobante_path ? `<a href="/${x.comprobante_path}" target="_blank" class="link-strong">Ver</a>` : '<span class="muted">—</span>';
+    const comp = x.comprobante_path ? `<a href="/${x.comprobante_path}" target="_blank" class="btn sm">Ver comprobante</a>` : '<span class="muted">—</span>';
     const badge = `<span class="badge ${x.estado.toLowerCase()}">${x.estado}</span>`;
     const mesa = x.ubicacion==='Mesas' ? (x.mesa_numero ? 'Mesa '+x.mesa_numero : '<span class="muted">—</span>') : '<span class="muted">Gradas</span>';
     const monto = x.monto ? '₡'+Number(x.monto).toLocaleString('es-CR') : '—';
