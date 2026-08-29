@@ -94,18 +94,26 @@
       <div id="mPreview" class="modal-preview" style="width:100%; display:flex; justify-content:center;">
         <a id="mCompLink" href="#" target="_blank" class="btn sm btn-ghost">Ver comprobante <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 17L17 7M17 7H9M17 7v8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
       </div>
-      <!-- QR solo — grande, no enano -->
-      <div class="qr-frame hidden" id="qrFrame" style="width:360px; height:360px; max-width:92vw; max-height:92vw; background:#fff; border:1px solid var(--line); border-radius:16px; padding:12px; display:grid; place-items:center; box-shadow:0 8px 20px rgba(15,23,42,.08);">
-        <img id="mImg" alt="Código QR" style="width:100%; height:100%; object-fit:contain; border-radius:10px; image-rendering: crisp-edges;">
+      <!-- Ticket completo — como el otro sistema: nombre, numero, codigo, QR grande -->
+      <div id="ticketPreview" class="hidden" style="background:#f5f1e8; border:1px solid #d4ccc0; border-radius:16px; padding:16px; width:360px; max-width:92vw; text-align:center; box-shadow:0 8px 20px rgba(15,23,42,.08);">
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#0a4c23; border-bottom:2px dashed rgba(0,0,0,.2); padding-bottom:8px; margin-bottom:12px;">
+          <span>CTP MATAPALO</span><span id="ticketNumero" class="mono">#001</span>
+        </div>
+        <div style="background:#fff; border-radius:12px; padding:10px; display:grid; place-items:center; margin:0 auto; width:260px; height:260px; border:1px solid #e8e0d0;">
+          <img id="ticketQrImg" alt="QR Ticket" style="width:100%; height:100%; object-fit:contain; image-rendering: crisp-edges;">
+        </div>
+        <div id="ticketCodigo" class="mono" style="font-size:22px; font-weight:800; letter-spacing:.16em; color:#0a4c23; margin-top:10px;">A7K9P</div>
+        <div style="font-size:7px; letter-spacing:.12em; text-transform:uppercase; color:#5a5a5a;">CODIGO — 5 letras/numeros</div>
+        <div id="ticketNombre" style="font-size:14px; font-weight:700; margin-top:10px; color:#17150f;">—</div>
+        <div id="ticketCedula" class="mono" style="font-size:11px; color:#5a5a5a;">—</div>
+        <div id="ticketDetalle" style="font-size:11px; font-weight:600; color:#0a4c23; margin-top:6px; background:#fff; border:1px solid #e8e0d0; border-radius:7px; padding:6px 8px; display:inline-block;">—</div>
+        <div style="margin-top:10px; font-size:6px; letter-spacing:.08em; text-transform:uppercase; color:#9CA3AF; border-top:1px dashed #d4ccc0; padding-top:8px;">Valida 1 persona • Presenta este ticket en puerta</div>
       </div>
-      <div id="qrSoloMeta" class="hidden" style="display:flex; flex-direction:column; gap:4px; align-items:center;">
-        <span id="qrSoloNumero" class="mono" style="font-size:13px; font-weight:800; letter-spacing:.08em; color:var(--ink);">#001</span>
-        <span id="qrSoloCodigo" class="mono" style="font-size:22px; font-weight:800; letter-spacing:.16em; color:var(--ink);">A7K9P</span>
-        <span id="qrSoloNombre" style="font-size:13px; font-weight:600;">—</span>
-        <span id="qrSoloDetalle" class="muted small">—</span>
-      </div>
+      <!-- QR solo fallback oculto para compatibilidad -->
+      <div class="qr-frame hidden" id="qrFrame" style="display:none;"><img id="mImg" alt="QR"></div>
+      <div id="qrSoloMeta" class="hidden" style="display:none;"><span id="qrSoloNumero"></span><span id="qrSoloCodigo"></span><span id="qrSoloNombre"></span><span id="qrSoloDetalle"></span></div>
       <p id="mQrLink" class="small muted break-all hidden" style="font-size:11px; max-width:300px;"></p>
-      <!-- boleto legacy oculto (para copiar imagen si se necesita) -->
+      <!-- boleto legacy oculto -->
       <div id="boletoPreview" class="hidden" style="display:none;">
         <div id="boletoCard"><span id="boletoNro"></span><div id="boletoQr"></div><span id="boletoCodigo"></span><span id="boletoNombre"></span><span id="boletoCedula"></span><span id="boletoUbicacion"></span></div>
         <button id="btnCopyImg" style="display:none;">Copiar</button><button id="btnCopyCodigo" style="display:none;">Copiar</button>
@@ -113,9 +121,9 @@
       <div class="modal-actions" style="display:flex; gap:8px; flex-wrap:wrap; width:100%; justify-content:center;">
         <button id="mAprobar" class="btn primary modal-cta">Aprobar y generar QR <span class="btn-icon" aria-hidden="true"><svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
         <button id="mDesbloquear" class="btn sm hidden">Desbloquear mesa</button>
-        <button id="btnQrCopy" class="btn sm hidden">Copiar QR</button>
+        <button id="btnQrCopy" class="btn sm hidden">Copiar Ticket</button>
         <button id="btnQrDownload" class="btn sm hidden">Descargar PNG</button>
-        <button id="btnQrPdf" class="btn sm primary hidden">Exportar PDF</button>
+        <button id="btnQrPdf" class="btn sm primary hidden">Descargar PDF</button>
       </div>
       <div id="mMsg" class="alert hidden" role="status" style="width:100%;"></div>
     </div>
@@ -133,7 +141,9 @@ const modal=document.getElementById('modal'), mTitle=document.getElementById('mT
       mDesbloquear=document.getElementById('mDesbloquear'), boletoPreview=document.getElementById('boletoPreview'),
       qrSoloMeta=document.getElementById('qrSoloMeta'), qrSoloNumero=document.getElementById('qrSoloNumero'), qrSoloCodigo=document.getElementById('qrSoloCodigo'),
       qrSoloNombre=document.getElementById('qrSoloNombre'), qrSoloDetalle=document.getElementById('qrSoloDetalle'),
-      btnQrCopy=document.getElementById('btnQrCopy'), btnQrDownload=document.getElementById('btnQrDownload'), btnQrPdf=document.getElementById('btnQrPdf');
+      btnQrCopy=document.getElementById('btnQrCopy'), btnQrDownload=document.getElementById('btnQrDownload'), btnQrPdf=document.getElementById('btnQrPdf'),
+      ticketPreview=document.getElementById('ticketPreview'), ticketQrImg=document.getElementById('ticketQrImg'), ticketNumero=document.getElementById('ticketNumero'),
+      ticketCodigo=document.getElementById('ticketCodigo'), ticketNombre=document.getElementById('ticketNombre'), ticketCedula=document.getElementById('ticketCedula'), ticketDetalle=document.getElementById('ticketDetalle');
 function renderKpis(rows){
   const c = s => rows.filter(r=>r.estado===s).length;
   document.getElementById('kpiPend').textContent=c('Pendiente');
@@ -275,8 +285,10 @@ async function openModal(id){
   mTitle.textContent='Entrada '+numeroStr+' · '+codeShort;
   mInfo.textContent=`${row.nombre_completo} · Cédula ${row.cedula} · ${row.ubicacion}${row.mesa_numero?' Mesa '+row.mesa_numero:''} · ${row.fecha_compra} · ${row.estado} · ₡${Number(row.monto||0).toLocaleString('es-CR')}`;
   mCompLink.href='/'+row.comprobante_path; mCompLink.classList.toggle('hidden', !row.comprobante_path);
-  // reset solo QR
-  qrFrame.classList.add('hidden'); qrSoloMeta.classList.add('hidden'); mImg.removeAttribute('src'); mQrLink.textContent=''; mQrLink.classList.add('hidden');
+  // reset ticket
+  qrFrame.classList.add('hidden'); qrSoloMeta.classList.add('hidden'); ticketPreview.classList.add('hidden');
+  mImg.removeAttribute('src'); if(ticketQrImg) ticketQrImg.removeAttribute('src');
+  mQrLink.textContent=''; mQrLink.classList.add('hidden');
   btnQrCopy.classList.add('hidden'); btnQrDownload.classList.add('hidden'); btnQrPdf.classList.add('hidden');
   boletoPreview.classList.add('hidden');
   mMsg.className='alert hidden'; mMsg.textContent='';
@@ -287,10 +299,14 @@ async function openModal(id){
     mAprobar.classList.add('hidden'); mAprobar.style.display='none';
     if(row.qr_path){
       // SOLO QR — limpio, grande
-      mImg.src='/'+row.qr_path; qrFrame.classList.remove('hidden');
-      qrSoloNumero.textContent=numeroStr; qrSoloCodigo.textContent=codeShort; qrSoloNombre.textContent=row.nombre_completo;
-      qrSoloDetalle.textContent=row.ubicacion + (row.mesa_numero?' Mesa '+row.mesa_numero:'') + ' · ₡'+Number(row.monto||0).toLocaleString('es-CR');
-      qrSoloMeta.classList.remove('hidden');
+      // ticket completo con nombre/numero/codigo como el otro sistema
+      const qrSrc='/'+row.qr_path;
+      mImg.src=qrSrc; if(ticketQrImg) ticketQrImg.src=qrSrc; qrFrame.classList.add('hidden');
+      ticketNumero.textContent=numeroStr; ticketCodigo.textContent=codeShort; ticketNombre.textContent=row.nombre_completo;
+      ticketCedula.textContent='Cedula '+row.cedula; ticketDetalle.textContent=row.ubicacion + (row.mesa_numero?' Mesa '+row.mesa_numero:'') + ' · CRC '+Number(row.monto||0).toLocaleString('es-CR');
+      // compat: también llenar qrSolo para PDF legacy
+      qrSoloNumero.textContent=numeroStr; qrSoloCodigo.textContent=codeShort; qrSoloNombre.textContent=row.nombre_completo; qrSoloDetalle.textContent=ticketDetalle.textContent;
+      ticketPreview.classList.remove('hidden'); qrSoloMeta.classList.add('hidden');
       mQrLink.innerHTML=`<a href="/${row.qr_path}" target="_blank" class="link-strong">Abrir QR</a> · ${numeroStr}`;
       mQrLink.classList.remove('hidden');
       btnQrCopy.classList.remove('hidden'); btnQrDownload.classList.remove('hidden'); btnQrPdf.classList.remove('hidden');
@@ -315,11 +331,13 @@ mAprobar.onclick=async()=>{
     const j=await r.json();
     if(!r.ok || !j.ok) throw new Error(j.msg||'Error');
     // solo QR — limpio
-    mImg.src=j.qr_url; qrFrame.classList.remove('hidden');
+    const qrSrc=j.qr_url;
+    mImg.src=qrSrc; if(ticketQrImg) ticketQrImg.src=qrSrc; qrFrame.classList.add('hidden');
     const numStr = j.numero ? '#'+String(j.numero).padStart(3,'0') : '#—';
-    qrSoloNumero.textContent=numStr; qrSoloCodigo.textContent=j.codigo; qrSoloNombre.textContent=selRow?selRow.nombre_completo:''; 
-    qrSoloDetalle.textContent=(selRow?selRow.ubicacion:'')+(selRow?.mesa_numero?' Mesa '+selRow.mesa_numero:'');
-    qrSoloMeta.classList.remove('hidden');
+    ticketNumero.textContent=numStr; ticketCodigo.textContent=j.codigo; ticketNombre.textContent=selRow?selRow.nombre_completo:''; 
+    ticketCedula.textContent=selRow?('Cedula '+selRow.cedula):''; ticketDetalle.textContent=(selRow?selRow.ubicacion:'')+(selRow?.mesa_numero?' Mesa '+selRow.mesa_numero:'')+' · CRC '+(selRow?Number(selRow.monto||0).toLocaleString('es-CR'):'');
+    qrSoloNumero.textContent=numStr; qrSoloCodigo.textContent=j.codigo; // compat
+    ticketPreview.classList.remove('hidden');
     mQrLink.innerHTML=`QR listo: <a href="/${j.qr_path}" target="_blank" class="link-strong">Abrir QR</a> · ${numStr} · <strong class="mono">${j.codigo}</strong>`;
     mQrLink.classList.remove('hidden');
     btnQrCopy.classList.remove('hidden'); btnQrDownload.classList.remove('hidden'); btnQrPdf.classList.remove('hidden');
@@ -328,27 +346,61 @@ mAprobar.onclick=async()=>{
     mAprobar.classList.add('hidden'); load();
   }catch(e){ mMsg.textContent=''+(e.message); mMsg.className='alert err'; mMsg.classList.remove('hidden'); mAprobar.disabled=false; mAprobar.innerHTML='Reintentar'; }
 };
-// QR solo — copiar / descargar
+// Ticket completo — copiar / descargar PNG del ticket (no solo QR)
+async function generarTicketBlob(){
+  // genera imagen del ticket 640x720 con QR grande, como el otro sistema
+  const code=ticketCodigo.textContent.trim()||qrSoloCodigo.textContent.trim()||'QR';
+  const numero=ticketNumero.textContent.trim()||'#—';
+  const nombre=ticketNombre.textContent.trim()||'';
+  const cedula=ticketCedula.textContent.trim()||'';
+  const detalle=ticketDetalle.textContent.trim()||'';
+  const qrImg=ticketQrImg;
+  const canvas=document.createElement('canvas'); canvas.width=640; canvas.height=760;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#f5f1e8'; ctx.fillRect(0,0,640,760);
+  ctx.strokeStyle='rgba(10,76,35,.25)'; ctx.setLineDash([10,8]); ctx.lineWidth=2; ctx.strokeRect(12,12,616,736);
+  ctx.fillStyle='#0a4c23'; ctx.textAlign='center'; ctx.font='bold 20px Poppins, sans-serif'; ctx.fillText('CTP MATAPALO',320,42);
+  ctx.font='9px Poppins, sans-serif'; ctx.fillStyle='#5a5a5a'; ctx.fillText('ENTRADA OFICIAL',320,58);
+  ctx.font='bold 13px monospace'; ctx.fillStyle='#0a4c23'; ctx.fillText(numero,320,78);
+  if(qrImg && qrImg.src){
+    try{ if(!qrImg.complete) await new Promise(r=>qrImg.onload=r); }catch(e){}
+    ctx.fillStyle='#fff'; ctx.fillRect(170,92,300,300);
+    ctx.strokeStyle='#e8e0d0'; ctx.lineWidth=1; ctx.setLineDash([]); ctx.strokeRect(170,92,300,300);
+    try{ ctx.drawImage(qrImg,180,102,280,280);}catch(e){}
+  }
+  ctx.fillStyle='#0a4c23'; ctx.font='bold 18px monospace'; ctx.fillText(code,320,430);
+  ctx.font='7px Poppins, sans-serif'; ctx.fillStyle='#5a5a5a'; ctx.fillText('CODIGO',320,442);
+  ctx.font='bold 13px Poppins, sans-serif'; ctx.fillStyle='#17150f'; ctx.fillText(nombre,320,468);
+  ctx.font='10px monospace'; ctx.fillStyle='#5a5a5a'; ctx.fillText(cedula,320,486);
+  ctx.font='11px Poppins, sans-serif'; ctx.fillStyle='#0a4c23'; ctx.fillText(detalle,320,510);
+  ctx.setLineDash([6,6]); ctx.strokeStyle='rgba(212,204,192,.9)'; ctx.beginPath(); ctx.moveTo(20,540); ctx.lineTo(620,540); ctx.stroke();
+  ctx.font='7px Poppins, sans-serif'; ctx.fillStyle='#9CA3AF'; ctx.fillText('Valida 1 persona  •  Presenta este ticket en puerta',320,560);
+  ctx.fillText('Asociacion CTPM  •  SINPE 8888-8888',320,574);
+  return new Promise(res=>canvas.toBlob(b=>res(b),'image/png'));
+}
 if(btnQrCopy) btnQrCopy.onclick=async()=>{
   try{
-    const blob=await fetch(mImg.src).then(r=>r.blob());
+    const blob=await generarTicketBlob();
     if(navigator.clipboard && window.ClipboardItem){
-      await navigator.clipboard.write([new ClipboardItem({[blob.type]: blob})]);
+      await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
       const old=btnQrCopy.textContent; btnQrCopy.textContent='¡Copiado!'; setTimeout(()=>btnQrCopy.textContent=old,1400);
-      mMsg.textContent='QR copiado — pégalo en WhatsApp'; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
+      mMsg.textContent='Ticket copiado — pégalo en WhatsApp'; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
     } else throw new Error('no clipboard');
   }catch(e){
-    window.open(mImg.src, '_blank');
+    try{ const blob=await generarTicketBlob(); const url=URL.createObjectURL(blob); window.open(url,'_blank'); setTimeout(()=>URL.revokeObjectURL(url),4000); }catch(e2){ window.open(mImg.src,'_blank'); }
   }
 };
 if(btnQrDownload) btnQrDownload.onclick=async()=>{
   try{
-    const blob=await fetch(mImg.src).then(r=>r.blob());
+    const blob=await generarTicketBlob();
     const url=URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url; a.download=(qrSoloCodigo.textContent||'qr')+'.png'; document.body.appendChild(a); a.click(); a.remove();
+    const safeNombre=(ticketNombre.textContent.trim().replace(/[^a-zA-Z0-9]/g,'_').slice(0,15)||'Ticket');
+    const fname=`Ticket_${ticketNumero.textContent.replace('#','')}_${safeNombre}_${ticketCodigo.textContent.trim()}.png`;
+    const a=document.createElement('a'); a.href=url; a.download=fname; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url), 3000);
+    mMsg.textContent='Ticket PNG descargado: '+fname; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
   }catch(e){
-    const a=document.createElement('a'); a.href=mImg.src; a.download=(qrSoloCodigo.textContent||'qr')+'.png'; a.click();
+    const a=document.createElement('a'); a.href=mImg.src; a.download=(ticketCodigo.textContent||'qr')+'.png'; a.click();
   }
 };
 if(btnQrPdf) btnQrPdf.onclick=async()=>{
