@@ -94,20 +94,35 @@
       <div id="mPreview" class="modal-preview" style="width:100%; display:flex; justify-content:center;">
         <a id="mCompLink" href="#" target="_blank" class="btn sm btn-ghost">Ver comprobante <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 17L17 7M17 7H9M17 7v8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
       </div>
-      <!-- Ticket completo — como el otro sistema: nombre, numero, codigo, QR grande -->
-      <div id="ticketPreview" class="hidden" style="background:#f5f1e8; border:1px solid #d4ccc0; border-radius:16px; padding:16px; width:360px; max-width:92vw; text-align:center; box-shadow:0 8px 20px rgba(15,23,42,.08);">
-        <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#0a4c23; border-bottom:2px dashed rgba(0,0,0,.2); padding-bottom:8px; margin-bottom:12px;">
-          <span>CTP MATAPALO</span><span id="ticketNumero" class="mono">#001</span>
+      <!-- Ticket real — perforado, premium, como ticket físico -->
+      <div id="ticketPreview" class="hidden" style="width:360px; max-width:92vw; background:#fff; border:1px solid #d4ccc0; border-radius:16px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,.12); text-align:left;">
+        <div style="background:#0a4c23; color:#fff; padding:12px 16px; display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; opacity:.85;">CTP MATAPALO</span>
+            <span style="width:1px; height:14px; background:rgba(255,255,255,.25);"></span>
+            <span style="font-size:10px; font-weight:600; letter-spacing:.06em; opacity:.9;">ENTRADA OFICIAL</span>
+          </div>
+          <span id="ticketNumero" class="mono" style="font-size:11px; font-weight:800; letter-spacing:.08em; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.18); padding:4px 8px; border-radius:999px;">#001</span>
         </div>
-        <div style="background:#fff; border-radius:12px; padding:10px; display:grid; place-items:center; margin:0 auto; width:260px; height:260px; border:1px solid #e8e0d0;">
-          <img id="ticketQrImg" alt="QR Ticket" style="width:100%; height:100%; object-fit:contain; image-rendering: crisp-edges;">
+        <div style="padding:16px; display:grid; place-items:center; gap:10px; text-align:center;">
+          <div style="background:#fff; border:1px solid #e8e0d0; border-radius:12px; padding:10px; width:220px; height:220px; display:grid; place-items:center;">
+            <img id="ticketQrImg" alt="QR Ticket" style="width:100%; height:100%; object-fit:contain; image-rendering: crisp-edges;">
+          </div>
+          <div>
+            <div id="ticketCodigo" class="mono" style="font-size:20px; font-weight:800; letter-spacing:.16em; color:#0a4c23; line-height:1;">A7K9P</div>
+            <div style="font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:#9CA3AF; margin-top:2px;">Código de acceso</div>
+          </div>
+          <div style="width:100%; height:1px; background:repeating-linear-gradient(90deg, #d4ccc0 0 6px, transparent 6px 10px); margin:2px 0;"></div>
+          <div>
+            <div id="ticketNombre" style="font-size:14px; font-weight:700; color:#17150f; line-height:1.2;">—</div>
+            <div id="ticketCedula" class="mono" style="font-size:11px; color:#5a5a5a; margin-top:2px;">—</div>
+          </div>
+          <div id="ticketDetalle" style="font-size:11px; font-weight:700; color:#0a4c23; background:#f5f1e8; border:1px solid #e8e0d0; border-radius:999px; padding:6px 12px; display:inline-block;">—</div>
+          <div style="font-size:9px; color:#9CA3AF; line-height:1.4; margin-top:2px;">Válida para 1 persona • Presenta este ticket en puerta<br><span style="color:#5a5a5a; font-weight:600;">No requiere impresión</span></div>
         </div>
-        <div id="ticketCodigo" class="mono" style="font-size:22px; font-weight:800; letter-spacing:.16em; color:#0a4c23; margin-top:10px;">A7K9P</div>
-        <div style="font-size:7px; letter-spacing:.12em; text-transform:uppercase; color:#5a5a5a;">CODIGO — 5 letras/numeros</div>
-        <div id="ticketNombre" style="font-size:14px; font-weight:700; margin-top:10px; color:#17150f;">—</div>
-        <div id="ticketCedula" class="mono" style="font-size:11px; color:#5a5a5a;">—</div>
-        <div id="ticketDetalle" style="font-size:11px; font-weight:600; color:#0a4c23; margin-top:6px; background:#fff; border:1px solid #e8e0d0; border-radius:7px; padding:6px 8px; display:inline-block;">—</div>
-        <div style="margin-top:10px; font-size:6px; letter-spacing:.08em; text-transform:uppercase; color:#9CA3AF; border-top:1px dashed #d4ccc0; padding-top:8px;">Valida 1 persona • Presenta este ticket en puerta</div>
+        <div style="background:#f5f1e8; border-top:1px dashed #d4ccc0; padding:8px 16px; display:flex; justify-content:space-between; align-items:center; font-size:9px; color:#5a5a5a;">
+          <span>CTPM 2026</span><span class="mono" style="letter-spacing:.06em;">#001</span><span>SINPE 8888-8888</span>
+        </div>
       </div>
       <!-- QR solo fallback oculto para compatibilidad -->
       <div class="qr-frame hidden" id="qrFrame" style="display:none;"><img id="mImg" alt="QR"></div>
@@ -346,36 +361,55 @@ mAprobar.onclick=async()=>{
     mAprobar.classList.add('hidden'); load();
   }catch(e){ mMsg.textContent=''+(e.message); mMsg.className='alert err'; mMsg.classList.remove('hidden'); mAprobar.disabled=false; mAprobar.innerHTML='Reintentar'; }
 };
-// Ticket completo — copiar / descargar PNG del ticket (no solo QR)
+// Ticket real — canvas premium para PNG (coincide con HTML ticket)
 async function generarTicketBlob(){
-  // genera imagen del ticket 640x720 con QR grande, como el otro sistema
   const code=ticketCodigo.textContent.trim()||qrSoloCodigo.textContent.trim()||'QR';
   const numero=ticketNumero.textContent.trim()||'#—';
   const nombre=ticketNombre.textContent.trim()||'';
   const cedula=ticketCedula.textContent.trim()||'';
   const detalle=ticketDetalle.textContent.trim()||'';
   const qrImg=ticketQrImg;
-  const canvas=document.createElement('canvas'); canvas.width=640; canvas.height=760;
+  const canvas=document.createElement('canvas'); canvas.width=680; canvas.height=760;
   const ctx=canvas.getContext('2d');
-  ctx.fillStyle='#f5f1e8'; ctx.fillRect(0,0,640,760);
-  ctx.strokeStyle='rgba(10,76,35,.25)'; ctx.setLineDash([10,8]); ctx.lineWidth=2; ctx.strokeRect(12,12,616,736);
-  ctx.fillStyle='#0a4c23'; ctx.textAlign='center'; ctx.font='bold 20px Poppins, sans-serif'; ctx.fillText('CTP MATAPALO',320,42);
-  ctx.font='9px Poppins, sans-serif'; ctx.fillStyle='#5a5a5a'; ctx.fillText('ENTRADA OFICIAL',320,58);
-  ctx.font='bold 13px monospace'; ctx.fillStyle='#0a4c23'; ctx.fillText(numero,320,78);
+  // fondo ticket blanco con borde
+  ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,680,760);
+  ctx.strokeStyle='#d4ccc0'; ctx.lineWidth=1; ctx.strokeRect(0.5,0.5,679,759);
+  // header verde
+  ctx.fillStyle='#0a4c23'; ctx.fillRect(0,0,680,52);
+  ctx.fillStyle='#fff'; ctx.textAlign='left'; ctx.font='bold 11px Poppins, sans-serif'; ctx.fillText('CTP MATAPALO',18,22);
+  ctx.font='600 8px Poppins, sans-serif'; ctx.fillStyle='rgba(255,255,255,.85)'; ctx.fillText('ENTRADA OFICIAL',18,34);
+  // numero pill derecha
+  ctx.fillStyle='rgba(255,255,255,.14)'; ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=1;
+  const numW=ctx.measureText(numero).width+18; ctx.beginPath(); ctx.roundRect(680-18-numW,14, numW,22, 11); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.font='bold 10px monospace'; ctx.fillText(numero, 680-18-numW/2, 28);
+  // QR
   if(qrImg && qrImg.src){
     try{ if(!qrImg.complete) await new Promise(r=>qrImg.onload=r); }catch(e){}
-    ctx.fillStyle='#fff'; ctx.fillRect(170,92,300,300);
-    ctx.strokeStyle='#e8e0d0'; ctx.lineWidth=1; ctx.setLineDash([]); ctx.strokeRect(170,92,300,300);
-    try{ ctx.drawImage(qrImg,180,102,280,280);}catch(e){}
+    ctx.fillStyle='#fff'; ctx.fillRect(210,72,260,260);
+    ctx.strokeStyle='#e8e0d0'; ctx.lineWidth=1; ctx.strokeRect(210,72,260,260);
+    try{ ctx.drawImage(qrImg,220,82,240,240);}catch(e){}
   }
-  ctx.fillStyle='#0a4c23'; ctx.font='bold 18px monospace'; ctx.fillText(code,320,430);
-  ctx.font='7px Poppins, sans-serif'; ctx.fillStyle='#5a5a5a'; ctx.fillText('CODIGO',320,442);
-  ctx.font='bold 13px Poppins, sans-serif'; ctx.fillStyle='#17150f'; ctx.fillText(nombre,320,468);
-  ctx.font='10px monospace'; ctx.fillStyle='#5a5a5a'; ctx.fillText(cedula,320,486);
-  ctx.font='11px Poppins, sans-serif'; ctx.fillStyle='#0a4c23'; ctx.fillText(detalle,320,510);
-  ctx.setLineDash([6,6]); ctx.strokeStyle='rgba(212,204,192,.9)'; ctx.beginPath(); ctx.moveTo(20,540); ctx.lineTo(620,540); ctx.stroke();
-  ctx.font='7px Poppins, sans-serif'; ctx.fillStyle='#9CA3AF'; ctx.fillText('Valida 1 persona  •  Presenta este ticket en puerta',320,560);
-  ctx.fillText('Asociacion CTPM  •  SINPE 8888-8888',320,574);
+  // codigo
+  ctx.fillStyle='#0a4c23'; ctx.textAlign='center'; ctx.font='bold 20px monospace'; ctx.fillText(code,340,368);
+  ctx.font='600 7px Poppins, sans-serif'; ctx.fillStyle='#9CA3AF'; ctx.fillText('CODIGO DE ACCESO',340,380);
+  // nombre
+  ctx.fillStyle='#17150f'; ctx.font='bold 14px Poppins, sans-serif'; ctx.fillText(nombre,340,406);
+  ctx.font='10px monospace'; ctx.fillStyle='#5a5a5a'; ctx.fillText(cedula,340,422);
+  // detalle pill crema
+  ctx.fillStyle='#f5f1e8'; ctx.strokeStyle='#e8e0d0';
+  const detW=Math.min(420, ctx.measureText(detalle).width+28); ctx.beginPath(); ctx.roundRect(340-detW/2,436, detW,26, 13); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#0a4c23'; ctx.font='bold 10px Poppins, sans-serif'; ctx.fillText(detalle,340,452);
+  // perforado
+  ctx.setLineDash([6,6]); ctx.strokeStyle='#d4ccc0'; ctx.beginPath(); ctx.moveTo(18,500); ctx.lineTo(662,500); ctx.stroke(); ctx.setLineDash([]);
+  // footer
+  ctx.font='600 7px Poppins, sans-serif'; ctx.fillStyle='#9CA3AF'; ctx.fillText('Valida 1 persona  •  Presenta este ticket en puerta',340,524);
+  ctx.fillText('No requiere impresion',340,536);
+  // bottom bar crema
+  ctx.fillStyle='#f5f1e8'; ctx.fillRect(0,580,680,40);
+  ctx.strokeStyle='#d4ccc0'; ctx.beginPath(); ctx.moveTo(0,580); ctx.lineTo(680,580); ctx.stroke();
+  ctx.fillStyle='#5a5a5a'; ctx.font='600 8px Poppins, sans-serif'; ctx.textAlign='left'; ctx.fillText('CTPM 2026',18,604);
+  ctx.textAlign='center'; ctx.fillText(numero,340,604);
+  ctx.textAlign='right'; ctx.fillText('SINPE 8888-8888',662,604);
   return new Promise(res=>canvas.toBlob(b=>res(b),'image/png'));
 }
 if(btnQrCopy) btnQrCopy.onclick=async()=>{
