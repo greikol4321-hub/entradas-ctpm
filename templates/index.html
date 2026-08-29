@@ -260,8 +260,9 @@ function renderMesas(){
     btn.className='mesa-mapa-item'+(ocup?' ocupada':' disponible')+(isSel?' seleccionada':'');
     btn.dataset.mesa=i;
     btn.disabled=ocup;
+    const chairSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3"/><path d="M3 16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z"/><path d="M5 18v2"/><path d="M19 18v2"/></svg>`;
     btn.setAttribute('aria-label', ocup ? `Mesa ${i} ocupada` : isSel ? `Mesa ${i} seleccionada` : `Mesa ${i} disponible, tocar para seleccionar`);
-    btn.innerHTML=`<div class="mesa-visual" aria-hidden="true"><div class="mesa-centro">Mesa ${i}</div><span class="silla s1"></span><span class="silla s2"></span><span class="silla s3"></span><span class="silla s4"></span><span class="silla s5"></span><span class="silla s6"></span></div><span class="mesa-estado">${ocup?'Ocupada':isSel?'Seleccionada':'Disponible'}</span>`;
+    btn.innerHTML=`<div class="mesa-visual" aria-hidden="true"><div class="mesa-centro">Mesa ${i}</div><span class="silla s1">${chairSvg}</span><span class="silla s2">${chairSvg}</span><span class="silla s3">${chairSvg}</span><span class="silla s4">${chairSvg}</span><span class="silla s5">${chairSvg}</span><span class="silla s6">${chairSvg}</span></div><span class="mesa-estado">${ocup?'Ocupada':isSel?'Seleccionada':'Disponible'}</span>`;
     if(!ocup) btn.addEventListener('click',()=>{
       mesaInput.value=i;
       document.querySelectorAll('.mesa-mapa-item').forEach(m=>{ m.classList.remove('seleccionada'); m.classList.add('disponible'); const e=m.querySelector('.mesa-estado'); if(e && !m.classList.contains('ocupada')) e.textContent='Disponible'; });
