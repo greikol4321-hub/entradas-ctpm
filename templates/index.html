@@ -107,8 +107,19 @@
             </label>
           </div>
           <div id="mesaWrap" class="hidden" style="margin-top:14px;">
-            <label class="ref-label" style="margin-bottom:8px; display:block;">Elige tu mesa <span class="muted" style="font-weight:400; text-transform:none;">— toca un número disponible</span></label>
-            <div id="mesaGrid" class="mesa-grid"></div>
+            <label class="ref-label" style="margin-bottom:8px; display:block;">Elige tu mesa <span class="muted" style="font-weight:400; text-transform:none;">— toca una disponible en el mapa</span></label>
+            <div class="mesa-leyenda" aria-label="Leyenda de mesas">
+              <span><i class="dot disponible"></i> Disponible</span>
+              <span><i class="dot ocupada"></i> Ocupada</span>
+              <span><i class="dot seleccionada"></i> Seleccionada</span>
+            </div>
+            <div class="gimnasio-mapa" role="group" aria-label="Mapa de mesas VIP Gimnasio Matapalo">
+              <span class="gimnasio-entrada" aria-hidden="true">ENTRADA ≫</span>
+              <div class="gimnasio-top"><span class="pill-escenario">ESCENARIO — VIP</span></div>
+              <div class="vip-label" aria-hidden="true"></div>
+              <div id="mesaGrid" class="mesa-grid mesa-mapa-grid"></div>
+              <div class="gimnasio-bottom"><span>GENERAL</span><span>GIMNASIO MATAPALO</span></div>
+            </div>
             <p class="field-error hidden" id="errMesa" style="margin-top:8px;"></p>
             <div id="mesaInfo" class="hidden" style="margin-top:10px; padding:10px 12px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:10px; font-size:13px; color:#065f46; text-align:center; font-weight:600;"></div>
             <input type="hidden" name="mesa_numero" id="mesa_numero">
@@ -244,21 +255,22 @@ function renderMesas(){
   for(let i=1;i<=12;i++){
     const ocup = ocupadasCache.includes(i);
     const isSel = sel==String(i) && !ocup;
-    const div=document.createElement('button');
-    div.type='button';
-    div.className='mesa-item'+(ocup?' ocupada':'')+(isSel?' selected':'');
-    div.dataset.mesa=i;
-    div.disabled=ocup;
-    div.innerHTML=`<span class="num">${i}</span><span class="lbl">${ocup?'Ocupada':'Mesa '+i}</span>`;
-    if(!ocup) div.addEventListener('click',()=>{
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='mesa-mapa-item'+(ocup?' ocupada':' disponible')+(isSel?' seleccionada':'');
+    btn.dataset.mesa=i;
+    btn.disabled=ocup;
+    btn.setAttribute('aria-label', ocup ? `Mesa ${i} ocupada` : isSel ? `Mesa ${i} seleccionada` : `Mesa ${i} disponible, tocar para seleccionar`);
+    btn.innerHTML=`<div class="mesa-visual" aria-hidden="true"><div class="mesa-centro">Mesa ${i}</div><span class="silla s1"></span><span class="silla s2"></span><span class="silla s3"></span><span class="silla s4"></span><span class="silla s5"></span><span class="silla s6"></span></div><span class="mesa-estado">${ocup?'Ocupada':isSel?'Seleccionada':'Disponible'}</span>`;
+    if(!ocup) btn.addEventListener('click',()=>{
       mesaInput.value=i;
-      document.querySelectorAll('.mesa-item').forEach(m=>m.classList.remove('selected'));
-      div.classList.add('selected');
+      document.querySelectorAll('.mesa-mapa-item').forEach(m=>{ m.classList.remove('seleccionada'); m.classList.add('disponible'); const e=m.querySelector('.mesa-estado'); if(e && !m.classList.contains('ocupada')) e.textContent='Disponible'; });
+      btn.classList.remove('disponible'); btn.classList.add('seleccionada');
+      const est=btn.querySelector('.mesa-estado'); if(est) est.textContent='Seleccionada';
       if(errMesa){ errMesa.classList.add('hidden'); errMesa.textContent=''; }
       const info=document.getElementById('mesaInfo');
       if(info){ info.textContent=`✓ Mesa ${i} seleccionada — pulsa Continuar abajo para seguir`; info.classList.remove('hidden'); }
       updateRef();
-      // auto-scroll al botón Continuar para que el usuario sepa qué hacer
       setTimeout(()=>{
         const nextBtn=document.querySelector('.wizard-step[data-step="2"] .wizard-next');
         if(nextBtn){
@@ -267,7 +279,7 @@ function renderMesas(){
         }
       }, 180);
     });
-    mesaGrid.appendChild(div);
+    mesaGrid.appendChild(btn);
   }
 }
 function showStep(n){
