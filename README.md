@@ -1,65 +1,72 @@
-# Sistema de Venta y Validación de Entradas — CTPM
+# 🎟️ Entradas CTPM — Venta con QR y SINPE Móvil
 
-Flask + MySQL + Vanilla JS + html5-qrcode + qrcode[pil]
+Vende entradas para el Gran Baile de Gala del CTP Matapalo sin filas ni enredos. El que compra paga por SINPE, sube el comprobante y en 48h recibe su entrada con QR por WhatsApp. En la puerta, el QR se valida una sola vez.
 
-## Estructura de carpetas (Flask estándar)
+**Hecho para familias y personal del colegio, no para revender.**
+
+[![Deploy](https://img.shields.io/badge/deploy-Vercel-black?style=flat-square)](https://entradas-ctpm.vercel.app)
+[![Stack](https://img.shields.io/badge/Flask-3.1-000000?style=flat-square)](#stack)
+[![DB](https://img.shields.io/badge/Supabase-Postgres-3ECF8E?style=flat-square)](#stack)
+
+---
+
+### Cómo funciona, en 3 pasos
+
+**1. El cliente compra** en `/` — elige Gradas (₡5.000) o Mesas (₡10.000), toca su mesa en el mapa del gimnasio (las sillas miran a la mesa, verde disponible / rojo ocupada / naranja seleccionada), paga por SINPE con referencia `CTPM-NOMBRE-XXXX-MESAS-M3` y sube la captura. No ve la entrada todavía, solo un recibo: “Comprobante recibido — te escribimos por WhatsApp”.
+
+**2. El admin revisa** en `/admin` — filtra por estado (Pendiente/Pagada/Usada) y zona, ve el comprobante, aprueba y se genera el ticket vertical (360×520) con QR de 5 letras (`QJPFG`). Lo descarga como `QJPFG_Maria-Rojas-Mora_001.png` o PDF y lo manda por WhatsApp. No se autogenera para el cliente.
+
+**3. El portero valida** en `/scanner` — abre la cámara, escanea, ve pantalla verde “VÁLIDA” o roja “USADA / NO EXISTE / PENDIENTE”. Una entrada = un uso.
+
+---
+
+### Mapa de mesas VIP — solo mesas
+
+12 mesas, 6 sillas cada una (icono de silla real del MCP `lucide:armchair`, giradas 0°–300° mirando al centro). Responsive: 4 columnas en PC, 3 en tablet, 2 en móvil. Demo local: `preview-mesas.html` o directo en el paso 2 del wizard.
+
+> Antes era una grilla de botones `Mesa 1…12`. Ahora es el plano del gimnasio con `ESCENARIO — VIP` arriba y `GENERAL` abajo, para que nadie se pierda.
+
+### Stack
+
+- **Backend:** Flask 3.1 + `psycopg` (Supabase Postgres pooler) + `qrcode[pil]` + `Pillow`
+- **Frontend:** Jinja + Vanilla JS, CSS con tokens `--ink:#0a4c23` (verde institucional), sin frameworks
+- **Infra:** Vercel (serverless), Supabase Storage `comprobantes`/`qrcodes` (privados), `SESSION_COOKIE_SECURE` solo en prod
+- **Seguridad:** `esc()` para XSS en `admin.html`, rate-limit en memoria (5/min comprar, 10/min login), headers `CSP/HSTS/X-Frame`, RLS `authenticated,service_role`, auditoría en `public.auditoria`
+
+### Estructura
+
 ```
 Entradas CTPM/
-├── app.py               # Backend completo (rutas + MySQL + QR)
-├── schema.sql           # CREATE DATABASE + tablas
-├── requirements.txt
-├── .env.example
-├── uploads/             # comprobantes SINPE (se crea solo, .gitignore)
-├── static/
-│   ├── css/style.css    # CSS modular en un archivo (secciones comentadas)
-│   ├── js/app.js
-│   └── qrcodes/         # PNGs generados al aprobar (se crea solo)
-└── templates/
-    ├── base.html
-    ├── index.html       # Flujo Cliente (pasos 1-5)
-    ├── admin.html       # Flujo Admin (tabla + modal aprobar)
-    └── scanner.html     # Flujo Portero (html5-qrcode)
+├── app.py                 # Flask, QR, validación, rate-limit
+├── supabase/migrations/   # 00000_init → 00006_auditoria
+├── templates/
+│   ├── index.html         # wizard 4 pasos + mapa mesas
+│   ├── admin.html         # tabla + modal ticket vertical + finanzas
+│   └── scanner.html       # validación con html5-qrcode
+├── static/css/style.css   # mapa, tickets, responsive
+└── uploads/ static/qrcodes/  # .gitignore, viven en /tmp en Vercel
 ```
 
-## Instalación (5 min)
+### Correr local
 
-1. **MySQL**: ejecuta `schema.sql`
-   ```bash
-   mysql -u root -p < schema.sql
-   # o abre MySQL Workbench y pega el contenido
-   ```
-2. **Python**
-   ```bash
-   python -m venv venv
-   venv\Scripts\activate   # Windows
-   pip install -r requirements.txt
-   ```
-3. **Configura DB** en `app.py` → `DB_CFG` (o usa `.env` si lo cableas con python-dotenv)
-4. **Corre**
-   ```bash
-   python app.py
-   # http://localhost:5000       → cliente
-   # http://localhost:5000/admin → admin
-   # http://localhost:5000/scanner → portero (requiere HTTPS o localhost para cámara)
-   ```
+```bash
+# 1. DB: ya está en Supabase, solo poné tu .env con DATABASE_URL
+# 2. Python
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt  # todas pineadas ==
 
-## Flujos implementados
+# 3. Corre
+python app.py  # http://localhost:5000
+# /admin → admin/admin123  |  /scanner → valida
+```
 
-**Cliente** `GET /` + `POST /api/comprar`: formulario nombre/cédula/ubicación + instrucciones SINPE + `input file` comprobante. Guarda en `uploads/` y fila `Pendiente`. Respuesta: "En 48h se le notificará".
+Variables en Vercel (Production): `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `FLASK_SECRET`, `SINPE_NUMERO`, `SINPE_NOMBRE`. En local basta con `.env`.
 
-**Admin** `GET /admin` + `GET /api/entradas` + `POST /api/aprobar/:id`: tabla filtrable, link "Ver" comprobante, botón Aprobar abre modal que llama a Flask, genera QR (contenido = UUID), guarda en `static/qrcodes/:id.png`, actualiza `qr_path` y `estado='Aprobada'`.
+### Notas cortas
 
-**Portero** `GET /scanner` + `POST /api/validar`: `html5-qrcode` escanea, `fetch` al backend, backend verifica MySQL:
-- `Aprobada` → `Usada` + pantalla VERDE
-- `Usada` / `NO_EXISTE` → pantalla ROJA gigante
-- `Pendiente` → 403
+- `uploads/` y `qrcodes/` están en `.gitignore` — en Vercel viven en `/tmp`.
+- QR = código de 5 chars (`23456789ABCDEFGHJKMNPQRSTVWXYZ` sin 0/O/I), fácil de dictar si no carga la imagen.
+- `Dependabot` activo (pip semanal) — te abre PRs si hay CVE.
 
-## Notas Ponytail
-- Sin ORM, sin blueprint, sin auth: `mysql-connector` directo es lo más corto que funciona. Agrega Flask-Login + bcrypt cuando lo necesites, no antes.
-- QR = UUID de la fila. No hay tabla `usuarios` obligatoria (está creada como opcional).
-- `uploads/` y `qrcodes/` están en `.gitignore` por defecto.
-
-## Próximos pasos (cuando duela, no antes)
-- Auth real para `/admin` y `/scanner`
-- Envío de QR por WhatsApp/Email (Twilio / SMTP)
-- Rate limit en `/api/validar`
+Hecho con cuidado para el CTP Matapalo — si algo no se entiende, se cambia el texto, no se añade un manual.
