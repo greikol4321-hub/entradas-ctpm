@@ -186,6 +186,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 let filtro='', zonaFiltro='', query='', selId=null, selRow=null;
+const esc=s=>{const d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML;};
+const escAttr=s=>String(s==null?'':s).replace(/"/g,'&quot;');
 const tbody=document.querySelector('#tabla tbody'), empty=document.getElementById('empty'), skeleton=document.getElementById('skeleton');
 const modal=document.getElementById('modal'), mTitle=document.getElementById('mTitle'), mInfo=document.getElementById('mInfo'),
       mImg=document.getElementById('mImg'), qrFrame=document.getElementById('qrFrame'), mQrLink=document.getElementById('mQrLink'),
@@ -214,7 +216,7 @@ async function load(){
     r=await fetch(url);
     if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
     rows=await r.json(); if(!Array.isArray(rows)) throw new Error(rows.msg||'Error');
-  }catch(e){ skeleton.classList.add('hidden'); tbody.innerHTML=`<tr><td colspan="11" class="empty">No se pudo cargar: ${e.message}</td></tr>`; return; }
+  }catch(e){ skeleton.classList.add('hidden'); tbody.innerHTML=`<tr><td colspan="11" class="empty">No se pudo cargar: ${esc(e.message)}</td></tr>`; return; }
   const q=query.trim().toLowerCase();
   if(q) rows=rows.filter(x=> (x.numero+' '+x.nombre_completo+' '+x.cedula+' '+(x.mesa_numero||'')+' '+(x.codigo||'')).toLowerCase().includes(q));
   renderKpis(rows);
@@ -224,24 +226,24 @@ async function load(){
   empty.classList.add('hidden');
   for(const x of rows){
     const tr=document.createElement('tr');
-    const comp = x.comprobante_path ? `<a href="/${x.comprobante_path}" target="_blank" class="btn sm">Ver comprobante</a>` : '<span class="muted">—</span>';
-    const badge = `<span class="badge ${x.estado.toLowerCase()}">${x.estado}</span>`;
-    const mesa = x.ubicacion==='Mesas' ? (x.mesa_numero ? 'Mesa '+x.mesa_numero : '<span class="muted">—</span>') : '<span class="muted">Gradas</span>';
+    const comp = x.comprobante_path ? `<a href="/${escAttr(x.comprobante_path)}" target="_blank" class="btn sm">Ver comprobante</a>` : '<span class="muted">—</span>';
+    const badge = `<span class="badge ${escAttr(x.estado.toLowerCase())}">${esc(x.estado)}</span>`;
+    const mesa = x.ubicacion==='Mesas' ? (x.mesa_numero ? 'Mesa '+esc(String(x.mesa_numero)) : '<span class="muted">—</span>') : '<span class="muted">Gradas</span>';
     const monto = x.monto ? '₡'+Number(x.monto).toLocaleString('es-CR') : '—';
-    const fallbackCode = x.codigo || (x.id ? x.id.slice(0,5).toUpperCase() : '—');
+    const fallbackCode = esc(x.codigo || (x.id ? x.id.slice(0,5).toUpperCase() : '—'));
     const codigoCell = `<span class="mono" style="font-weight:800; letter-spacing:.14em; font-size:13px; background:var(--surface-2); border:1px solid var(--line); padding:5px 9px; border-radius:8px; display:inline-block;">${fallbackCode}</span>`;
-    const numeroCell = x.numero ? `<span class="mono" style="font-weight:800; color:var(--ink);">#${String(x.numero).padStart(3,'0')}</span>` : '<span class="muted">—</span>';
+    const numeroCell = x.numero ? `<span class="mono" style="font-weight:800; color:var(--ink);">#${esc(String(x.numero).padStart(3,'0'))}</span>` : '<span class="muted">—</span>';
     let btn='';
     if(x.estado==='Pendiente'){
-      btn=`<button class="btn sm primary" data-aprobar="${x.id}">Aprobar</button> <button class="btn sm btn-danger" data-rechazar="${x.id}">Rechazar</button> <button class="btn sm" data-desbloquear="${x.id}">Desbloquear</button>`;
+      btn=`<button class="btn sm primary" data-aprobar="${escAttr(x.id)}">Aprobar</button> <button class="btn sm btn-danger" data-rechazar="${escAttr(x.id)}">Rechazar</button> <button class="btn sm" data-desbloquear="${escAttr(x.id)}">Desbloquear</button>`;
     } else if(x.estado==='Aprobada'){
-      btn=`<button class="btn sm" data-ver="${x.id}">Ver ticket</button> <button class="btn sm" data-desbloquear="${x.id}">Desbloquear</button>`;
+      btn=`<button class="btn sm" data-ver="${escAttr(x.id)}">Ver ticket</button> <button class="btn sm" data-desbloquear="${escAttr(x.id)}">Desbloquear</button>`;
     } else {
       btn=`<span class="muted small">Usada</span>`;
     }
-    tr.innerHTML=`<td data-label="N°">${numeroCell}</td><td data-label="Fecha">${x.fecha_compra||''}</td><td data-label="Código">${codigoCell}</td>
-      <td data-label="Cliente"><strong>${x.nombre_completo}</strong></td><td data-label="Cédula" class="mono" style="font-size:12px">${x.cedula}</td>
-      <td data-label="Zona">${x.ubicacion}</td><td data-label="Mesa" class="mono">${mesa}</td><td data-label="Monto" class="mono">${monto}</td><td data-label="Estado">${badge}</td><td data-label="Comprobante">${comp}</td><td data-label="Acción"><div>${btn}</div></td>`;
+    tr.innerHTML=`<td data-label="N°">${numeroCell}</td><td data-label="Fecha">${esc(x.fecha_compra||'')}</td><td data-label="Código">${codigoCell}</td>
+      <td data-label="Cliente"><strong>${esc(x.nombre_completo)}</strong></td><td data-label="Cédula" class="mono" style="font-size:12px">${esc(x.cedula)}</td>
+      <td data-label="Zona">${esc(x.ubicacion)}</td><td data-label="Mesa" class="mono">${mesa}</td><td data-label="Monto" class="mono">${esc(monto)}</td><td data-label="Estado">${badge}</td><td data-label="Comprobante">${comp}</td><td data-label="Acción"><div>${btn}</div></td>`;
     tbody.appendChild(tr);
   }
   // actualizar finanzas si pestaña finanzas visible
@@ -363,7 +365,7 @@ async function openModal(id){
       // compat: también llenar qrSolo para PDF legacy
       qrSoloNumero.textContent=numeroStr; qrSoloCodigo.textContent=codeShort; qrSoloNombre.textContent=row.nombre_completo; qrSoloDetalle.textContent=ticketDetalle.textContent;
       ticketPreview.classList.remove('hidden'); qrSoloMeta.classList.add('hidden');
-      mQrLink.innerHTML=`<a href="/${row.qr_path}" target="_blank" class="link-strong">Abrir QR</a> · ${numeroStr}`;
+      mQrLink.innerHTML=`<a href="/${escAttr(row.qr_path)}" target="_blank" class="link-strong">Abrir QR</a> · ${esc(numeroStr)}`;
       mQrLink.classList.remove('hidden');
       btnQrCopy.classList.remove('hidden'); btnQrDownload.classList.remove('hidden'); btnQrPdf.classList.remove('hidden');
       prepararBoleto(row);
@@ -396,11 +398,11 @@ mAprobar.onclick=async()=>{
     ticketDetalle.textContent=zonaLabel2;
     qrSoloNumero.textContent=numStr; qrSoloCodigo.textContent=j.codigo; // compat
     ticketPreview.classList.remove('hidden');
-    mQrLink.innerHTML=`QR listo: <a href="/${j.qr_path}" target="_blank" class="link-strong">Abrir QR</a> · ${numStr} · <strong class="mono">${j.codigo}</strong>`;
+    mQrLink.innerHTML=`QR listo: <a href="/${escAttr(j.qr_path)}" target="_blank" class="link-strong">Abrir QR</a> · ${esc(numStr)} · <strong class="mono">${esc(j.codigo)}</strong>`;
     mQrLink.classList.remove('hidden');
     btnQrCopy.classList.remove('hidden'); btnQrDownload.classList.remove('hidden'); btnQrPdf.classList.remove('hidden');
     if(selRow){ selRow.qr_path=j.qr_path; selRow.codigo=j.codigo; selRow.numero=j.numero; prepararBoleto(selRow); }
-    mMsg.innerHTML=`Aprobada ${numStr} · Código <strong class="mono">${j.codigo}</strong> — QR solo, listo para enviar por WhatsApp.`; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
+    mMsg.innerHTML=`Aprobada ${esc(numStr)} · Código <strong class="mono">${esc(j.codigo)}</strong> — QR solo, listo para enviar por WhatsApp.`; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
     mAprobar.classList.add('hidden'); load();
   }catch(e){ mMsg.textContent=''+(e.message); mMsg.className='alert err'; mMsg.classList.remove('hidden'); mAprobar.disabled=false; mAprobar.innerHTML='Reintentar'; }
 };

@@ -3,8 +3,9 @@ Sistema CTPM — Venta y validación de entradas
 Soporta Postgres (Supabase) via DATABASE_URL o MySQL via variables DB_*
 Mesas numeradas + Finanzas
 """
-import os, uuid, pathlib, functools, secrets, string, io
+import os, uuid, pathlib, functools, secrets, string, io, time, json
 from datetime import datetime, timedelta
+from collections import defaultdict, deque
 from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, url_for, session, redirect
 from werkzeug.security import generate_password_hash, check_password_hash
 import qrcode
@@ -50,6 +51,42 @@ PRECIO_MESAS_VAL = 10000
 NUM_MESAS = 12
 DEMO_USER = "admin"
 DEMO_PASS = "admin123"
+app.config['SESSION_COOKIE_SECURE'] = bool(os.getenv("VERCEL"))  # True en prod HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+# ponytail: rate-limit en memoria sin redis (suficiente para 12 mesas, sin deps nuevas)
+RATE_LIMIT = defaultdict(deque)
+def allow_rate(key, limit, window=60):
+    now = time.time()
+    q = RATE_LIMIT[key]
+    while q and q[0] <= now - window:
+        q.popleft()
+    if len(q) >= limit:
+        return False
+    q.append(now)
+    return True
+def rate_limited(limit, window=60):
+    def deco(fn):
+        @functools.wraps(fn)
+        def wrap(*a, **kw):
+            ip = request.remote_addr or "unknown"
+            k = f"{fn.__name__}:{ip}"
+            if not allow_rate(k, limit, window):
+                return jsonify(ok=False, msg="Demasiadas solicitudes, intenta en un minuto"), 429
+            return fn(*a, **kw)
+        return wrap
+    return deco
+@app.after_request
+def security_headers(resp):
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["X-Frame-Options"] = "DENY"
+    resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    resp.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    # CSP mínima sin romper cdnjs/jspdf + google fonts
+    resp.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co"
+    if os.getenv("VERCEL"):
+        resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return resp
 
 # --- Supabase Storage (para que "Ver" comprobante no 404 en Vercel /tmp efímero) ---
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://jyfmimxzhpvcezwilkdd.supabase.co")
@@ -182,6 +219,14 @@ def exec_sql(sql, params=()):
         except: pass
         cur.close(); conn.close()
         return e
+def log_audit(accion, entradas_id=None, detalle=None):
+    try:
+        ip = request.remote_addr if request else None
+        actor = session.get("username") if session else None
+        det = json.dumps(detalle) if isinstance(detalle, dict) else (str(detalle) if detalle is not None else None)
+        exec_sql("INSERT INTO public.auditoria (accion, entradas_id, actor, ip, detalle) VALUES (%s,%s,%s,%s,%s::jsonb)", (accion, entradas_id, actor, ip, det))
+    except Exception as e:
+        print(f"[audit] {accion} err: {e}")
 
 # --- Auth helpers ---
 def login_required(fn):
@@ -259,6 +304,7 @@ def scanner():
 
 # --- API auth ---
 @app.post("/api/login")
+@rate_limited(10, 60)
 def api_login():
     data = request.get_json(silent=True) or request.form
     username = (data.get("username") or data.get("user") or "").strip()
@@ -274,6 +320,7 @@ def api_login():
             session["username"]=u["username"]
             session["rol"]=u["rol"]
             dest = nxt if nxt.startswith("/") else (url_for("admin") if u["rol"]=="admin" else url_for("scanner"))
+            log_audit("login_ok", None, {"user": username, "rol": u["rol"]})
             return jsonify(ok=True, msg="Bienvenido", rol=u["rol"], redirect=dest)
     except Exception:
         pass
@@ -283,7 +330,9 @@ def api_login():
         session["username"]=DEMO_USER
         session["rol"]="admin"
         dest = nxt if nxt.startswith("/") else url_for("admin")
+        log_audit("login_ok", None, {"user": username, "rol": "admin", "demo": True})
         return jsonify(ok=True, msg="Bienvenido", rol="admin", redirect=dest)
+    log_audit("login_fail", None, {"user": username})
     return jsonify(ok=False, msg="Credenciales inválidas"), 401
 
 # --- API: mesas disponibles ---
@@ -300,6 +349,7 @@ def mesas_disponibles():
 
 # --- API: compra ---
 @app.post("/api/comprar")
+@rate_limited(5, 60)
 def comprar():
     nombre = request.form.get("nombre","").strip()
     cedula = request.form.get("cedula","").strip()
@@ -371,6 +421,7 @@ def comprar():
         numero = row_num.get("numero") if row_num else None
     except Exception:
         return jsonify(ok=False, msg="Error interno del servidor", id=eid)
+    log_audit("comprar", eid, {"numero": numero, "codigo": codigo, "ubicacion": ubicacion, "mesa": mesa_numero, "monto": monto})
     return jsonify(ok=True, msg=f"Comprobante recibido. Tu código es {codigo} · Entrada N° {numero or ''}. Te enviaremos tu QR por WhatsApp en máximo 48 horas.", id=eid, codigo=codigo, numero=numero)
 
 # --- API: listar ---
@@ -454,6 +505,7 @@ def serve_qr(fname):
 @app.post("/api/aprobar/<eid>")
 @login_required
 @role_required("admin")
+@rate_limited(20, 60)
 def aprobar(eid):
     try:
         # aceptar id o codigo corto — id::text evita error UUID con códigos cortos
@@ -480,6 +532,7 @@ def aprobar(eid):
         qr_rel = f"static/qrcodes/{qr_name}"
         exec_sql("UPDATE entradas SET estado='Aprobada', qr_path=%s, fecha_aprobacion=%s WHERE id=%s",
                  (qr_rel, datetime.now(), row["id"]))
+        log_audit("aprobar", row["id"], {"codigo": codigo, "numero": row.get("numero")})
         return jsonify(ok=True, msg=f"Aprobada — N° {row.get('numero')} · código {codigo}",
                       qr_url=url_for("serve_qr", fname=qr_name),
                       qr_path=qr_rel, id=row["id"], codigo=codigo, numero=row.get("numero"))
@@ -489,6 +542,7 @@ def aprobar(eid):
 @app.post("/api/rechazar/<eid>")
 @login_required
 @role_required("admin")
+@rate_limited(20, 60)
 def rechazar(eid):
     row = fetch_one("SELECT id, estado FROM entradas WHERE codigo=%s OR id::text=%s", (eid, eid))
     if not row: return jsonify(ok=False, msg="Entrada no existe"), 404
@@ -497,11 +551,13 @@ def rechazar(eid):
     r = exec_sql("DELETE FROM entradas WHERE id=%s", (row["id"],))
     if isinstance(r, Exception):
         return jsonify(ok=False, msg=str(r)), 500
+    log_audit("rechazar", row["id"], {"codigo": row.get("codigo")})
     return jsonify(ok=True, msg="Eliminada")
 
 @app.post("/api/desbloquear/<eid>")
 @login_required
 @role_required("admin")
+@rate_limited(20, 60)
 def desbloquear(eid):
     # Libera mesa borrando la entrada (cualquier estado excepto Usada que ya liberó)
     row = fetch_one("SELECT id, estado, ubicacion, mesa_numero FROM entradas WHERE codigo=%s OR id::text=%s", (eid, eid))
@@ -511,11 +567,13 @@ def desbloquear(eid):
     r = exec_sql("DELETE FROM entradas WHERE id=%s", (row["id"],))
     if isinstance(r, Exception):
         return jsonify(ok=False, msg=str(r)), 500
+    log_audit("desbloquear", row["id"], {"mesa": row.get("mesa_numero"), "ubicacion": row.get("ubicacion")})
     return jsonify(ok=True, msg=f"Mesa {row.get('mesa_numero') or ''} liberada" if row.get("ubicacion")=="Mesas" else "Entrada eliminada")
 
 # --- API: validar ---
 @app.post("/api/validar")
 @login_required
+@rate_limited(30, 60)
 def validar():
     data = request.get_json(silent=True) or {}
     raw = (data.get("id") or data.get("codigo") or request.form.get("id") or request.form.get("codigo") or "").strip()
@@ -544,6 +602,7 @@ def validar():
                               nombre=row["nombre_completo"], ubicacion=row["ubicacion"], mesa_numero=row.get("mesa_numero"))
             return jsonify(ok=False, estado="PENDIENTE", msg="Entrada pendiente de aprobación",
                           nombre=row["nombre_completo"], ubicacion=row["ubicacion"])
+        log_audit("validar", rid, {"codigo": row.get("codigo"), "numero": row.get("numero"), "resultado": "VALIDA"})
         return jsonify(ok=True, estado="VALIDA", msg="¡ENTRADA VÁLIDA!",
                       nombre=row["nombre_completo"], ubicacion=row["ubicacion"], cedula=row["cedula"], mesa_numero=row.get("mesa_numero"), monto=row.get("monto"), codigo=row.get("codigo"), numero=row.get("numero"))
     except Exception as e:
