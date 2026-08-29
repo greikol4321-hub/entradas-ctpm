@@ -350,6 +350,7 @@ async function openModal(id){
     mAprobar.classList.remove('hidden'); mAprobar.style.display=''; mAprobar.disabled=false; mAprobar.innerHTML='Aprobar y generar QR <span class="btn-icon" aria-hidden="true"><svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
   } else {
     mAprobar.classList.add('hidden'); mAprobar.style.display='none';
+    mCompLink.classList.add('hidden'); mDesbloquear.classList.add('hidden');
     if(row.qr_path){
       // SOLO QR — limpio, grande
       // ticket completo con nombre/numero/codigo como el otro sistema
