@@ -703,12 +703,12 @@ tr:hover td{background:#FFFEFB}
 .mesa-mapa-item.ocupada .mesa-centro{background:#f1f5f9; border-color:#cbd5e1; color:#64748b}
 .silla{position:absolute; width:18px; height:18px; display:grid; place-items:center; background:none; border:none; color:#16a34a; transition:color 160ms var(--ease-out), transform 160ms var(--ease-out); filter:drop-shadow(0 1px 1px rgba(0,0,0,.12))}
 .silla svg{width:14px; height:14px; display:block}
-.silla.s1{top:-2px; left:50%; transform:translate(-50%,0) rotate(180deg)}
-.silla.s2{top:11%; right:2%; transform:rotate(240deg)}
-.silla.s3{bottom:11%; right:2%; transform:rotate(300deg)}
-.silla.s4{bottom:-2px; left:50%; transform:translate(-50%,0) rotate(0deg)}
-.silla.s5{bottom:11%; left:2%; transform:rotate(60deg)}
-.silla.s6{top:11%; left:2%; transform:rotate(120deg)}
+.silla.s1{top:-2px; left:50%; transform:translate(-50%,0) rotate(0deg)}
+.silla.s2{top:11%; right:2%; transform:rotate(60deg)}
+.silla.s3{bottom:11%; right:2%; transform:rotate(120deg)}
+.silla.s4{bottom:-2px; left:50%; transform:translate(-50%,0) rotate(180deg)}
+.silla.s5{bottom:11%; left:2%; transform:rotate(240deg)}
+.silla.s6{top:11%; left:2%; transform:rotate(300deg)}
 .mesa-mapa-item.seleccionada .silla{color:#d97706; filter:drop-shadow(0 0 3px rgba(217,119,6,.35))}
 .mesa-mapa-item.ocupada .silla{color:#dc2626; opacity:.95}
 .mesa-estado{font-size:9px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; padding:3px 8px; border-radius:999px; background:var(--surface-2); border:1px solid var(--line); color:var(--muted); line-height:1}
