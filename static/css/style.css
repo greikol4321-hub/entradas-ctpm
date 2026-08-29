@@ -237,7 +237,7 @@ button{font:inherit}
 .bezel-inner{
   background:var(--surface); border-radius:calc(var(--radius-lg) - 1px); border:1px solid var(--line);
   box-shadow:var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,.9);
-  overflow:hidden;
+  overflow:visible;
 }
 
 /* form */
