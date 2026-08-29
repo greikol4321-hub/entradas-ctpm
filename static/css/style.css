@@ -673,8 +673,10 @@ tr:hover td{background:#FFFEFB}
 .login-foot a:hover{color:#1a6b3a;}
 .login-foot .muted{color:#333333;}
 @media(max-width:480px){ .login-shell{min-height:70vh; padding:20px 12px} .login-card{padding:24px 20px} }
-/* Table to Cards — móvil <768px, 9 columnas → tarjetas con data-label */
+/* Admin table mobile — scroll horizontal nativo, iOS-safe */
 @media(max-width:768px){
+  .shell-admin{ overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .shell-admin .bezel-inner{ overflow:visible; }
   .shell-admin .table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--line); border-radius:14px; background:var(--surface); scrollbar-width:thin; }
   .shell-admin table{ min-width:860px; }
   .shell-admin th{ padding:10px 12px; font-size:9px; }
