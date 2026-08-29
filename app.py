@@ -3,7 +3,7 @@ Sistema CTPM — Venta y validación de entradas
 Soporta Postgres (Supabase) via DATABASE_URL o MySQL via variables DB_*
 Mesas numeradas + Finanzas
 """
-import os, uuid, pathlib, functools
+import os, uuid, pathlib, functools, secrets, string
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, render_template, send_from_directory, url_for, session, redirect
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -50,6 +50,22 @@ PRECIO_MESAS_VAL = 10000
 NUM_MESAS = 12
 DEMO_USER = "admin"
 DEMO_PASS = "admin123"
+
+# --- Código corto fácil de escribir ---
+# 6 chars, sin 0/O/1/I/L/U para evitar confusión, solo mayúsculas + 2-9. 32^6 = 1B combos.
+_CODIGO_ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ"
+_CODIGO_LEN = 5  # ponytail: 5 chars sobra (33M combos) para cientos de entradas, fácil de dictar. Sube a 6 si esperas >10k
+def generar_codigo():
+    return ''.join(secrets.choice(_CODIGO_ALPHABET) for _ in range(_CODIGO_LEN))
+def generar_codigo_unico(max_intentos=12):
+    for _ in range(max_intentos):
+        c = generar_codigo()
+        # case-insensitive check: upper
+        exists = fetch_one("SELECT id FROM entradas WHERE codigo=%s", (c,))
+        if not exists:
+            return c
+    # fallback improbable: uuid slice
+    return uuid.uuid4().hex[:_CODIGO_LEN].upper().translate(str.maketrans('01IOUL','234567'))
 
 # --- DB abstraction ---
 def _pg_dsn():
@@ -273,6 +289,7 @@ def comprar():
     else:
         mesa_numero = None
     eid = str(uuid.uuid4())
+    codigo = generar_codigo_unico()
     ext = pathlib.Path(file.filename).suffix.lower()
     fname = f"{eid}{ext}"
     dest = UPLOAD_FOLDER / fname
@@ -281,12 +298,12 @@ def comprar():
     try:
         if _is_pg():
             r = exec_sql(
-                "INSERT INTO entradas (id, nombre_completo, cedula, ubicacion, mesa_numero, monto, telefono, comprobante_path) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
-                (eid, nombre, cedula, ubicacion, mesa_numero, monto, telefono, rel))
+                "INSERT INTO entradas (id, codigo, nombre_completo, cedula, ubicacion, mesa_numero, monto, telefono, comprobante_path) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (eid, codigo, nombre, cedula, ubicacion, mesa_numero, monto, telefono, rel))
         else:
             r = exec_sql(
-                "INSERT INTO entradas (id, nombre_completo, cedula, ubicacion, mesa_numero, monto, telefono, comprobante_path) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
-                (eid, nombre, cedula, ubicacion, mesa_numero, monto, telefono, rel))
+                "INSERT INTO entradas (id, codigo, nombre_completo, cedula, ubicacion, mesa_numero, monto, telefono, comprobante_path) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (eid, codigo, nombre, cedula, ubicacion, mesa_numero, monto, telefono, rel))
         if isinstance(r, Exception):
             # Detectar violación de índice único de mesa
             msg = str(r)
@@ -297,7 +314,7 @@ def comprar():
             return jsonify(ok=False, msg="Base de datos no disponible", id=eid)
     except Exception:
         return jsonify(ok=False, msg="Error interno del servidor", id=eid)
-    return jsonify(ok=True, msg="Comprobante recibido. Te enviaremos tu entrada por WhatsApp en máximo 48 horas.", id=eid)
+    return jsonify(ok=True, msg=f"Comprobante recibido. Tu código es {codigo}. Te enviaremos tu entrada por WhatsApp en máximo 48 horas.", id=eid, codigo=codigo)
 
 # --- API: listar ---
 @app.get("/api/entradas")
@@ -306,7 +323,7 @@ def listar():
     estado = request.args.get("estado","")
     ubicacion = request.args.get("ubicacion","")
     try:
-        base = "SELECT id,nombre_completo,cedula,ubicacion,mesa_numero,monto,telefono,comprobante_path,qr_path,estado,fecha_compra,fecha_aprobacion,fecha_uso FROM entradas"
+        base = "SELECT id,codigo,nombre_completo,cedula,ubicacion,mesa_numero,monto,telefono,comprobante_path,qr_path,estado,fecha_compra,fecha_aprobacion,fecha_uso FROM entradas"
         conds = []
         params = []
         if estado in ("Pendiente","Aprobada","Usada"):
@@ -358,12 +375,14 @@ def serve_qr(fname):
     # Vercel guarda en /tmp/qrcodes, local en static/qrcodes — servir desde QR_FOLDER y regenerar si falta
     fpath = QR_FOLDER / fname
     if not fpath.exists():
-        eid = pathlib.Path(fname).stem
-        row = fetch_one("SELECT id FROM entradas WHERE id=%s", (eid,))
+        code = pathlib.Path(fname).stem
+        # buscar por codigo o id para compatibilidad con entradas viejas
+        row = fetch_one("SELECT id,codigo FROM entradas WHERE codigo=%s OR id=%s", (code, code))
         if row:
+            data = (row.get("codigo") or row["id"])
             try:
                 qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=12, border=6)
-                qr.add_data(eid)
+                qr.add_data(data)
                 qr.make(fit=True)
                 img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
                 fpath.parent.mkdir(parents=True, exist_ok=True)
@@ -380,25 +399,33 @@ def serve_qr(fname):
 @role_required("admin")
 def aprobar(eid):
     try:
-        row = fetch_one("SELECT * FROM entradas WHERE id=%s", (eid,))
+        # aceptar id o codigo corto
+        row = fetch_one("SELECT * FROM entradas WHERE id=%s OR codigo=%s", (eid, eid))
         if not row: return jsonify(ok=False, msg="Entrada no existe"), 404
         if row["estado"] != "Pendiente":
             return jsonify(ok=False, msg=f"Ya está {row['estado']}"), 400
-        # QR alta calidad: H, box 12, borde 6, fit
+        # asegurar codigo corto si fila vieja sin codigo
+        codigo = row.get("codigo")
+        if not codigo:
+            codigo = generar_codigo_unico()
+            exec_sql("UPDATE entradas SET codigo=%s WHERE id=%s", (codigo, row["id"]))
+            row["codigo"] = codigo
+        qr_data = codigo
+        # QR alta calidad: H, box 12, borde 6, fit — ahora 5 chars, QR más pequeño y rápido de escanear
         qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=12, border=6)
-        qr.add_data(eid)
+        qr.add_data(qr_data)
         qr.make(fit=True)
         img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
-        qr_name = f"{eid}.png"
+        qr_name = f"{codigo}.png"
         qr_path = QR_FOLDER / qr_name
         qr_path.parent.mkdir(parents=True, exist_ok=True)
         img.save(qr_path, "PNG")
         qr_rel = f"static/qrcodes/{qr_name}"
         exec_sql("UPDATE entradas SET estado='Aprobada', qr_path=%s, fecha_aprobacion=%s WHERE id=%s",
-                 (qr_rel, datetime.now(), eid))
-        return jsonify(ok=True, msg="Aprobada y QR generado",
+                 (qr_rel, datetime.now(), row["id"]))
+        return jsonify(ok=True, msg=f"Aprobada — código {codigo}",
                       qr_url=url_for("serve_qr", fname=qr_name),
-                      qr_path=qr_rel, id=eid)
+                      qr_path=qr_rel, id=row["id"], codigo=codigo)
     except Exception as e:
         return jsonify(ok=False, msg=f"Error: {e}"), 500
 
@@ -406,11 +433,11 @@ def aprobar(eid):
 @login_required
 @role_required("admin")
 def rechazar(eid):
-    row = fetch_one("SELECT estado FROM entradas WHERE id=%s", (eid,))
+    row = fetch_one("SELECT id, estado FROM entradas WHERE id=%s OR codigo=%s", (eid, eid))
     if not row: return jsonify(ok=False, msg="Entrada no existe"), 404
     if row["estado"] != "Pendiente":
         return jsonify(ok=False, msg=f"Ya está {row['estado']}"), 400
-    r = exec_sql("DELETE FROM entradas WHERE id=%s", (eid,))
+    r = exec_sql("DELETE FROM entradas WHERE id=%s", (row["id"],))
     if isinstance(r, Exception):
         return jsonify(ok=False, msg=str(r)), 500
     return jsonify(ok=True, msg="Eliminada")
@@ -420,11 +447,11 @@ def rechazar(eid):
 @role_required("admin")
 def desbloquear(eid):
     # Libera mesa borrando la entrada (cualquier estado excepto Usada que ya liberó)
-    row = fetch_one("SELECT estado, ubicacion, mesa_numero FROM entradas WHERE id=%s", (eid,))
+    row = fetch_one("SELECT id, estado, ubicacion, mesa_numero FROM entradas WHERE id=%s OR codigo=%s", (eid, eid))
     if not row: return jsonify(ok=False, msg="Entrada no existe"), 404
     if row["estado"] == "Usada":
         return jsonify(ok=False, msg="Entrada ya usada, no se puede desbloquear"), 400
-    r = exec_sql("DELETE FROM entradas WHERE id=%s", (eid,))
+    r = exec_sql("DELETE FROM entradas WHERE id=%s", (row["id"],))
     if isinstance(r, Exception):
         return jsonify(ok=False, msg=str(r)), 500
     return jsonify(ok=True, msg=f"Mesa {row.get('mesa_numero') or ''} liberada" if row.get("ubicacion")=="Mesas" else "Entrada eliminada")
@@ -434,29 +461,34 @@ def desbloquear(eid):
 @login_required
 def validar():
     data = request.get_json(silent=True) or {}
-    eid = (data.get("id") or request.form.get("id") or "").strip()
-    if not eid: return jsonify(ok=False, estado="NO_EXISTE", msg="QR vacío"), 400
+    raw = (data.get("id") or data.get("codigo") or request.form.get("id") or request.form.get("codigo") or "").strip()
+    # normalizar código corto: sin espacios/guiones, mayúsculas
+    code = raw.replace(" ", "").replace("-", "").upper()
+    if not code: return jsonify(ok=False, estado="NO_EXISTE", msg="QR vacío"), 400
     try:
-        row = fetch_one("SELECT * FROM entradas WHERE id=%s", (eid,))
+        # buscar por codigo (nuevo, 5 chars) o por id UUID (compatibilidad vieja)
+        row = fetch_one("SELECT * FROM entradas WHERE codigo=%s OR id=%s", (code, raw))
         if not row: return jsonify(ok=False, estado="NO_EXISTE", msg="Entrada no existe"), 404
         if row["estado"] == "Usada":
             return jsonify(ok=False, estado="USADA", msg="Entrada YA USADA",
-                          nombre=row["nombre_completo"], ubicacion=row["ubicacion"], mesa_numero=row.get("mesa_numero"), monto=row.get("monto"))
+                          nombre=row["nombre_completo"], ubicacion=row["ubicacion"], mesa_numero=row.get("mesa_numero"), monto=row.get("monto"), codigo=row.get("codigo"))
         if row["estado"] == "Pendiente":
             return jsonify(ok=False, estado="PENDIENTE", msg="Entrada pendiente de aprobación"), 403
+        # usar id interno para update (codigo es solo alias humano)
+        rid = row["id"]
         r = exec_sql("UPDATE entradas SET estado='Usada', fecha_uso=%s WHERE id=%s AND estado='Aprobada'",
-                     (datetime.now(), eid))
+                     (datetime.now(), rid))
         if isinstance(r, Exception):
             return jsonify(ok=False, estado="ERROR", msg=f"Error: {r}"), 500
         if r["rowcount"] == 0:
-            row2 = fetch_one("SELECT estado FROM entradas WHERE id=%s", (eid,))
+            row2 = fetch_one("SELECT estado FROM entradas WHERE id=%s", (rid,))
             if row2 and row2["estado"] == "Usada":
                 return jsonify(ok=False, estado="USADA", msg="Ya fue usada (carrera)",
                               nombre=row["nombre_completo"], ubicacion=row["ubicacion"], mesa_numero=row.get("mesa_numero"))
             return jsonify(ok=False, estado="PENDIENTE", msg="Entrada pendiente de aprobación",
                           nombre=row["nombre_completo"], ubicacion=row["ubicacion"])
         return jsonify(ok=True, estado="VALIDA", msg="¡ENTRADA VÁLIDA!",
-                      nombre=row["nombre_completo"], ubicacion=row["ubicacion"], cedula=row["cedula"], mesa_numero=row.get("mesa_numero"), monto=row.get("monto"))
+                      nombre=row["nombre_completo"], ubicacion=row["ubicacion"], cedula=row["cedula"], mesa_numero=row.get("mesa_numero"), monto=row.get("monto"), codigo=row.get("codigo"))
     except Exception as e:
         return jsonify(ok=False, estado="ERROR", msg=f"Error: {e}"), 500
 

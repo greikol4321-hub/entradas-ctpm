@@ -17,7 +17,7 @@
       <div class="controls">
         <button id="btnStart" class="btn primary"><svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/></svg> Iniciar cámara</button>
         <button id="btnStop" class="btn">Detener</button>
-        <input id="manualId" placeholder="Pegar ID manualmente (UUID del QR)" aria-label="ID manual">
+        <input id="manualId" placeholder="Código corto (ej: A7K9P) — 5 letras/números" aria-label="Código corto" maxlength="12" style="text-transform:uppercase; letter-spacing:.12em;" autocomplete="off">
         <button id="btnManual" class="btn">Validar <svg class="icon-svg sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
       </div>
       <div id="result" class="result hidden" role="status" aria-live="polite">
@@ -56,17 +56,20 @@ function show(ok, title, msg, meta=''){
   setTimeout(()=>document.documentElement.style.background='', 800);
 }
 async function validar(id){
-  id=(id||'').trim(); if(!id) return show(false,'QR vacío','Escanea un código válido');
-  const now=Date.now(); if(id===lastId && now-lastAt<1800) return;
-  lastId=id; lastAt=now;
+  let raw=(id||'').trim(); if(!raw) return show(false,'QR vacío','Escanea un código válido');
+  // normalizar código corto: mayúsculas, sin espacios/guiones
+  const code=raw.replace(/\s+/g,'').replace(/-/g,'').toUpperCase();
+  const now=Date.now(); if(code===lastId && now-lastAt<1800) return;
+  lastId=code; lastAt=now;
   try{
-    const r=await fetch('/api/validar',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})});
+    const r=await fetch('/api/validar',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id: code})});
     if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
     const j=await r.json();
-    if(j.ok) show(true, j.msg, `${j.nombre} — ${j.ubicacion}`, `Cédula ${j.cedula} · ${id.slice(0,8)}… · acceso concedido`);
+    const displayCode=j.codigo || code;
+    if(j.ok) show(true, j.msg, `${j.nombre} — ${j.ubicacion}${j.mesa_numero?' Mesa '+j.mesa_numero:''}`, `Cédula ${j.cedula} · Código ${displayCode} · acceso concedido`);
     else {
       const msg = j.msg || 'Denegado';
-      const extra = j.nombre ? `${j.nombre} — ${j.ubicacion}` : `ID ${id.slice(0,8)}…`;
+      const extra = j.nombre ? `${j.nombre} — ${j.ubicacion} · Código ${displayCode}` : `Código ${displayCode}`;
       show(false, msg, j.estado||'', extra);
     }
   }catch(e){ show(false,'Error de red', e.message); }

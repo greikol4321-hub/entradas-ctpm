@@ -57,15 +57,15 @@
             </div>
           </div>
           <div class="toolbar-actions">
-            <input id="search" class="search-input" placeholder="Buscar nombre/cédula/mesa…" aria-label="Buscar">
+            <input id="search" class="search-input" placeholder="Buscar código/nombre/cédula/mesa…" aria-label="Buscar">
             <button class="btn sm" id="btnRefresh">Actualizar</button>
           </div>
         </div>
         <div class="table-wrap">
           <table id="tabla">
-            <thead><tr><th>Fecha</th><th>Cliente</th><th>Cédula</th><th>Zona</th><th>Mesa</th><th>Monto</th><th>Estado</th><th>Comprobante</th><th>Acción</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Código</th><th>Cliente</th><th>Cédula</th><th>Zona</th><th>Mesa</th><th>Monto</th><th>Estado</th><th>Comprobante</th><th>Acción</th></tr></thead>
             <tbody>
-              <tr class="skeleton-table hidden" id="skeleton"><td><span class="skeleton" style="width:70px; height:12px"></span></td><td><span class="skeleton" style="width:110px"></span></td><td><span class="skeleton" style="width:80px"></span></td><td><span class="skeleton" style="width:60px"></span></td><td><span class="skeleton" style="width:40px"></span></td><td><span class="skeleton" style="width:50px"></span></td><td><span class="skeleton" style="width:70px"></span></td><td><span class="skeleton" style="width:40px"></span></td><td><span class="skeleton" style="width:90px"></span></td></tr>
+              <tr class="skeleton-table hidden" id="skeleton"><td><span class="skeleton" style="width:70px; height:12px"></span></td><td><span class="skeleton" style="width:60px"></span></td><td><span class="skeleton" style="width:110px"></span></td><td><span class="skeleton" style="width:80px"></span></td><td><span class="skeleton" style="width:60px"></span></td><td><span class="skeleton" style="width:40px"></span></td><td><span class="skeleton" style="width:50px"></span></td><td><span class="skeleton" style="width:70px"></span></td><td><span class="skeleton" style="width:40px"></span></td><td><span class="skeleton" style="width:90px"></span></td></tr>
             </tbody>
           </table>
         </div>
@@ -144,9 +144,9 @@ async function load(){
     r=await fetch(url);
     if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
     rows=await r.json(); if(!Array.isArray(rows)) throw new Error(rows.msg||'Error');
-  }catch(e){ skeleton.classList.add('hidden'); tbody.innerHTML=`<tr><td colspan="9" class="empty">No se pudo cargar: ${e.message}</td></tr>`; return; }
+  }catch(e){ skeleton.classList.add('hidden'); tbody.innerHTML=`<tr><td colspan="10" class="empty">No se pudo cargar: ${e.message}</td></tr>`; return; }
   const q=query.trim().toLowerCase();
-  if(q) rows=rows.filter(x=> (x.nombre_completo+' '+x.cedula+' '+(x.mesa_numero||'')).toLowerCase().includes(q));
+  if(q) rows=rows.filter(x=> (x.nombre_completo+' '+x.cedula+' '+(x.mesa_numero||'')+' '+(x.codigo||'')).toLowerCase().includes(q));
   renderKpis(rows);
   skeleton.classList.add('hidden');
   tbody.querySelectorAll('tr:not(#skeleton)').forEach(el=>el.remove());
@@ -158,6 +158,8 @@ async function load(){
     const badge = `<span class="badge ${x.estado.toLowerCase()}">${x.estado}</span>`;
     const mesa = x.ubicacion==='Mesas' ? (x.mesa_numero ? 'Mesa '+x.mesa_numero : '<span class="muted">—</span>') : '<span class="muted">Gradas</span>';
     const monto = x.monto ? '₡'+Number(x.monto).toLocaleString('es-CR') : '—';
+    const fallbackCode = x.codigo || (x.id ? x.id.slice(0,5).toUpperCase() : '—');
+    const codigoCell = `<span class="mono" style="font-weight:800; letter-spacing:.14em; font-size:13px; background:var(--surface-2); border:1px solid var(--line); padding:5px 9px; border-radius:8px; display:inline-block;">${fallbackCode}</span>`;
     let btn='';
     if(x.estado==='Pendiente'){
       btn=`<button class="btn sm primary" data-aprobar="${x.id}">Aprobar</button> <button class="btn sm btn-danger" data-rechazar="${x.id}">Rechazar</button> <button class="btn sm" data-desbloquear="${x.id}">Desbloquear</button>`;
@@ -166,7 +168,7 @@ async function load(){
     } else {
       btn=`<span class="muted small">Usada</span>`;
     }
-    tr.innerHTML=`<td data-label="Fecha">${x.fecha_compra||''}</td>
+    tr.innerHTML=`<td data-label="Fecha">${x.fecha_compra||''}</td><td data-label="Código">${codigoCell}</td>
       <td data-label="Cliente"><strong>${x.nombre_completo}</strong></td><td data-label="Cédula" class="mono" style="font-size:12px">${x.cedula}</td>
       <td data-label="Zona">${x.ubicacion}</td><td data-label="Mesa" class="mono">${mesa}</td><td data-label="Monto" class="mono">${monto}</td><td data-label="Estado">${badge}</td><td data-label="Comprobante">${comp}</td><td data-label="Acción"><div>${btn}</div></td>`;
     tbody.appendChild(tr);
@@ -258,10 +260,11 @@ async function openModal(id){
     if(rr.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
     rows=await rr.json();
   }catch{ return; }
-  const row=rows.find(x=>x.id===id); if(!row) return;
-  selId=id; selRow=row;
-  mTitle.textContent=row.nombre_completo;
-  mInfo.textContent=`Cédula ${row.cedula} · ${row.ubicacion}${row.mesa_numero?' Mesa '+row.mesa_numero:''} · ${row.fecha_compra} · ${row.estado} · ₡${Number(row.monto||0).toLocaleString('es-CR')}`;
+  const row=rows.find(x=>x.id===id || x.codigo===id); if(!row) return;
+  selId=row.id; selRow=row;
+  const codeShort = row.codigo || (row.id?row.id.slice(0,5).toUpperCase():'—');
+  mTitle.textContent=row.nombre_completo + ' · ' + codeShort;
+  mInfo.textContent=`Código ${codeShort} · Cédula ${row.cedula} · ${row.ubicacion}${row.mesa_numero?' Mesa '+row.mesa_numero:''} · ${row.fecha_compra} · ${row.estado} · ₡${Number(row.monto||0).toLocaleString('es-CR')}`;
   mCompLink.href='/'+row.comprobante_path; mCompLink.classList.toggle('hidden', !row.comprobante_path);
   qrFrame.classList.add('hidden'); mImg.removeAttribute('src'); mQrLink.textContent='';
   boletoPreview.classList.add('hidden');
@@ -299,17 +302,18 @@ mAprobar.onclick=async()=>{
     if(!r.ok || !j.ok) throw new Error(j.msg||'Error');
     // solo boleto (1 QR) — ocultar frame duplicado
     mImg.src=j.qr_url; qrFrame.classList.add('hidden');
-    mQrLink.innerHTML=`QR listo: <a href="/${j.qr_path}" target="_blank" class="link-strong">${j.qr_path}</a> · ID ${j.id.slice(0,8)}…`;
-    // preparar boleto para copiar
-    if(selRow){ selRow.qr_path=j.qr_path; prepararBoleto(selRow); boletoPreview.classList.remove('hidden'); }
-    mMsg.textContent='Aprobada. Copia la imagen y envíala por WhatsApp.'; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
+    mQrLink.innerHTML=`QR listo: <a href="/${j.qr_path}" target="_blank" class="link-strong">${j.qr_path}</a> · Código <strong class="mono">${j.codigo}</strong>`;
+    // preparar boleto para copiar con código corto
+    if(selRow){ selRow.qr_path=j.qr_path; selRow.codigo=j.codigo; prepararBoleto(selRow); boletoPreview.classList.remove('hidden'); }
+    mMsg.innerHTML=`Aprobada. Código <strong class="mono">${j.codigo}</strong> — copia la imagen y envíala por WhatsApp.`; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
     mAprobar.innerHTML='Hecho ✓'; load();
   }catch(e){ mMsg.textContent=''+(e.message); mMsg.className='alert err'; mMsg.classList.remove('hidden'); mAprobar.disabled=false; mAprobar.innerHTML='Reintentar'; }
 };
-// boleto
+// boleto — código corto 5 chars fácil de escribir
 function prepararBoleto(row){
-  document.getElementById('boletoNro').textContent='Nº '+(row.id?row.id.slice(0,8).toUpperCase():'—');
-  document.getElementById('boletoCodigo').textContent=row.id||'--------';
+  const code=row.codigo || (row.id?row.id.slice(0,5).toUpperCase():'—');
+  document.getElementById('boletoNro').textContent='Nº '+code;
+  document.getElementById('boletoCodigo').textContent=code;
   document.getElementById('boletoNombre').textContent=row.nombre_completo||'—';
   document.getElementById('boletoCedula').textContent=row.cedula||'—';
   document.getElementById('boletoUbicacion').textContent=row.ubicacion+(row.mesa_numero?' Mesa '+row.mesa_numero:'');

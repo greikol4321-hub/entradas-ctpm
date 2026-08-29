@@ -4,7 +4,8 @@ USE entradas_ctpm;
 
 -- Tabla principal: una fila = una entrada. Cubrimos los 3 estados del flujo.
 CREATE TABLE IF NOT EXISTS entradas (
-    id CHAR(36) PRIMARY KEY COMMENT 'UUID v4, tambien es el contenido del QR',
+    id CHAR(36) PRIMARY KEY COMMENT 'UUID v4 interno',
+    codigo VARCHAR(6) UNIQUE COMMENT 'Código corto 6 chars fácil de escribir (ej: A7K9P2) — contenido del QR',
     nombre_completo VARCHAR(120) NOT NULL,
     cedula VARCHAR(20) NOT NULL,
     ubicacion ENUM('Gradas','Mesas') NOT NULL,
