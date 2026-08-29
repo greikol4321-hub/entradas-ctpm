@@ -94,9 +94,9 @@
       <div id="mPreview" class="modal-preview" style="width:100%; display:flex; justify-content:center;">
         <a id="mCompLink" href="#" target="_blank" class="btn sm btn-ghost">Ver comprobante <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 17L17 7M17 7H9M17 7v8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
       </div>
-      <!-- Ticket premium refinado horizontal con talón desprendible -->
+      <!-- Ticket premium sin talón — limpio -->
       <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-      <div id="ticketPreview" class="hidden" style="width:720px; max-width:95vw; background:#fdfbf3; border:1px solid #d8cfba; border-radius:12px; overflow:hidden; box-shadow:0 16px 40px rgba(15,23,42,.14), 0 1px 3px rgba(15,23,42,.06); display:flex; min-height:280px; position:relative;">
+      <div id="ticketPreview" class="hidden" style="width:620px; max-width:95vw; background:#fdfbf3; border:1px solid #d8cfba; border-radius:12px; overflow:hidden; box-shadow:0 16px 40px rgba(15,23,42,.14), 0 1px 3px rgba(15,23,42,.06); display:flex; min-height:260px; position:relative;">
         <!-- Textura lino + marca de agua seguridad -->
         <div style="position:absolute; inset:0; opacity:.045; pointer-events:none; background-image:url('data:image/svg+xml,%3Csvg width=%27100%27 height=%27100%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cfilter id=%27n%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%270.9%27 numOctaves=%272%27/%3E%3C/filter%3E%3Crect width=%27100%25%27 height=%27100%25%27 filter=%27url(%23n)%27 opacity=%270.4%27/%3E%3C/svg%3E');"></div>
         <div style="position:absolute; inset:0; display:grid; place-items:center; pointer-events:none; opacity:.035;">
@@ -163,24 +163,6 @@
           </div>
         </div>
         <!-- Perforación micro-dentada con muescas -->
-        <div style="width:14px; background:repeating-linear-gradient(180deg, transparent 0 3px, #2a2a2a 3px 4px, transparent 4px 7px); position:relative; display:flex; align-items:center; justify-content:center; border-left:1px dashed #2a2a2a; border-right:1px dashed #2a2a2a; margin:6px 0;">
-          <span style="position:absolute; top:-7px; left:50%; transform:translateX(-50%); width:14px; height:14px; background:#fdfbf3; border:1px solid #2a2a2a; border-radius:50%; box-shadow:inset 0 1px 2px rgba(0,0,0,.1);"></span>
-          <span style="position:absolute; bottom:-7px; left:50%; transform:translateX(-50%); width:14px; height:14px; background:#fdfbf3; border:1px solid #2a2a2a; border-radius:50%; box-shadow:inset 0 1px 2px rgba(0,0,0,.1);"></span>
-        </div>
-        <!-- Talón derecho -->
-        <div style="width:128px; background:linear-gradient(180deg, #fdfbf3 0%, #f5f1e8 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:14px 10px; text-align:center; position:relative;">
-          <div style="position:absolute; inset:0; opacity:.04; background-image: radial-gradient(circle at 50% 30%, #0a4c23 1px, transparent 1px); background-size:12px 12px; pointer-events:none;"></div>
-          <div style="background:linear-gradient(180deg, #f7e8c7, #e8d5a3); border:1px solid #b89a5a; border-radius:999px; padding:5px 10px; box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 1px 2px rgba(0,0,0,.08);">
-            <div style="font-size:7px; font-weight:800; letter-spacing:.14em; color:#3a2a12; text-transform:uppercase;">TALÓN</div>
-            <div id="ticketNumeroBottom" class="mono" style="font-size:13px; font-weight:800; letter-spacing:.06em; color:#0a4c23; line-height:1;">#002</div>
-          </div>
-          <div style="width:78px; height:78px; background:#fff; border:1px solid #0a4c23; border-radius:8px; padding:6px; display:grid; place-items:center; box-shadow:0 1px 4px rgba(0,0,0,.08);">
-            <img id="ticketQrMini" alt="qr mini" style="width:100%; height:100%; object-fit:contain;">
-          </div>
-          <div style="font-size:7px; font-weight:700; letter-spacing:.06em; color:#5a5a5a; text-transform:uppercase;">CTPM 2026</div>
-          <div style="font-size:7px; font-weight:600; color:#0a4c23; letter-spacing:.04em;">SINPE MÓVIL: 8888-8888</div>
-          <div style="font-size:6px; color:#9CA3AF; margin-top:2px;">#002</div>
-        </div>
       </div>
       <!-- QR solo fallback oculto para compatibilidad -->
       <div class="qr-frame hidden" id="qrFrame" style="display:none;"><img id="mImg" alt="QR"></div>
@@ -432,67 +414,53 @@ async function generarTicketBlob(){
   const cedula=ticketCedula.textContent.trim()||'';
   const detalle=ticketDetalle.textContent.trim()||'';
   const qrImg=ticketQrImg;
-  const canvas=document.createElement('canvas'); canvas.width=900; canvas.height=320;
+  const canvas=document.createElement('canvas'); canvas.width=720; canvas.height=320;
   const ctx=canvas.getContext('2d');
-  // fondo blanco
-  ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,900,320);
-  ctx.strokeStyle='#d4ccc0'; ctx.lineWidth=1; ctx.strokeRect(0.5,0.5,899,319);
+  // fondo crema lino
+  ctx.fillStyle='#fdfbf3'; ctx.fillRect(0,0,720,320);
+  ctx.strokeStyle='#d8cfba'; ctx.lineWidth=1; ctx.strokeRect(0.5,0.5,719,319);
+  // marca de agua sutil
+  ctx.fillStyle='rgba(10,76,35,.035)'; ctx.textAlign='center'; ctx.font='bold 42px Poppins, sans-serif'; ctx.fillText('CTP • MATAPALO',360,175);
   // header verde
-  ctx.fillStyle='#0a4c23'; ctx.fillRect(0,0,900,44);
+  ctx.fillStyle='#0a4c23'; ctx.fillRect(0,0,720,44);
   ctx.fillStyle='#fff'; ctx.textAlign='left'; ctx.font='bold 11px Poppins, sans-serif'; ctx.fillText('CTP MATAPALO',16,20);
   ctx.font='600 8px Poppins, sans-serif'; ctx.fillStyle='rgba(255,255,255,.85)'; ctx.fillText('ENTRADA OFICIAL',16,32);
-  // numero pill derecha header
-  ctx.fillStyle='rgba(255,255,255,.14)'; ctx.strokeStyle='rgba(255,255,255,.18)';
-  const numW=ctx.measureText(numero).width+18; ctx.beginPath(); ctx.roundRect(900-14-numW,10, numW,22, 11); ctx.fill(); ctx.stroke();
-  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.font='bold 10px monospace'; ctx.fillText(numero, 900-14-numW/2, 24);
-  // QR izquierda
+  const numW=ctx.measureText(numero).width+18; ctx.fillStyle='rgba(255,255,255,.14)'; ctx.strokeStyle='rgba(255,255,255,.18)';
+  ctx.beginPath(); ctx.roundRect(720-14-numW,10, numW,22, 11); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.font='bold 10px monospace'; ctx.fillText(numero, 720-14-numW/2, 24);
+  // QR izquierda con marco seguridad
   if(qrImg && qrImg.src){
     try{ if(!qrImg.complete) await new Promise(r=>qrImg.onload=r); }catch(e){}
-    ctx.fillStyle='#fff'; ctx.fillRect(22,62,150,150);
-    ctx.strokeStyle='#e8e0d0'; ctx.strokeRect(22,62,150,150);
-    try{ ctx.drawImage(qrImg,30,70,134,134);}catch(e){}
+    ctx.fillStyle='#fff'; ctx.fillRect(18,62,150,150);
+    ctx.strokeStyle='#0a4c23'; ctx.lineWidth=1; ctx.strokeRect(18,62,150,150);
+    ctx.strokeStyle='rgba(10,76,35,.12)'; ctx.strokeRect(15,59,156,156);
+    try{ ctx.drawImage(qrImg,26,70,134,134);}catch(e){}
+    // holograma
+    const hg=ctx.createRadialGradient(155,195,3, 155,195,14);
+    hg.addColorStop(0,'#f5f1e8'); hg.addColorStop(0.5,'#7fb8a5'); hg.addColorStop(1,'#d4a96a');
+    ctx.fillStyle=hg; ctx.beginPath(); ctx.arc(155,195,12,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=1; ctx.stroke();
+    ctx.fillStyle='#0a4c23'; ctx.font='bold 7px Poppins, sans-serif'; ctx.textAlign='center'; ctx.fillText('◈',155,198); ctx.textAlign='left';
   }
-  // textura lino crema + marca de agua
-  ctx.fillStyle='#fdfbf3'; ctx.fillRect(0,44,900,276);
-  // marca de agua sutil CTP
-  ctx.fillStyle='rgba(10,76,35,.035)'; ctx.textAlign='center'; ctx.font='bold 48px Poppins, sans-serif'; ctx.fillText('CTP • MATAPALO',340,170);
   // centro detalles premium
   ctx.textAlign='left';
-  // titulo evento serif
-  ctx.fillStyle='#17150f'; ctx.font='bold 9px Poppins, sans-serif'; ctx.fillText('GRAN CENA DE GALA ANUAL - MATAPALO 2026', 192, 68);
-  ctx.font='600 6px Poppins, sans-serif'; ctx.fillStyle='#7a6e5a'; ctx.fillText('ANIVERSARIO LIV DE FUNDADORES', 192, 78);
-  ctx.fillStyle='#0a4c23'; ctx.font='bold 16px monospace'; ctx.fillText(code, 192, 96);
-  ctx.fillStyle='#17150f'; ctx.font='bold 11px Poppins, sans-serif'; ctx.fillText(nombre, 192, 112);
-  ctx.font='9px monospace'; ctx.fillStyle='#5a5a5a'; ctx.fillText(cedula, 192, 124);
-  // etiqueta vintage cuero/metal
-  const grad=ctx.createLinearGradient(192,142, 192,164);
+  ctx.fillStyle='#17150f'; ctx.font='bold 8.5px Poppins, sans-serif'; ctx.fillText('GRAN CENA DE GALA ANUAL - MATAPALO 2026', 184, 68);
+  ctx.font='600 6px Poppins, sans-serif'; ctx.fillStyle='#7a6e5a'; ctx.fillText('ANIVERSARIO LIV DE FUNDADORES', 184, 78);
+  ctx.fillStyle='#0a4c23'; ctx.font='bold 15px monospace'; ctx.fillText(code, 184, 98);
+  ctx.fillStyle='#17150f'; ctx.font='bold 11px Poppins, sans-serif'; ctx.fillText(nombre, 184, 116);
+  ctx.font='9px monospace'; ctx.fillStyle='#5a5a5a'; ctx.fillText(cedula, 184, 130);
+  const grad=ctx.createLinearGradient(184,142, 184,162);
   grad.addColorStop(0,'#f7e8c7'); grad.addColorStop(0.5,'#e8d5a3'); grad.addColorStop(1,'#d4b77a');
   ctx.fillStyle=grad; ctx.strokeStyle='#b89a5a'; ctx.lineWidth=1;
-  const detW=Math.min(360, ctx.measureText(detalle).width+24); ctx.beginPath(); ctx.roundRect(192,136, detW,20, 4); ctx.fill(); ctx.stroke();
-  ctx.fillStyle='#3a2a12'; ctx.font='bold 7px Poppins, sans-serif'; ctx.fillText(detalle, 204, 149);
-  // holograma sutil
-  const hx=192+detW+14, hy=146;
-  const hg=ctx.createRadialGradient(hx,hy,4, hx,hy,10);
-  hg.addColorStop(0,'#f5f1e8'); hg.addColorStop(0.5,'#7fb8a5'); hg.addColorStop(1,'#d4a96a');
-  ctx.fillStyle=hg; ctx.beginPath(); ctx.arc(hx,hy,9,0,Math.PI*2); ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=0.8; ctx.stroke();
-  ctx.fillStyle='#0a4c23'; ctx.font='bold 6px Poppins, sans-serif'; ctx.textAlign='center'; ctx.fillText('◈', hx, hy+2); ctx.textAlign='left';
-  ctx.font='600 6px Poppins, sans-serif'; ctx.fillStyle='#7a6e5a'; ctx.fillText('Valida 1 persona  •  Presentar en puerta', 192, 172);
-  // perforado vertical
-  const perfX=640;
-  ctx.setLineDash([6,6]); ctx.strokeStyle='#d4ccc0'; ctx.beginPath(); ctx.moveTo(perfX,44); ctx.lineTo(perfX,280); ctx.stroke(); ctx.setLineDash([]);
-  // círculos perforado
-  ctx.fillStyle='#f5f1e8'; ctx.strokeStyle='#d4ccc0'; ctx.beginPath(); ctx.arc(perfX,44,8,0,Math.PI*2); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.arc(perfX,280,8,0,Math.PI*2); ctx.fill(); ctx.stroke();
-  // talón derecha
-  ctx.fillStyle='#f5f1e8'; ctx.fillRect(perfX+1,44, 900-perfX-1, 276);
-  ctx.fillStyle='#0a4c23'; ctx.textAlign='center'; ctx.font='bold 7px Poppins, sans-serif'; ctx.fillText('TALON', 770, 70);
-  ctx.font='bold 11px monospace'; ctx.fillText(numero, 770, 86);
-  // mini QR talón
-  ctx.fillStyle='#fff'; ctx.fillRect(735,98,70,70); ctx.strokeStyle='#e8e0d0'; ctx.strokeRect(735,98,70,70);
-  try{ if(qrImg) ctx.drawImage(qrImg,739,102,62,62);}catch(e){}
-  ctx.font='600 6px Poppins, sans-serif'; ctx.fillStyle='#5a5a5a'; ctx.fillText('CTPM 2026', 770, 186);
-  ctx.font='600 6px Poppins, sans-serif'; ctx.fillStyle='#9CA3AF'; ctx.fillText('SINPE 8888-8888', 770, 196);
+  const detW=Math.min(380, ctx.measureText(detalle).width+24); ctx.beginPath(); ctx.roundRect(184,138, detW,20, 4); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#3a2a12'; ctx.font='bold 7px Poppins, sans-serif'; ctx.fillText(detalle, 196, 151);
+  ctx.font='600 6px Poppins, sans-serif'; ctx.fillStyle='#7a6e5a'; ctx.fillText('Valida 1 persona  •  Presentar en puerta', 184, 172);
+  // footer crema
+  ctx.fillStyle='#f5f1e8'; ctx.fillRect(0,280,720,40);
+  ctx.strokeStyle='#d8cfba'; ctx.beginPath(); ctx.moveTo(0,280); ctx.lineTo(720,280); ctx.stroke();
+  ctx.fillStyle='#5a5a5a'; ctx.font='600 7px Poppins, sans-serif'; ctx.textAlign='left'; ctx.fillText('CTPM 2026 • Papel de seguridad',14,304);
+  ctx.textAlign='right'; ctx.fillText('SINPE MOVIL: 8888-8888',706,304);
+  ctx.textAlign='left';
   return new Promise(res=>canvas.toBlob(b=>res(b),'image/png'));
 }
 if(btnQrCopy) btnQrCopy.onclick=async()=>{
@@ -530,49 +498,38 @@ if(btnQrPdf) btnQrPdf.onclick=async()=>{
   const detalle=qrSoloDetalle.textContent.trim()||'';
   try{
     const {jsPDF}=window.jspdf;
-    const pdf=new jsPDF({orientation:'landscape', unit:'mm', format:[120, 70]}); // ticket horizontal 120x70mm
-    // fondo blanco
-    pdf.setFillColor(255,255,255); pdf.rect(0,0,120,70,'F');
-    pdf.setDrawColor(212,204,192); pdf.setLineWidth(0.3); pdf.rect(0.5,0.5,119,69);
+    const pdf=new jsPDF({orientation:'landscape', unit:'mm', format:[100, 65]}); // ticket sin talón
+    pdf.setFillColor(253,251,243); pdf.rect(0,0,100,65,'F');
+    pdf.setDrawColor(216,207,186); pdf.setLineWidth(0.3); pdf.rect(0.5,0.5,99,64);
     // header verde
-    pdf.setFillColor(10,76,35); pdf.rect(0,0,120,12,'F');
-    pdf.setFont('helvetica','bold'); pdf.setFontSize(7); pdf.setTextColor(255,255,255); pdf.text('CTP MATAPALO', 4, 7);
-    pdf.setFontSize(5); pdf.text('ENTRADA OFICIAL', 4, 10);
-    pdf.setFontSize(6); pdf.text(numero, 115, 7, {align:'right'});
-    // sanitizar
+    pdf.setFillColor(10,76,35); pdf.rect(0,0,100,11,'F');
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(6); pdf.setTextColor(255,255,255); pdf.text('CTP MATAPALO', 3, 6);
+    pdf.setFontSize(4); pdf.text('ENTRADA OFICIAL', 3, 9);
+    pdf.setFontSize(5); pdf.text(numero, 97, 6.5, {align:'right'});
     const safeDetalle=detalle.replace(/·/g,'-').replace(/₡/g,'CRC ');
     const safeCedula=cedula ? 'Cedula '+cedula : '';
-    // QR grande izquierda
     const qrSrc=mImg.src;
     let qrDataUrl=qrSrc;
     try{
       const blob=await fetch(qrSrc).then(r=>r.blob());
       qrDataUrl=await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(blob); });
     }catch(e){}
-    pdf.setFillColor(255,255,255); pdf.setDrawColor(232,224,208); pdf.rect(4,16,28,28);
-    pdf.addImage(qrDataUrl, 'PNG', 5, 17, 26, 26);
-    // evento premium
-    pdf.setFontSize(5); pdf.setTextColor(23,21,15); pdf.text('GRAN CENA DE GALA ANUAL - MATAPALO 2026', 42, 20);
-    pdf.setFontSize(3.5); pdf.setTextColor(122,110,90); pdf.text('ANIVERSARIO LIV DE FUNDADORES', 42, 22.5);
-    // codigo y nombre centro
-    pdf.setFontSize(10); pdf.setTextColor(10,76,35); pdf.text(code, 42, 27);
-    pdf.setFontSize(6.5); pdf.setTextColor(20,20,20); pdf.text(nombre, 42, 31);
-    pdf.setFontSize(4.5); pdf.setTextColor(90,90,90); pdf.text(safeCedula, 42, 33.5);
-    pdf.setFontSize(6); pdf.setTextColor(10,76,35);
-    // pill detalle
-    const pillW=Math.min(50, pdf.getTextWidth(safeDetalle)+6); pdf.setFillColor(245,241,232); pdf.roundedRect(42, 36, pillW, 6, 1, 1, 'F'); pdf.setDrawColor(232,224,208); pdf.roundedRect(42, 36, pillW, 6, 1, 1, 'D');
-    pdf.text(safeDetalle, 45, 40);
-    pdf.setFontSize(4); pdf.setTextColor(140,140,140); pdf.text('Valida 1 persona  -  No requiere impresion', 42, 47);
-    // perforado vertical
-    pdf.setDrawColor(212,204,192); pdf.setLineDashPattern([1,1],0); pdf.line(88,12,88,65);
-    pdf.setFillColor(245,241,232); pdf.circle(88,12,1.5,'F'); pdf.circle(88,12,1.5,'D'); pdf.circle(88,65,1.5,'F'); pdf.circle(88,65,1.5,'D');
-    // talon derecha
-    pdf.setFillColor(245,241,232); pdf.rect(88.5,12,31,53,'F');
-    pdf.setFontSize(5); pdf.setTextColor(10,76,35); pdf.text('TALON', 104, 18, {align:'center'});
-    pdf.setFontSize(6); pdf.text(numero, 104, 22, {align:'center'});
-    pdf.addImage(qrDataUrl, 'PNG', 96, 25, 16, 16);
-    pdf.setFontSize(4); pdf.setTextColor(90,90,90); pdf.text('CTPM 2026', 104, 44, {align:'center'});
-    pdf.text('SINPE 8888-8888', 104, 47, {align:'center'});
+    // QR
+    pdf.setFillColor(255,255,255); pdf.setDrawColor(232,224,208); pdf.rect(4,14,24,24);
+    pdf.setDrawColor(10,76,35); pdf.rect(4,14,24,24);
+    pdf.addImage(qrDataUrl, 'PNG', 5, 15, 22, 22);
+    // evento
+    pdf.setFontSize(4); pdf.setTextColor(23,21,15); pdf.text('GRAN CENA DE GALA ANUAL - MATAPALO 2026', 32, 18);
+    pdf.setFontSize(3); pdf.setTextColor(122,110,90); pdf.text('ANIVERSARIO LIV DE FUNDADORES', 32, 20.5);
+    pdf.setFontSize(9); pdf.setTextColor(10,76,35); pdf.text(code, 32, 25.5);
+    pdf.setFontSize(5.5); pdf.setTextColor(20,20,20); pdf.text(nombre, 32, 29);
+    pdf.setFontSize(4); pdf.setTextColor(90,90,90); pdf.text(safeCedula, 32, 31.5);
+    const pillW=Math.min(48, pdf.getTextWidth(safeDetalle)+5); pdf.setFillColor(247,232,199); pdf.setDrawColor(184,154,90); pdf.roundedRect(32, 33.5, pillW, 5, 1, 1, 'F'); pdf.roundedRect(32, 33.5, pillW, 5, 1, 1, 'D');
+    pdf.setFontSize(4); pdf.setTextColor(58,42,18); pdf.text(safeDetalle, 34, 36.5);
+    pdf.setFontSize(3.5); pdf.setTextColor(140,140,140); pdf.text('Valida 1 persona  -  No requiere impresion', 32, 42);
+    pdf.setFillColor(245,241,232); pdf.rect(0,58,100,7,'F'); pdf.setDrawColor(216,207,186); pdf.line(0,58,100,58);
+    pdf.setFontSize(3); pdf.setTextColor(90,90,90); pdf.text('CTPM 2026  •  Papel de seguridad', 3, 62, {align:'left'});
+    pdf.text('SINPE MOVIL: 8888-8888', 97, 62, {align:'right'});
     // nombre archivo con numero y nombre y codigo
     const safeNombre=nombre.replace(/[^a-zA-Z0-9]/g,'_').slice(0,15)||'Entrada';
     const fname=`Entrada_${numero.replace('#','')}_${safeNombre}_${code}.pdf`;
