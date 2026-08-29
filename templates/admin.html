@@ -496,7 +496,7 @@ if(btnQrPdf) btnQrPdf.onclick=async()=>{
   const detalle=qrSoloDetalle.textContent.trim()||'';
   try{
     const {jsPDF}=window.jspdf;
-    const pdf=new jsPDF({orientation:'landscape', unit:'mm', format:[100, 65]}); // ticket sin talón
+    const pdf=new jsPDF({orientation:'portrait', unit:'mm', format:[65, 100]}); // ticket sin talón
     pdf.setFillColor(253,251,243); pdf.rect(0,0,100,65,'F');
     pdf.setDrawColor(216,207,186); pdf.setLineWidth(0.3); pdf.rect(0.5,0.5,99,64);
     // header verde
