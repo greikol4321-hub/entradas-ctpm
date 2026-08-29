@@ -379,8 +379,8 @@ def serve_qr(fname):
     fpath = QR_FOLDER / fname
     if not fpath.exists():
         code = pathlib.Path(fname).stem
-        # buscar por codigo o id para compatibilidad con entradas viejas
-        row = fetch_one("SELECT id,codigo FROM entradas WHERE codigo=%s OR id=%s", (code, code))
+        # buscar por codigo o id::text para evitar error UUID con códigos cortos
+        row = fetch_one("SELECT id,codigo FROM entradas WHERE codigo=%s OR id::text=%s", (code, code))
         if row:
             data = (row.get("codigo") or row["id"])
             try:
@@ -402,8 +402,8 @@ def serve_qr(fname):
 @role_required("admin")
 def aprobar(eid):
     try:
-        # aceptar id o codigo corto
-        row = fetch_one("SELECT * FROM entradas WHERE id=%s OR codigo=%s", (eid, eid))
+        # aceptar id o codigo corto — id::text evita error UUID con códigos cortos
+        row = fetch_one("SELECT * FROM entradas WHERE codigo=%s OR id::text=%s", (eid, eid))
         if not row: return jsonify(ok=False, msg="Entrada no existe"), 404
         if row["estado"] != "Pendiente":
             return jsonify(ok=False, msg=f"Ya está {row['estado']}"), 400
@@ -436,7 +436,7 @@ def aprobar(eid):
 @login_required
 @role_required("admin")
 def rechazar(eid):
-    row = fetch_one("SELECT id, estado FROM entradas WHERE id=%s OR codigo=%s", (eid, eid))
+    row = fetch_one("SELECT id, estado FROM entradas WHERE codigo=%s OR id::text=%s", (eid, eid))
     if not row: return jsonify(ok=False, msg="Entrada no existe"), 404
     if row["estado"] != "Pendiente":
         return jsonify(ok=False, msg=f"Ya está {row['estado']}"), 400
@@ -450,7 +450,7 @@ def rechazar(eid):
 @role_required("admin")
 def desbloquear(eid):
     # Libera mesa borrando la entrada (cualquier estado excepto Usada que ya liberó)
-    row = fetch_one("SELECT id, estado, ubicacion, mesa_numero FROM entradas WHERE id=%s OR codigo=%s", (eid, eid))
+    row = fetch_one("SELECT id, estado, ubicacion, mesa_numero FROM entradas WHERE codigo=%s OR id::text=%s", (eid, eid))
     if not row: return jsonify(ok=False, msg="Entrada no existe"), 404
     if row["estado"] == "Usada":
         return jsonify(ok=False, msg="Entrada ya usada, no se puede desbloquear"), 400
@@ -469,8 +469,8 @@ def validar():
     code = raw.replace(" ", "").replace("-", "").upper()
     if not code: return jsonify(ok=False, estado="NO_EXISTE", msg="QR vacío"), 400
     try:
-        # buscar por codigo (nuevo, 5 chars) o por id UUID (compatibilidad vieja)
-        row = fetch_one("SELECT * FROM entradas WHERE codigo=%s OR id=%s", (code, raw))
+        # buscar por codigo (nuevo, 5 chars) o por id::text (compatibilidad vieja) — id::text evita error UUID
+        row = fetch_one("SELECT * FROM entradas WHERE codigo=%s OR id::text=%s", (code, raw))
         if not row: return jsonify(ok=False, estado="NO_EXISTE", msg="Entrada no existe"), 404
         if row["estado"] == "Usada":
             return jsonify(ok=False, estado="USADA", msg="Entrada YA USADA",
