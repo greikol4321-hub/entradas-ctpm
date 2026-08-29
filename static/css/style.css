@@ -691,12 +691,13 @@ tr:hover td{background:#FFFEFB}
   .bar-value{ font-size:11px; }
   .donut{ width:150px; height:150px; }
   .donut-center{ inset:20px; font-size:12px; }
-  .admin-toolbar{ flex-direction:column; align-items:stretch; gap:12px; }
-  .admin-toolbar > div:first-child{ display:flex; flex-direction:column; gap:8px; width:100%; }
+  .admin-toolbar{ flex-direction:column; align-items:stretch; gap:16px; }
+  .admin-toolbar > div:first-child{ display:flex; flex-direction:column; gap:10px; width:100%; }
   .filters{ width:100%; max-width:100%; overflow-x:auto; overflow-y:hidden; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; scrollbar-width:none; gap:6px; }
   .filters::-webkit-scrollbar{ display:none; }
   .filters button{ flex-shrink:0; white-space:nowrap; }
-  .toolbar-actions{ display:flex; flex-direction:row; align-items:center; gap:8px; width:100%; }
+  .toolbar-actions{ display:flex; flex-direction:row; align-items:center; gap:10px; width:100%; }
+  .shell-admin .table-wrap{ margin-top:4px; }
   .toolbar-actions .search-input{ flex:1 1 0; min-width:0; width:auto; }
   .toolbar-actions .btn{ flex-shrink:0; white-space:nowrap; }
 }
