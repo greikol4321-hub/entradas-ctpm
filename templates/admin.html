@@ -367,11 +367,11 @@ async function generarTicketBlob(){
   const cedula=ticketCedula.textContent.trim()||'';
   const detalle=ticketDetalle.textContent.trim()||'';
   const qrImg=ticketQrImg;
-  const canvas=document.createElement('canvas'); canvas.width=680; canvas.height=760;
+  const canvas=document.createElement('canvas'); canvas.width=680; canvas.height=640;
   const ctx=canvas.getContext('2d');
   // fondo ticket blanco con borde
-  ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,680,760);
-  ctx.strokeStyle='#d4ccc0'; ctx.lineWidth=1; ctx.strokeRect(0.5,0.5,679,759);
+  ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,680,640);
+  ctx.strokeStyle='#d4ccc0'; ctx.lineWidth=1; ctx.strokeRect(0.5,0.5,679,639);
   // header verde
   ctx.fillStyle='#0a4c23'; ctx.fillRect(0,0,680,52);
   ctx.fillStyle='#fff'; ctx.textAlign='left'; ctx.font='bold 11px Poppins, sans-serif'; ctx.fillText('CTP MATAPALO',18,22);
