@@ -206,17 +206,13 @@
             <div class="success-icon" aria-hidden="true"><svg class="icon-svg lg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/><circle cx="12" cy="12" r="10" stroke-width="1.6"/></svg></div>
             <h2>¡Comprobante enviado!</h2>
             <p class="muted">Gracias <strong id="successName">—</strong>. Hemos recibido tu comprobante para <strong id="successUbi">—</strong>.</p>
-            <div class="ref-box" style="background:#fff; border:2px dashed #0a4c23; border-radius:16px; padding:16px; text-align:center; width:100%;">
-              <span style="font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#0a4c23;">Tu entrada — guárdala</span>
-              <div style="display:flex; flex-direction:column; align-items:center; gap:2px; margin-top:8px;">
-                <span id="successNumero" class="mono" style="font-size:14px; font-weight:800; letter-spacing:.08em; color:var(--muted);">#001</span>
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <strong id="successCodigo" class="mono" style="font-size:32px; letter-spacing:.16em; color:#0a4c23; line-height:1;">—</strong>
-                  <button type="button" id="copyCodigo" class="btn sm primary" style="padding:8px 12px; font-size:12px;">Copiar</button>
-                </div>
-              </div>
-              <small class="muted" style="display:block; margin-top:6px;">Entrada <span class="mono" id="successNumeroSmall">N° —</span> · Código 5 letras/números, fácil de dictar en puerta si tu QR no carga. Ej: <span class="mono">A7K9P</span></small>
+            <div class="ref-box" style="background:#fff; border:1px solid var(--line); border-radius:16px; padding:14px; text-align:center; width:100%;">
+              <span style="font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#0a4c23;">Comprobante recibido — en revisión</span>
+              <div style="margin-top:8px; font-size:13px; color:var(--muted); line-height:1.5;">Revisaremos tu pago y en máximo 48h te enviaremos tu entrada con QR por WhatsApp.</div>
+              <small class="muted" style="display:block; margin-top:8px;">Referencia: <span class="mono" id="successRef2">—</span></small>
             </div>
+            <!-- ticket se genera solo al aprobar y se envía por WhatsApp, no se muestra aquí -->
+            <span id="successNumero" class="hidden"></span><span id="successCodigo" class="hidden"></span><span id="successNumeroSmall" class="hidden"></span><button id="copyCodigo" class="hidden"></button>
             <div class="success-card">
               <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
               <div>
@@ -440,11 +436,13 @@ document.getElementById('formCompra').addEventListener('submit', async e=>{
     const r=await fetch('/api/comprar',{method:'POST', body:new FormData(e.target)});
     const j=await r.json();
     if(!r.ok || !j.ok) throw new Error(j.msg||'No se pudo enviar');
-    // éxito -> muestra paso 5 con código corto
+    // éxito -> muestra paso 5 sin ticket, solo recibo (ticket se genera al aprobar y se envía por WhatsApp)
     document.getElementById('successName').textContent=nombre.value.trim().split(' ')[0]||nombre.value.trim();
     document.getElementById('successPhone').textContent=telefono.value.trim();
-    document.getElementById('successRef').textContent=refText.textContent;
+    const sr=document.getElementById('successRef'); if(sr) sr.textContent=refText.textContent;
+    const sr2=document.getElementById('successRef2'); if(sr2) sr2.textContent=refText.textContent;
     document.getElementById('successUbi').textContent=document.querySelector('input[name="ubicacion"]:checked')?.value||'';
+    // guardar codigo/numero ocultos solo para debug, no se muestran
     const cEl=document.getElementById('successCodigo'); if(cEl) cEl.textContent=j.codigo||'—';
     const nEl=document.getElementById('successNumero'); if(nEl) nEl.textContent=j.numero ? '#'+String(j.numero).padStart(3,'0') : '#—';
     const nSmall=document.getElementById('successNumeroSmall'); if(nSmall) nSmall.textContent=j.numero ? 'N° '+String(j.numero).padStart(3,'0') : 'N° —';
