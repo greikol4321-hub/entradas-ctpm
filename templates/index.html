@@ -384,6 +384,18 @@ function updateRef(){
   if(ub==='Mesas' && m) ref+=`-M${m}`;
   refText.textContent=ref;
 }
+// ponytail: auto-formato cédula 1-2345-0678 sin escribir guiones
+function formatCedula(el){
+  const d=el.value.replace(/\D/g,'').slice(0,9);
+  let f=d;
+  if(d.length>1) f=d.slice(0,1)+'-'+d.slice(1);
+  if(d.length>5) f=d.slice(0,1)+'-'+d.slice(1,5)+'-'+d.slice(5);
+  el.value=f;
+}
+cedula.addEventListener('input', e=>{ formatCedula(e.target); updateRef(); });
+cedula.addEventListener('paste', e=>{
+  setTimeout(()=>{ formatCedula(cedula); updateRef(); },0);
+});
 ['input','change'].forEach(ev=>{
   nombre.addEventListener(ev, updateRef);
   cedula.addEventListener(ev, updateRef);
