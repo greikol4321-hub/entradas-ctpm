@@ -94,36 +94,92 @@
       <div id="mPreview" class="modal-preview" style="width:100%; display:flex; justify-content:center;">
         <a id="mCompLink" href="#" target="_blank" class="btn sm btn-ghost">Ver comprobante <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 17L17 7M17 7H9M17 7v8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
       </div>
-      <!-- Ticket horizontal — talón perforado como boarding pass -->
-      <div id="ticketPreview" class="hidden" style="width:560px; max-width:92vw; background:#fff; border:1px solid #d4ccc0; border-radius:14px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,.12); display:flex; min-height:200px;">
-        <div style="flex:1; padding:14px 16px; display:flex; gap:14px; align-items:center;">
-          <div style="width:140px; height:140px; background:#fff; border:1px solid #e8e0d0; border-radius:10px; padding:8px; display:grid; place-items:center; flex-shrink:0;">
-            <img id="ticketQrImg" alt="QR Ticket" style="width:100%; height:100%; object-fit:contain; image-rendering: crisp-edges;">
-          </div>
-          <div style="flex:1; text-align:left; display:flex; flex-direction:column; gap:6px;">
-            <div style="display:flex; align-items:center; gap:6px;">
-              <span style="font-size:9px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#0a4c23; background:#f5f1e8; border:1px solid #e8e0d0; padding:3px 7px; border-radius:999px;">CTP MATAPALO</span>
-              <span id="ticketNumero" class="mono" style="font-size:10px; font-weight:800; letter-spacing:.06em; color:#0a4c23; background:#fff; border:1px solid #d4ccc0; padding:3px 7px; border-radius:999px;">#001</span>
+      <!-- Ticket premium refinado horizontal con talón desprendible -->
+      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+      <div id="ticketPreview" class="hidden" style="width:720px; max-width:95vw; background:#fdfbf3; border:1px solid #d8cfba; border-radius:12px; overflow:hidden; box-shadow:0 16px 40px rgba(15,23,42,.14), 0 1px 3px rgba(15,23,42,.06); display:flex; min-height:280px; position:relative;">
+        <!-- Textura lino + marca de agua seguridad -->
+        <div style="position:absolute; inset:0; opacity:.045; pointer-events:none; background-image:url('data:image/svg+xml,%3Csvg width=%27100%27 height=%27100%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cfilter id=%27n%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%270.9%27 numOctaves=%272%27/%3E%3C/filter%3E%3Crect width=%27100%25%27 height=%27100%25%27 filter=%27url(%23n)%27 opacity=%270.4%27/%3E%3C/svg%3E');"></div>
+        <div style="position:absolute; inset:0; display:grid; place-items:center; pointer-events:none; opacity:.035;">
+          <div style="font-family:'Cormorant Garamond', serif; font-size:84px; font-weight:700; color:#0a4c23; letter-spacing:.08em; transform:rotate(-12deg);">CTP • MATAPALO</div>
+        </div>
+        <!-- Bordes envejecidos sutiles -->
+        <div style="position:absolute; inset:0; border-radius:12px; box-shadow:inset 0 0 0 1px rgba(212,204,192,.9), inset 0 0 30px rgba(139,115,74,.07); pointer-events:none;"></div>
+        <!-- Cuerpo principal -->
+        <div style="flex:1; display:flex; flex-direction:column; position:relative;">
+          <!-- Banda superior verde oscuro -->
+          <div style="background:linear-gradient(180deg, #0f3a1f 0%, #0a4c23 100%); color:#fff; padding:10px 16px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,.08);">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="display:inline-flex; align-items:center; gap:7px; font-size:11px; font-weight:800; letter-spacing:.04em;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="flex-shrink:0;"><path d="M12 2C11 3.5 9.5 4.2 8 4.5C8.8 5.2 9.2 6.2 9 7.3C7.8 6.8 6.7 7.2 6 8.3C6.9 8.6 7.5 9.4 7.6 10.5C6.5 10.2 5.6 10.7 5 11.8C6 12 6.8 12.7 7 13.8C6 13.6 5.1 14.1 4.7 15.1C5.8 15.2 6.7 15.8 7 16.9C6 16.7 5.2 17.3 4.8 18.3C6 18.2 6.9 18.8 7.3 19.8H16.7C17.1 18.8 18 18.2 19.2 18.3C18.8 17.3 18 16.7 17 16.9C17.3 15.8 18.2 15.2 19.3 15.1C18.9 14.1 18 13.6 17 13.8C17.2 12.7 18 12 19 11.8C18.4 10.7 17.5 10.2 16.4 10.5C16.5 9.4 17.1 8.6 18 8.3C17.3 7.2 16.2 6.8 15 7.3C14.8 6.2 15.2 5.2 16 4.5C14.5 4.2 13 3.5 12 2Z" fill="white" fill-opacity=".95"/><rect x="11" y="15" width="2" height="5" rx="0.7" fill="#f5f1e8"/><rect x="9.5" y="19.5" width="5" height="1.2" rx="0.6" fill="#d4a96a"/></svg>
+                CTP MATAPALO
+              </span>
+              <span style="width:1px; height:16px; background:rgba(255,255,255,.22);"></span>
+              <span style="font-size:9px; font-weight:700; letter-spacing:.14em; opacity:.92;">ENTRADA OFICIAL</span>
             </div>
-            <div id="ticketCodigo" class="mono" style="font-size:18px; font-weight:800; letter-spacing:.14em; color:#0a4c23; line-height:1;">A7K9P</div>
-            <div id="ticketNombre" style="font-size:13px; font-weight:700; color:#17150f; line-height:1.2;">—</div>
-            <div id="ticketCedula" class="mono" style="font-size:10px; color:#5a5a5a;">—</div>
-            <div id="ticketDetalle" style="font-size:10px; font-weight:700; color:#fff; background:#0a4c23; border-radius:999px; padding:5px 10px; display:inline-block; width:fit-content;">—</div>
-            <div style="font-size:8px; color:#9CA3AF; margin-top:2px;">Válida 1 persona • No requiere impresión</div>
+            <span id="ticketNumero" class="mono" style="font-size:12px; font-weight:800; letter-spacing:.06em; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18); padding:5px 10px; border-radius:999px; backdrop-filter:blur(4px);">#002</span>
+          </div>
+          <!-- Contenido -->
+          <div style="flex:1; padding:14px 16px; display:flex; gap:16px; align-items:flex-start; background:linear-gradient(180deg, #fdfbf3 0%, #f5f1e8 100%); position:relative;">
+            <!-- QR con marco seguridad -->
+            <div style="position:relative; flex-shrink:0;">
+              <div style="position:absolute; inset:-6px; border:1px solid #d8cfba; border-radius:4px; pointer-events:none;"></div>
+              <div style="position:absolute; inset:-3px; border:1px solid rgba(10,76,35,.12); border-radius:2px; pointer-events:none;"></div>
+              <div style="width:160px; height:160px; background:#fff; border:1px solid #0a4c23; padding:8px; display:grid; place-items:center; box-shadow:0 2px 8px rgba(0,0,0,.06); position:relative;">
+                <img id="ticketQrImg" alt="QR Ticket" style="width:100%; height:100%; object-fit:contain; image-rendering: crisp-edges;">
+              </div>
+              <!-- Emblema holográfico -->
+              <div style="position:absolute; bottom:-10px; left:-10px; width:42px; height:42px; border-radius:50%; background:conic-gradient(from 0deg, #d4a96a, #f5f1e8, #7fb8a5, #d4a96a); border:1px solid rgba(255,255,255,.9); box-shadow:0 2px 8px rgba(0,0,0,.15), inset 0 1px 2px rgba(255,255,255,.8); display:grid; place-items:center; overflow:hidden;">
+                <div style="width:32px; height:32px; border-radius:50%; background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.9), rgba(255,255,255,.15) 40%, transparent 70%), linear-gradient(135deg, #0a4c23 0%, #1a6b3a 100%); border:1px solid rgba(255,255,255,.6); display:grid; place-items:center; color:#fff; font-size:10px; font-weight:800;">◈</div>
+                <div style="position:absolute; inset:0; border-radius:50%; background:linear-gradient(105deg, transparent 30%, rgba(255,255,255,.45) 50%, transparent 70%);"></div>
+              </div>
+            </div>
+            <!-- Detalles refinados -->
+            <div style="flex:1; display:flex; flex-direction:column; gap:7px; min-width:0; text-align:left;">
+              <div>
+                <div style="font-family:'Playfair Display', 'Cormorant Garamond', serif; font-size:13px; font-weight:700; letter-spacing:.02em; color:#17150f; line-height:1.25;">GRAN CENA DE GALA ANUAL - MATAPALO 2026</div>
+                <div style="font-size:9px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:#7a6e5a; margin-top:2px;">ANIVERSARIO LIV DE FUNDADORES</div>
+              </div>
+              <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                <span id="ticketCodigo" class="mono" style="font-size:20px; font-weight:800; letter-spacing:.12em; color:#0a4c23; line-height:1;">ANP54</span>
+                <span style="font-size:9px; color:#9CA3AF;">•</span>
+                <span id="ticketCedula" class="mono" style="font-size:10px; font-weight:600; color:#5a5a5a; background:#fff; border:1px solid #e8e0d0; padding:3px 7px; border-radius:999px;">CÉDULA 6-0606-0606</span>
+              </div>
+              <div id="ticketNombre" style="font-family:'Cormorant Garamond', serif; font-size:13px; font-weight:700; color:#17150f; line-height:1.2; border-left:2px solid #d4a96a; padding-left:8px;">—</div>
+              <!-- Etiqueta vintage cuero/metal -->
+              <div id="ticketDetalle" style="font-size:10px; font-weight:800; letter-spacing:.02em; color:#3a2a12; background:linear-gradient(180deg, #f7e8c7 0%, #e8d5a3 50%, #d4b77a 100%); border:1px solid #b89a5a; border-top:1px solid #f0d9a8; border-bottom:1px solid #a68b4a; border-radius:6px; padding:7px 12px; display:inline-block; width:fit-content; box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 1px 3px rgba(0,0,0,.12), inset 0 -1px 2px rgba(0,0,0,.08); text-shadow:0 1px 0 rgba(255,255,255,.5); position:relative;">
+                ZONA MESAS PREMIER - Mesa 3 • CRC 10,000
+              </div>
+              <div style="display:flex; align-items:center; gap:6px; font-size:8px; color:#7a6e5a; margin-top:2px;">
+                <span style="display:inline-flex; align-items:center; gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0a4c23" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-3 4.5-4.5 8-4.5s6.5 1.5 8 4.5"/></svg> Valida 1 persona</span>
+                <span style="opacity:.4;">•</span>
+                <span style="display:inline-flex; align-items:center; gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0a4c23" stroke-width="1.6"><path d="M2 9a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V9Z"/><path d="M13 6v12"/><circle cx="9" cy="12" r="1.5" fill="#0a4c23" stroke="none"/></svg> Presentar en puerta</span>
+              </div>
+            </div>
+          </div>
+          <!-- Footer sutil -->
+          <div style="height:1px; background:repeating-linear-gradient(90deg, #d8cfba 0 6px, transparent 6px 12px); margin:0 16px;"></div>
+          <div style="padding:6px 16px; display:flex; justify-content:space-between; align-items:center; font-size:7px; letter-spacing:.08em; text-transform:uppercase; color:#9CA3AF;">
+            <span>CTPM 2026 • Papel de seguridad</span><span style="color:#b89a5a;">●</span><span>SINPE MÓVIL: 8888-8888</span>
           </div>
         </div>
-        <div style="width:1px; background:repeating-linear-gradient(180deg, #d4ccc0 0 6px, transparent 6px 10px); position:relative; display:flex; align-items:center;">
-          <span style="position:absolute; top:-6px; left:50%; transform:translateX(-50%); width:12px; height:12px; background:#f5f1e8; border:1px solid #d4ccc0; border-radius:50%;"></span>
-          <span style="position:absolute; bottom:-6px; left:50%; transform:translateX(-50%); width:12px; height:12px; background:#f5f1e8; border:1px solid #d4ccc0; border-radius:50%;"></span>
+        <!-- Perforación micro-dentada con muescas -->
+        <div style="width:14px; background:repeating-linear-gradient(180deg, transparent 0 3px, #2a2a2a 3px 4px, transparent 4px 7px); position:relative; display:flex; align-items:center; justify-content:center; border-left:1px dashed #2a2a2a; border-right:1px dashed #2a2a2a; margin:6px 0;">
+          <span style="position:absolute; top:-7px; left:50%; transform:translateX(-50%); width:14px; height:14px; background:#fdfbf3; border:1px solid #2a2a2a; border-radius:50%; box-shadow:inset 0 1px 2px rgba(0,0,0,.1);"></span>
+          <span style="position:absolute; bottom:-7px; left:50%; transform:translateX(-50%); width:14px; height:14px; background:#fdfbf3; border:1px solid #2a2a2a; border-radius:50%; box-shadow:inset 0 1px 2px rgba(0,0,0,.1);"></span>
         </div>
-        <div style="width:110px; background:#f5f1e8; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:12px 8px; text-align:center; border-left:1px dashed #d4ccc0;">
-          <div style="font-size:7px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#0a4c23;">TALÓN</div>
-          <div id="ticketNumeroBottom" class="mono" style="font-size:11px; font-weight:800; letter-spacing:.08em; color:#0a4c23;">#001</div>
-          <div style="width:54px; height:54px; background:#fff; border:1px solid #e8e0d0; border-radius:8px; padding:4px; display:grid; place-items:center;">
+        <!-- Talón derecho -->
+        <div style="width:128px; background:linear-gradient(180deg, #fdfbf3 0%, #f5f1e8 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:14px 10px; text-align:center; position:relative;">
+          <div style="position:absolute; inset:0; opacity:.04; background-image: radial-gradient(circle at 50% 30%, #0a4c23 1px, transparent 1px); background-size:12px 12px; pointer-events:none;"></div>
+          <div style="background:linear-gradient(180deg, #f7e8c7, #e8d5a3); border:1px solid #b89a5a; border-radius:999px; padding:5px 10px; box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 1px 2px rgba(0,0,0,.08);">
+            <div style="font-size:7px; font-weight:800; letter-spacing:.14em; color:#3a2a12; text-transform:uppercase;">TALÓN</div>
+            <div id="ticketNumeroBottom" class="mono" style="font-size:13px; font-weight:800; letter-spacing:.06em; color:#0a4c23; line-height:1;">#002</div>
+          </div>
+          <div style="width:78px; height:78px; background:#fff; border:1px solid #0a4c23; border-radius:8px; padding:6px; display:grid; place-items:center; box-shadow:0 1px 4px rgba(0,0,0,.08);">
             <img id="ticketQrMini" alt="qr mini" style="width:100%; height:100%; object-fit:contain;">
           </div>
-          <div style="font-size:7px; letter-spacing:.08em; color:#5a5a5a; text-transform:uppercase;">CTPM 2026</div>
-          <div style="font-size:7px; color:#9CA3AF;">SINPE 8888-8888</div>
+          <div style="font-size:7px; font-weight:700; letter-spacing:.06em; color:#5a5a5a; text-transform:uppercase;">CTPM 2026</div>
+          <div style="font-size:7px; font-weight:600; color:#0a4c23; letter-spacing:.04em;">SINPE MÓVIL: 8888-8888</div>
+          <div style="font-size:6px; color:#9CA3AF; margin-top:2px;">#002</div>
         </div>
       </div>
       <!-- QR solo fallback oculto para compatibilidad -->
@@ -321,7 +377,9 @@ async function openModal(id){
       const qrSrc='/'+row.qr_path;
       mImg.src=qrSrc; if(ticketQrImg) ticketQrImg.src=qrSrc; if(ticketQrMini) ticketQrMini.src=qrSrc; qrFrame.classList.add('hidden');
       ticketNumero.textContent=numeroStr; if(ticketNumeroBottom) ticketNumeroBottom.textContent=numeroStr; ticketCodigo.textContent=codeShort; ticketNombre.textContent=row.nombre_completo;
-      ticketCedula.textContent='Cedula '+row.cedula; ticketDetalle.textContent=row.ubicacion + (row.mesa_numero?' Mesa '+row.mesa_numero:'') + ' · CRC '+Number(row.monto||0).toLocaleString('es-CR');
+      ticketCedula.textContent='CÉDULA '+row.cedula;
+      const zonaLabel=row.ubicacion==='Mesas' ? `ZONA MESAS PREMIER - Mesa ${row.mesa_numero} • CRC ${Number(row.monto||0).toLocaleString('es-CR')}` : `ZONA GRADAS • CRC ${Number(row.monto||0).toLocaleString('es-CR')}`;
+      ticketDetalle.textContent=zonaLabel;
       // compat: también llenar qrSolo para PDF legacy
       qrSoloNumero.textContent=numeroStr; qrSoloCodigo.textContent=codeShort; qrSoloNombre.textContent=row.nombre_completo; qrSoloDetalle.textContent=ticketDetalle.textContent;
       ticketPreview.classList.remove('hidden'); qrSoloMeta.classList.add('hidden');
@@ -353,7 +411,9 @@ mAprobar.onclick=async()=>{
     mImg.src=qrSrc; if(ticketQrImg) ticketQrImg.src=qrSrc; if(ticketQrMini) ticketQrMini.src=qrSrc; qrFrame.classList.add('hidden');
     const numStr = j.numero ? '#'+String(j.numero).padStart(3,'0') : '#—';
     ticketNumero.textContent=numStr; if(ticketNumeroBottom) ticketNumeroBottom.textContent=numStr; ticketCodigo.textContent=j.codigo; ticketNombre.textContent=selRow?selRow.nombre_completo:''; 
-    ticketCedula.textContent=selRow?('Cedula '+selRow.cedula):''; ticketDetalle.textContent=(selRow?selRow.ubicacion:'')+(selRow?.mesa_numero?' Mesa '+selRow.mesa_numero:'')+' · CRC '+(selRow?Number(selRow.monto||0).toLocaleString('es-CR'):'');
+    ticketCedula.textContent=selRow?('CÉDULA '+selRow.cedula):''; 
+    const zonaLabel2=selRow ? (selRow.ubicacion==='Mesas' ? `ZONA MESAS PREMIER - Mesa ${selRow.mesa_numero} • CRC ${Number(selRow.monto||0).toLocaleString('es-CR')}` : `ZONA GRADAS • CRC ${Number(selRow.monto||0).toLocaleString('es-CR')}`) : '';
+    ticketDetalle.textContent=zonaLabel2;
     qrSoloNumero.textContent=numStr; qrSoloCodigo.textContent=j.codigo; // compat
     ticketPreview.classList.remove('hidden');
     mQrLink.innerHTML=`QR listo: <a href="/${j.qr_path}" target="_blank" class="link-strong">Abrir QR</a> · ${numStr} · <strong class="mono">${j.codigo}</strong>`;
@@ -392,15 +452,32 @@ async function generarTicketBlob(){
     ctx.strokeStyle='#e8e0d0'; ctx.strokeRect(22,62,150,150);
     try{ ctx.drawImage(qrImg,30,70,134,134);}catch(e){}
   }
-  // centro detalles
+  // textura lino crema + marca de agua
+  ctx.fillStyle='#fdfbf3'; ctx.fillRect(0,44,900,276);
+  // marca de agua sutil CTP
+  ctx.fillStyle='rgba(10,76,35,.035)'; ctx.textAlign='center'; ctx.font='bold 48px Poppins, sans-serif'; ctx.fillText('CTP • MATAPALO',340,170);
+  // centro detalles premium
   ctx.textAlign='left';
-  ctx.fillStyle='#0a4c23'; ctx.font='bold 20px monospace'; ctx.fillText(code, 192, 90);
-  ctx.fillStyle='#17150f'; ctx.font='bold 13px Poppins, sans-serif'; ctx.fillText(nombre, 192, 112);
-  ctx.font='10px monospace'; ctx.fillStyle='#5a5a5a'; ctx.fillText(cedula, 192, 128);
-  ctx.fillStyle='#f5f1e8'; ctx.strokeStyle='#e8e0d0';
-  const detW=Math.min(380, ctx.measureText(detalle).width+22); ctx.beginPath(); ctx.roundRect(192,142, detW,22, 11); ctx.fill(); ctx.stroke();
-  ctx.fillStyle='#0a4c23'; ctx.font='bold 10px Poppins, sans-serif'; ctx.fillText(detalle, 203, 156);
-  ctx.font='600 7px Poppins, sans-serif'; ctx.fillStyle='#9CA3AF'; ctx.fillText('Valida 1 persona  •  Presenta este ticket en puerta', 192, 180);
+  // titulo evento serif
+  ctx.fillStyle='#17150f'; ctx.font='bold 9px Poppins, sans-serif'; ctx.fillText('GRAN CENA DE GALA ANUAL - MATAPALO 2026', 192, 68);
+  ctx.font='600 6px Poppins, sans-serif'; ctx.fillStyle='#7a6e5a'; ctx.fillText('ANIVERSARIO LIV DE FUNDADORES', 192, 78);
+  ctx.fillStyle='#0a4c23'; ctx.font='bold 16px monospace'; ctx.fillText(code, 192, 96);
+  ctx.fillStyle='#17150f'; ctx.font='bold 11px Poppins, sans-serif'; ctx.fillText(nombre, 192, 112);
+  ctx.font='9px monospace'; ctx.fillStyle='#5a5a5a'; ctx.fillText(cedula, 192, 124);
+  // etiqueta vintage cuero/metal
+  const grad=ctx.createLinearGradient(192,142, 192,164);
+  grad.addColorStop(0,'#f7e8c7'); grad.addColorStop(0.5,'#e8d5a3'); grad.addColorStop(1,'#d4b77a');
+  ctx.fillStyle=grad; ctx.strokeStyle='#b89a5a'; ctx.lineWidth=1;
+  const detW=Math.min(360, ctx.measureText(detalle).width+24); ctx.beginPath(); ctx.roundRect(192,136, detW,20, 4); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#3a2a12'; ctx.font='bold 7px Poppins, sans-serif'; ctx.fillText(detalle, 204, 149);
+  // holograma sutil
+  const hx=192+detW+14, hy=146;
+  const hg=ctx.createRadialGradient(hx,hy,4, hx,hy,10);
+  hg.addColorStop(0,'#f5f1e8'); hg.addColorStop(0.5,'#7fb8a5'); hg.addColorStop(1,'#d4a96a');
+  ctx.fillStyle=hg; ctx.beginPath(); ctx.arc(hx,hy,9,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=0.8; ctx.stroke();
+  ctx.fillStyle='#0a4c23'; ctx.font='bold 6px Poppins, sans-serif'; ctx.textAlign='center'; ctx.fillText('◈', hx, hy+2); ctx.textAlign='left';
+  ctx.font='600 6px Poppins, sans-serif'; ctx.fillStyle='#7a6e5a'; ctx.fillText('Valida 1 persona  •  Presentar en puerta', 192, 172);
   // perforado vertical
   const perfX=640;
   ctx.setLineDash([6,6]); ctx.strokeStyle='#d4ccc0'; ctx.beginPath(); ctx.moveTo(perfX,44); ctx.lineTo(perfX,280); ctx.stroke(); ctx.setLineDash([]);
@@ -474,10 +551,13 @@ if(btnQrPdf) btnQrPdf.onclick=async()=>{
     }catch(e){}
     pdf.setFillColor(255,255,255); pdf.setDrawColor(232,224,208); pdf.rect(4,16,28,28);
     pdf.addImage(qrDataUrl, 'PNG', 5, 17, 26, 26);
+    // evento premium
+    pdf.setFontSize(5); pdf.setTextColor(23,21,15); pdf.text('GRAN CENA DE GALA ANUAL - MATAPALO 2026', 42, 20);
+    pdf.setFontSize(3.5); pdf.setTextColor(122,110,90); pdf.text('ANIVERSARIO LIV DE FUNDADORES', 42, 22.5);
     // codigo y nombre centro
-    pdf.setFontSize(11); pdf.setTextColor(10,76,35); pdf.text(code, 42, 24);
-    pdf.setFontSize(7); pdf.setTextColor(20,20,20); pdf.text(nombre, 42, 30);
-    pdf.setFontSize(5); pdf.setTextColor(90,90,90); pdf.text(safeCedula, 42, 33);
+    pdf.setFontSize(10); pdf.setTextColor(10,76,35); pdf.text(code, 42, 27);
+    pdf.setFontSize(6.5); pdf.setTextColor(20,20,20); pdf.text(nombre, 42, 31);
+    pdf.setFontSize(4.5); pdf.setTextColor(90,90,90); pdf.text(safeCedula, 42, 33.5);
     pdf.setFontSize(6); pdf.setTextColor(10,76,35);
     // pill detalle
     const pillW=Math.min(50, pdf.getTextWidth(safeDetalle)+6); pdf.setFillColor(245,241,232); pdf.roundedRect(42, 36, pillW, 6, 1, 1, 'F'); pdf.setDrawColor(232,224,208); pdf.roundedRect(42, 36, pillW, 6, 1, 1, 'D');
