@@ -341,8 +341,15 @@ if(btnQrCopy) btnQrCopy.onclick=async()=>{
     window.open(mImg.src, '_blank');
   }
 };
-if(btnQrDownload) btnQrDownload.onclick=()=>{
-  const a=document.createElement('a'); a.href=mImg.src; a.download=(qrSoloCodigo.textContent||'qr')+'.png'; a.click();
+if(btnQrDownload) btnQrDownload.onclick=async()=>{
+  try{
+    const blob=await fetch(mImg.src).then(r=>r.blob());
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=(qrSoloCodigo.textContent||'qr')+'.png'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 3000);
+  }catch(e){
+    const a=document.createElement('a'); a.href=mImg.src; a.download=(qrSoloCodigo.textContent||'qr')+'.png'; a.click();
+  }
 };
 if(btnQrPdf) btnQrPdf.onclick=async()=>{
   const code=qrSoloCodigo.textContent.trim()||'QR';
@@ -363,6 +370,9 @@ if(btnQrPdf) btnQrPdf.onclick=async()=>{
     pdf.text('CTP MATAPALO', 40, 10, {align:'center'});
     pdf.setFontSize(7); pdf.setTextColor(90,90,90); pdf.text('ENTRADA OFICIAL', 40, 14, {align:'center'});
     // numero
+    // sanitizar para Helvetica (sin ₡ ni ·)
+    const safeDetalle=detalle.replace(/·/g,'-').replace(/₡/g,'CRC ');
+    const safeCedula=cedula ? 'Cedula '+cedula : '';
     pdf.setFontSize(8); pdf.setTextColor(10,76,35); pdf.text(numero, 40, 19, {align:'center'});
     // QR grande — no enano
     const qrSrc=mImg.src;
@@ -379,13 +389,13 @@ if(btnQrPdf) btnQrPdf.onclick=async()=>{
     pdf.setFontSize(6); pdf.setTextColor(100,100,100); pdf.text('CODIGO 5 LETRAS/NUMEROS', 40, 77, {align:'center'});
     // nombre
     pdf.setFontSize(8); pdf.setTextColor(20,20,20); pdf.text(nombre, 40, 84, {align:'center'});
-    pdf.setFontSize(6); pdf.setTextColor(90,90,90); pdf.text(cedula ? 'Cedula '+cedula : '', 40, 87, {align:'center'});
-    // detalle zona/mesa
-    pdf.setFontSize(7); pdf.setTextColor(10,76,35); pdf.text(detalle, 40, 92, {align:'center'});
+    pdf.setFontSize(6); pdf.setTextColor(90,90,90); pdf.text(safeCedula, 40, 87, {align:'center'});
+    // detalle zona/mesa sin caracteres raros
+    pdf.setFontSize(7); pdf.setTextColor(10,76,35); pdf.text(safeDetalle, 40, 92, {align:'center'});
     // linea punteada
     pdf.setDrawColor(212,204,192); pdf.setLineDashPattern([1,1],0); pdf.line(5, 97, 75, 97);
-    pdf.setFontSize(5); pdf.setTextColor(90,90,90); pdf.text('Valida 1 persona  •  Presenta este PDF o el codigo en puerta', 40, 101, {align:'center'});
-    pdf.setFontSize(5); pdf.text('Asociacion CTPM  •  SINPE 8888-8888', 40, 104, {align:'center'});
+    pdf.setFontSize(5); pdf.setTextColor(90,90,90); pdf.text('Valida 1 persona - Presenta este PDF o el codigo en puerta', 40, 101, {align:'center'});
+    pdf.setFontSize(5); pdf.text('Asociacion CTPM - SINPE 8888-8888', 40, 104, {align:'center'});
     // nombre archivo con numero y nombre y codigo
     const safeNombre=nombre.replace(/[^a-zA-Z0-9]/g,'_').slice(0,15)||'Entrada';
     const fname=`Entrada_${numero.replace('#','')}_${safeNombre}_${code}.pdf`;
