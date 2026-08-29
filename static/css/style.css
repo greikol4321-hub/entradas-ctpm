@@ -673,26 +673,14 @@ tr:hover td{background:#FFFEFB}
 @media(max-width:480px){ .login-shell{min-height:70vh; padding:20px 12px} .login-card{padding:24px 20px} }
 /* Table to Cards — móvil <768px, 9 columnas → tarjetas con data-label */
 @media(max-width:768px){
-  .shell-admin .table-wrap{ border:none; background:transparent; overflow:visible; padding-bottom:0; }
-  .shell-admin table{ min-width:0; display:block; width:100%; border-collapse:separate; }
-  .shell-admin thead{ display:none; }
-  .shell-admin tbody{ display:block; }
-  .shell-admin tr{ display:block; background:#fff; border:1px solid #d8cfba; border-radius:14px; margin-bottom:14px; overflow:hidden; box-shadow:0 4px 16px rgba(15,23,42,.06); position:relative; }
-  .shell-admin tr:hover td{ background:transparent; }
-  .shell-admin tr::before{ content:""; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg, #0a4c23, #1a6b3a); }
-  .shell-admin td{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid #f0e8d5; white-space:normal; text-align:right; font-size:13px; box-sizing:border-box; }
-  .shell-admin td:last-child{ border-bottom:none; padding:12px 14px; background:#fdfbf3; }
-  .shell-admin td::before{ content:attr(data-label); font-weight:700; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:#7a6e5a; text-align:left; flex-shrink:0; max-width:42%; }
-  .shell-admin td[data-label="N°"]{ background:#f5f1e8; font-weight:800; border-bottom:1px solid #e8e0d0; }
-  .shell-admin td[data-label="N°"]::before{ color:#0a4c23; }
-  .shell-admin td[data-label="Código"] span{ font-size:12px; padding:4px 8px; }
-  .shell-admin td[data-label="Cliente"] strong{ font-size:13px; color:#17150f; }
-  .shell-admin td:last-child > div{ width:100%; justify-content:flex-end; gap:6px; }
-  .shell-admin td:last-child .btn{ flex:1; justify-content:center; min-width:0; padding:8px 6px; font-size:11px; }
-  .shell-admin .skeleton-table{ display:none; }
+  .shell-admin .table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--line); border-radius:14px; background:var(--surface); scrollbar-width:thin; }
+  .shell-admin table{ min-width:860px; }
+  .shell-admin th{ padding:10px 12px; font-size:9px; }
+  .shell-admin td{ padding:10px 12px; font-size:12px; white-space:nowrap; }
+  .shell-admin td:last-child > div{ gap:4px; }
+  .shell-admin td:last-child .btn{ padding:6px 8px; font-size:11px; white-space:nowrap; }
   .finanzas-charts{ grid-template-columns:1fr !important; }
   .admin-toolbar{ flex-direction:column; align-items:stretch; gap:10px; }
   .toolbar-actions{ flex-direction:column; }
   .search-input{ min-width:0; width:100%; }
-  .shell-admin .table-wrap{ border:none; background:transparent; padding:0; }
 }
