@@ -94,9 +94,9 @@
       <div id="mPreview" class="modal-preview" style="width:100%; display:flex; justify-content:center;">
         <a id="mCompLink" href="#" target="_blank" class="btn sm btn-ghost">Ver comprobante <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 17L17 7M17 7H9M17 7v8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
       </div>
-      <!-- QR solo — limpio, grande -->
-      <div class="qr-frame hidden" id="qrFrame" style="width:300px; height:300px; max-width:90vw; max-height:90vw; background:#fff; border:1px solid var(--line); border-radius:16px; padding:10px; display:grid; place-items:center; box-shadow:0 8px 20px rgba(15,23,42,.08);">
-        <img id="mImg" alt="Código QR" style="width:100%; height:100%; object-fit:contain; border-radius:8px;">
+      <!-- QR solo — grande, no enano -->
+      <div class="qr-frame hidden" id="qrFrame" style="width:360px; height:360px; max-width:92vw; max-height:92vw; background:#fff; border:1px solid var(--line); border-radius:16px; padding:12px; display:grid; place-items:center; box-shadow:0 8px 20px rgba(15,23,42,.08);">
+        <img id="mImg" alt="Código QR" style="width:100%; height:100%; object-fit:contain; border-radius:10px; image-rendering: crisp-edges;">
       </div>
       <div id="qrSoloMeta" class="hidden" style="display:flex; flex-direction:column; gap:4px; align-items:center;">
         <span id="qrSoloNumero" class="mono" style="font-size:13px; font-weight:800; letter-spacing:.08em; color:var(--ink);">#001</span>
@@ -114,7 +114,8 @@
         <button id="mAprobar" class="btn primary modal-cta">Aprobar y generar QR <span class="btn-icon" aria-hidden="true"><svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
         <button id="mDesbloquear" class="btn sm hidden">Desbloquear mesa</button>
         <button id="btnQrCopy" class="btn sm hidden">Copiar QR</button>
-        <button id="btnQrDownload" class="btn sm hidden">Descargar</button>
+        <button id="btnQrDownload" class="btn sm hidden">Descargar PNG</button>
+        <button id="btnQrPdf" class="btn sm primary hidden">Exportar PDF</button>
       </div>
       <div id="mMsg" class="alert hidden" role="status" style="width:100%;"></div>
     </div>
@@ -122,6 +123,7 @@
 </div>
 {% endblock %}
 {% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 let filtro='', zonaFiltro='', query='', selId=null, selRow=null;
 const tbody=document.querySelector('#tabla tbody'), empty=document.getElementById('empty'), skeleton=document.getElementById('skeleton');
@@ -131,7 +133,7 @@ const modal=document.getElementById('modal'), mTitle=document.getElementById('mT
       mDesbloquear=document.getElementById('mDesbloquear'), boletoPreview=document.getElementById('boletoPreview'),
       qrSoloMeta=document.getElementById('qrSoloMeta'), qrSoloNumero=document.getElementById('qrSoloNumero'), qrSoloCodigo=document.getElementById('qrSoloCodigo'),
       qrSoloNombre=document.getElementById('qrSoloNombre'), qrSoloDetalle=document.getElementById('qrSoloDetalle'),
-      btnQrCopy=document.getElementById('btnQrCopy'), btnQrDownload=document.getElementById('btnQrDownload');
+      btnQrCopy=document.getElementById('btnQrCopy'), btnQrDownload=document.getElementById('btnQrDownload'), btnQrPdf=document.getElementById('btnQrPdf');
 function renderKpis(rows){
   const c = s => rows.filter(r=>r.estado===s).length;
   document.getElementById('kpiPend').textContent=c('Pendiente');
@@ -275,7 +277,7 @@ async function openModal(id){
   mCompLink.href='/'+row.comprobante_path; mCompLink.classList.toggle('hidden', !row.comprobante_path);
   // reset solo QR
   qrFrame.classList.add('hidden'); qrSoloMeta.classList.add('hidden'); mImg.removeAttribute('src'); mQrLink.textContent=''; mQrLink.classList.add('hidden');
-  btnQrCopy.classList.add('hidden'); btnQrDownload.classList.add('hidden');
+  btnQrCopy.classList.add('hidden'); btnQrDownload.classList.add('hidden'); btnQrPdf.classList.add('hidden');
   boletoPreview.classList.add('hidden');
   mMsg.className='alert hidden'; mMsg.textContent='';
   mDesbloquear.classList.toggle('hidden', row.estado==='Usada');
@@ -291,7 +293,7 @@ async function openModal(id){
       qrSoloMeta.classList.remove('hidden');
       mQrLink.innerHTML=`<a href="/${row.qr_path}" target="_blank" class="link-strong">Abrir QR</a> · ${numeroStr}`;
       mQrLink.classList.remove('hidden');
-      btnQrCopy.classList.remove('hidden'); btnQrDownload.classList.remove('hidden');
+      btnQrCopy.classList.remove('hidden'); btnQrDownload.classList.remove('hidden'); btnQrPdf.classList.remove('hidden');
       prepararBoleto(row);
     }
   }
@@ -320,7 +322,7 @@ mAprobar.onclick=async()=>{
     qrSoloMeta.classList.remove('hidden');
     mQrLink.innerHTML=`QR listo: <a href="/${j.qr_path}" target="_blank" class="link-strong">Abrir QR</a> · ${numStr} · <strong class="mono">${j.codigo}</strong>`;
     mQrLink.classList.remove('hidden');
-    btnQrCopy.classList.remove('hidden'); btnQrDownload.classList.remove('hidden');
+    btnQrCopy.classList.remove('hidden'); btnQrDownload.classList.remove('hidden'); btnQrPdf.classList.remove('hidden');
     if(selRow){ selRow.qr_path=j.qr_path; selRow.codigo=j.codigo; selRow.numero=j.numero; prepararBoleto(selRow); }
     mMsg.innerHTML=`Aprobada ${numStr} · Código <strong class="mono">${j.codigo}</strong> — QR solo, listo para enviar por WhatsApp.`; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
     mAprobar.classList.add('hidden'); load();
@@ -341,6 +343,58 @@ if(btnQrCopy) btnQrCopy.onclick=async()=>{
 };
 if(btnQrDownload) btnQrDownload.onclick=()=>{
   const a=document.createElement('a'); a.href=mImg.src; a.download=(qrSoloCodigo.textContent||'qr')+'.png'; a.click();
+};
+if(btnQrPdf) btnQrPdf.onclick=async()=>{
+  const code=qrSoloCodigo.textContent.trim()||'QR';
+  const numero=qrSoloNumero.textContent.trim()||'#—';
+  const nombre=qrSoloNombre.textContent.trim()||'';
+  // buscar row actual para cedula/monto si está en selRow
+  const row=selRow||{};
+  const cedula=row.cedula||'';
+  const detalle=qrSoloDetalle.textContent.trim()||'';
+  try{
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait', unit:'mm', format:[80, 120]}); // ticket 80x120mm
+    // fondo crema
+    pdf.setFillColor(245,241,232); pdf.rect(0,0,80,120,'F');
+    // borde
+    pdf.setDrawColor(212,204,192); pdf.setLineWidth(0.4); pdf.rect(3,3,74,114);
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(10,76,35);
+    pdf.text('CTP MATAPALO', 40, 10, {align:'center'});
+    pdf.setFontSize(7); pdf.setTextColor(90,90,90); pdf.text('ENTRADA OFICIAL', 40, 14, {align:'center'});
+    // numero
+    pdf.setFontSize(8); pdf.setTextColor(10,76,35); pdf.text(numero, 40, 19, {align:'center'});
+    // QR grande — no enano
+    const qrSrc=mImg.src;
+    // fetch QR como base64
+    let qrDataUrl=qrSrc;
+    try{
+      const blob=await fetch(qrSrc).then(r=>r.blob());
+      qrDataUrl=await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(blob); });
+    }catch(e){}
+    // 45mm QR centrado
+    pdf.addImage(qrDataUrl, 'PNG', 17.5, 23, 45, 45);
+    // codigo grande
+    pdf.setFontSize(16); pdf.setTextColor(10,76,35); pdf.text(code, 40, 74, {align:'center'});
+    pdf.setFontSize(6); pdf.setTextColor(100,100,100); pdf.text('CODIGO 5 LETRAS/NUMEROS', 40, 77, {align:'center'});
+    // nombre
+    pdf.setFontSize(8); pdf.setTextColor(20,20,20); pdf.text(nombre, 40, 84, {align:'center'});
+    pdf.setFontSize(6); pdf.setTextColor(90,90,90); pdf.text(cedula ? 'Cedula '+cedula : '', 40, 87, {align:'center'});
+    // detalle zona/mesa
+    pdf.setFontSize(7); pdf.setTextColor(10,76,35); pdf.text(detalle, 40, 92, {align:'center'});
+    // linea punteada
+    pdf.setDrawColor(212,204,192); pdf.setLineDashPattern([1,1],0); pdf.line(5, 97, 75, 97);
+    pdf.setFontSize(5); pdf.setTextColor(90,90,90); pdf.text('Valida 1 persona  •  Presenta este PDF o el codigo en puerta', 40, 101, {align:'center'});
+    pdf.setFontSize(5); pdf.text('Asociacion CTPM  •  SINPE 8888-8888', 40, 104, {align:'center'});
+    // nombre archivo con numero y nombre y codigo
+    const safeNombre=nombre.replace(/[^a-zA-Z0-9]/g,'_').slice(0,15)||'Entrada';
+    const fname=`Entrada_${numero.replace('#','')}_${safeNombre}_${code}.pdf`;
+    pdf.save(fname);
+    mMsg.textContent='PDF exportado: '+fname; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
+  }catch(e){
+    console.error(e);
+    mMsg.textContent='Error exportando PDF: '+e.message; mMsg.className='alert err'; mMsg.classList.remove('hidden');
+  }
 };
 // boleto — código corto 5 chars fácil de escribir
 function prepararBoleto(row){
