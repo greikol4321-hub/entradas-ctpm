@@ -28,10 +28,13 @@ Antes eran 12 botones grises que decían Mesa 1, Mesa 2... funcionaba, aunque cl
 
 ### Con qué está hecho
 
-- **Backend:** Flask 3.1 con `psycopg` al pooler de Supabase Postgres, `qrcode[pil]` y `Pillow` para el QR. Sin ORM, a pelo, porque para 12 mesas no hace falta más.
-- **Frontend:** Jinja y Vanilla JS. El CSS vive en un solo archivo con tokens tipo `--ink:#0a4c23`, ese verde del colegio que ya conoces.
-- **Infra:** Vercel serverless. Los comprobantes y los QR quedan en Supabase Storage, en buckets privados `comprobantes`/`qrcodes`; en Vercel viven un rato en `/tmp` y ya está.
-- **Seguridad, lo justo:** saneo con `esc()` en `admin.html` para no comerse un XSS si alguien pone `<img>` en el nombre, rate-limit en memoria (5 intentos por minuto para comprar, 10 para login), cabeceras `CSP/HSTS/X-Frame`, RLS cerrado a `authenticated/service_role` y una tablita `auditoria` donde queda quién aprobó o validó qué.
+Flask 3.1 con `psycopg` al pooler de Supabase Postgres, más `qrcode` y `Pillow` para el QR. Sin ORM, a pelo, porque para 12 mesas no hace falta más. Adelante va Jinja con Vanilla JS y un solo `style.css` con el verde del cole `--ink:#0a4c23`. La verdad es que todo eso corre en Vercel serverless y los comprobantes quedan en Supabase Storage, en buckets privados; en Vercel viven un rato en `/tmp` y ya está. Para seguridad, lo justo: saneo con `esc()` por si alguien mete `<img>` en el nombre, límites de 5 por minuto para comprar y 10 para login, cabeceras `CSP/HSTS/X-Frame`, RLS cerrado y una tablita `auditoria` donde queda quién hizo qué.
+
+### Qué salió mal
+
+Al principio las 12 sillas miraban al revés, daban la espalda a la mesa. Nos dimos cuenta en la demo y las giramos 180°. Eso sí, el ticket vertical también salió primero horizontal y hubo que pasarlo a 360×520. Pequeños tropiezos, nada grave. Abajo, un ticket impreso de verdad, no un render.
+
+![Ticket vertical impreso](static/img/ticket-ejemplo.jpg) <!-- si no tenés la foto, dejá el placeholder, no pasa nada -->
 
 ### Cómo está ordenado
 
