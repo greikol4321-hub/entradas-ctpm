@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preview — Mapa Mesas VIP</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Fragment+Mono&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0a4c23;--line:#d4ccc0;--line-2:#e8e0d0;--surface:#fff;--surface-2:#f5f1e8;--muted:#5a5a5a;--ok:#0F7A52}
+*{box-sizing:border-box}html,body{margin:0;font-family:Poppins,system-ui,sans-serif;background:#ebe5d9;color:var(--ink)}
+.wrap{max-width:860px;margin:24px auto;padding:0 16px}
+h1{font-size:22px;margin:0 0 6px}.sub{font-size:13px;color:var(--muted);margin:0 0 14px}
+/* === COPIADO DE style.css — mapa mesas === */
+.mesa-leyenda{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:10px;padding:8px 10px;background:#fff;border:1px solid var(--line);border-radius:999px;width:fit-content}
+.mesa-leyenda span{display:inline-flex;align-items:center;gap:6px}
+.mesa-leyenda .dot{width:12px;height:12px;border-radius:50%;border:2px solid transparent;flex-shrink:0}
+.mesa-leyenda .dot.disponible{background:#22c55e;border-color:#16a34a}
+.mesa-leyenda .dot.ocupada{background:#ef4444;border-color:#dc2626}
+.mesa-leyenda .dot.seleccionada{background:#f59e0b;border-color:#d97706;box-shadow:0 0 0 3px rgba(245,158,11,.22)}
+.gimnasio-mapa{position:relative;background:#f8fafc;border:2px solid #0a4c23;border-radius:18px;overflow:hidden;box-shadow:0 8px 32px rgba(10,76,35,.08);padding:0}
+.gimnasio-mapa::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(10,76,35,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(10,76,35,.045) 1px, transparent 1px);background-size:22px 22px;pointer-events:none}
+.gimnasio-top{display:flex;justify-content:center;padding:10px;position:relative;z-index:1}
+.pill-escenario{font-size:10px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;color:#fff;background:#1e3a2f;border:1px solid rgba(255,255,255,.12);padding:6px 14px;border-radius:999px}
+.vip-label{display:flex;justify-content:center;position:relative;z-index:1;margin:4px 0 2px}
+.vip-label::before{content:"ZONA DE MESAS VIP";font-size:9px;font-weight:800;letter-spacing:.14em;color:#0a4c23;background:#fff;border:1px solid var(--line);padding:4px 10px;border-radius:999px;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+.mesa-mapa-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:14px;position:relative;z-index:1;background:rgba(255,255,255,.72);border-top:1px solid rgba(10,76,35,.08);border-bottom:1px solid rgba(10,76,35,.08);margin:10px;border-radius:14px}
+@media(max-width:900px){.mesa-mapa-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.mesa-mapa-grid{grid-template-columns:repeat(2,1fr);gap:10px;padding:10px}}
+.mesa-mapa-item{aspect-ratio:1;background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:10px 8px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;position:relative;transition:border-color 160ms, box-shadow 160ms, transform 160ms}
+.mesa-mapa-item:hover{border-color:#0a4c23;transform:translateY(-1px);box-shadow:0 8px 18px rgba(10,76,35,.10)}
+.mesa-mapa-item.seleccionada{background:#fffbeb;border-color:#f59e0b;box-shadow:0 8px 20px rgba(245,158,11,.22), 0 0 0 3px rgba(245,158,11,.18)}
+.mesa-mapa-item.ocupada{background:#f1f5f9;border-color:#e2e8f0;color:#94a3b8;cursor:not-allowed;opacity:.92}
+.mesa-visual{position:relative;width:88px;height:88px;display:grid;place-items:center;flex-shrink:0}
+@media(max-width:640px){.mesa-visual{width:76px;height:76px}}
+.mesa-centro{width:56px;height:56px;border-radius:50%;background:linear-gradient(180deg,#fdfbf3 0%,#f5f1e8 100%);border:1.5px solid #0a4c23;display:grid;place-items:center;font-size:11px;font-weight:800;color:#0a4c23;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+.mesa-mapa-item.seleccionada .mesa-centro{background:linear-gradient(180deg,#fffbeb 0%,#fef3c7 100%);border-color:#d97706;color:#92400e}
+.mesa-mapa-item.ocupada .mesa-centro{background:#f1f5f9;border-color:#cbd5e1;color:#64748b}
+.silla{position:absolute;width:16px;height:16px;background-color:#16a34a;border:none;border-radius:0;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4H9V8z M7 13h10a1 1 0 0 1 1 1v3.5a1.5 1.5 0 0 1-1.5 1.5h-1a0.5 0.5 0 0 1-0.5-0.5V16H9v2.5a0.5 0.5 0 0 1-0.5 0.5h-1a1.5 1.5 0 0 1-1.5-1.5V14a1 1 0 0 1 1-1z M9 18.5V21M15 18.5V21' fill='black' stroke='black' stroke-width='0.4' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4H9V8z M7 13h10a1 1 0 0 1 1 1v3.5a1.5 1.5 0 0 1-1.5 1.5h-1a0.5 0.5 0 0 1-0.5-0.5V16H9v2.5a0.5 0.5 0 0 1-0.5 0.5h-1a1.5 1.5 0 0 1-1.5-1.5V14a1 1 0 0 1 1-1z M9 18.5V21M15 18.5V21' fill='black' stroke='black' stroke-width='0.4' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
+.silla.s1{top:-1px;left:50%;transform:translate(-50%,0)}.silla.s2{top:13%;right:4%}.silla.s3{bottom:13%;right:4%}.silla.s4{bottom:-1px;left:50%;transform:translate(-50%,0)}.silla.s5{bottom:13%;left:4%}.silla.s6{top:13%;left:4%}
+.mesa-mapa-item.seleccionada .silla{background-color:#d97706;filter:drop-shadow(0 0 3px rgba(217,119,6,.45))}
+.mesa-mapa-item.ocupada .silla{background-color:#dc2626;opacity:.95}
+.mesa-estado{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:#f5f1e8;border:1px solid var(--line);color:var(--muted)}
+.mesa-mapa-item.seleccionada .mesa-estado{background:#fef3c7;border-color:#fcd34d;color:#92400e}
+.mesa-mapa-item.ocupada .mesa-estado{background:#fee2e2;border-color:#fecaca;color:#991b1b}
+.gimnasio-bottom{display:flex;justify-content:space-between;padding:8px 12px;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#64748b;position:relative;z-index:1;background:rgba(255,255,255,.55);border-top:1px solid rgba(10,76,35,.06)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Mapa de Mesas VIP — Preview</h1>
+  <p class="sub">Solo mesas (12). Verde disponible, rojo ocupada, naranja seleccionada. Responsive: 4 cols PC → 3 tablet → 2 móvil.</p>
+  <div class="mesa-leyenda"><span><i class="dot disponible"></i> Disponible</span><span><i class="dot ocupada"></i> Ocupada</span><span><i class="dot seleccionada"></i> Seleccionada</span></div>
+  <div class="gimnasio-mapa">
+    <div class="gimnasio-top"><span class="pill-escenario">ESCENARIO — VIP</span></div>
+    <div class="vip-label"></div>
+    <div id="mesaGrid" class="mesa-mapa-grid"></div>
+    <div class="gimnasio-bottom"><span>GENERAL</span><span>GIMNASIO MATAPALO</span></div>
+  </div>
+  <p id="msg" style="margin-top:12px;font-size:13px;font-weight:700;color:#065f46;min-height:18px"></p>
+</div>
+<script>
+// mock ocupadas: 3,7,11 ocupadas para demo
+let ocupadas=[3,7,11], sel=null;
+const grid=document.getElementById('mesaGrid'), msg=document.getElementById('msg');
+function render(){
+  grid.innerHTML='';
+  for(let i=1;i<=12;i++){
+    const ocup=ocupadas.includes(i), isSel=String(sel)===String(i);
+    const btn=document.createElement('button');
+    btn.className='mesa-mapa-item'+(ocup?' ocupada':' disponible')+(isSel?' seleccionada':'');
+    btn.disabled=ocup;
+    btn.innerHTML=`<div class="mesa-visual"><div class="mesa-centro">Mesa ${i}</div><span class="silla s1"></span><span class="silla s2"></span><span class="silla s3"></span><span class="silla s4"></span><span class="silla s5"></span><span class="silla s6"></span></div><span class="mesa-estado">${ocup?'Ocupada':isSel?'Seleccionada':'Disponible'}</span>`;
+    if(!ocup) btn.onclick=()=>{ sel=i; msg.textContent=`✓ Mesa ${i} seleccionada`; render(); };
+    grid.appendChild(btn);
+  }
+}
+render();
+</script>
+</body>
+</html>

@@ -701,16 +701,15 @@ tr:hover td{background:#FFFEFB}
 .mesa-centro{width:56px; height:56px; border-radius:50%; background:linear-gradient(180deg, #fdfbf3 0%, #f5f1e8 100%); border:1.5px solid #0a4c23; display:grid; place-items:center; font-size:11px; font-weight:800; letter-spacing:.02em; color:#0a4c23; line-height:1; text-align:center; box-shadow:0 2px 6px rgba(0,0,0,.06), inset 0 1px 0 rgba(255,255,255,.9); z-index:1; position:relative}
 .mesa-mapa-item.seleccionada .mesa-centro{background:linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%); border-color:#d97706; color:#92400e}
 .mesa-mapa-item.ocupada .mesa-centro{background:#f1f5f9; border-color:#cbd5e1; color:#64748b}
-.silla{position:absolute; width:14px; height:14px; border-radius:50%; border:2px solid #16a34a; background:#22c55e; box-shadow:0 1px 4px rgba(0,0,0,.10), inset 0 1px 0 rgba(255,255,255,.7); transition:background-color 160ms var(--ease-out), border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out)}
-.silla.s1{top:0; left:50%; transform:translate(-50%,0)}
-.silla.s2{top:14%; right:6%}
-.silla.s3{bottom:14%; right:6%}
-.silla.s4{bottom:0; left:50%; transform:translate(-50%,0)}
-.silla.s5{bottom:14%; left:6%}
-.silla.s6{top:14%; left:6%}
-.mesa-mapa-item.seleccionada .silla{background:#f59e0b; border-color:#d97706; box-shadow:0 0 0 2px rgba(245,158,11,.28)}
-.mesa-mapa-item.ocupada .silla{background:#ef4444; border-color:#dc2626}
-.mesa-mapa-item.ocupada .silla{opacity:.9}
+.silla{position:absolute; width:16px; height:16px; background-color:#16a34a; border:none; border-radius:0; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4H9V8z M7 13h10a1 1 0 0 1 1 1v3.5a1.5 1.5 0 0 1-1.5 1.5h-1a0.5 0.5 0 0 1-0.5-0.5V16H9v2.5a0.5 0.5 0 0 1-0.5 0.5h-1a1.5 1.5 0 0 1-1.5-1.5V14a1 1 0 0 1 1-1z M9 18.5V21M15 18.5V21' fill='black' stroke='black' stroke-width='0.4' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat; -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4H9V8z M7 13h10a1 1 0 0 1 1 1v3.5a1.5 1.5 0 0 1-1.5 1.5h-1a0.5 0.5 0 0 1-0.5-0.5V16H9v2.5a0.5 0.5 0 0 1-0.5 0.5h-1a1.5 1.5 0 0 1-1.5-1.5V14a1 1 0 0 1 1-1z M9 18.5V21M15 18.5V21' fill='black' stroke='black' stroke-width='0.4' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat; transition:background-color 160ms var(--ease-out), transform 160ms var(--ease-out); filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
+.silla.s1{top:-1px; left:50%; transform:translate(-50%,0)}
+.silla.s2{top:13%; right:4%}
+.silla.s3{bottom:13%; right:4%}
+.silla.s4{bottom:-1px; left:50%; transform:translate(-50%,0)}
+.silla.s5{bottom:13%; left:4%}
+.silla.s6{top:13%; left:4%}
+.mesa-mapa-item.seleccionada .silla{background-color:#d97706; filter:drop-shadow(0 0 3px rgba(217,119,6,.45))}
+.mesa-mapa-item.ocupada .silla{background-color:#dc2626; opacity:.95}
 .mesa-estado{font-size:9px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; padding:3px 8px; border-radius:999px; background:var(--surface-2); border:1px solid var(--line); color:var(--muted); line-height:1}
 .mesa-mapa-item.seleccionada .mesa-estado{background:#fef3c7; border-color:#fcd34d; color:#92400e}
 .mesa-mapa-item.ocupada .mesa-estado{background:#fee2e2; border-color:#fecaca; color:#991b1b}
