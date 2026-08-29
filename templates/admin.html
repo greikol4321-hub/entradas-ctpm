@@ -412,7 +412,7 @@ async function generarTicketBlob(){
   const cedula=ticketCedula.textContent.trim()||'';
   const detalle=ticketDetalle.textContent.trim()||'';
   const qrImg=ticketQrImg;
-  const canvas=document.createElement('canvas'); canvas.width=600; canvas.height=820;
+  const canvas=document.createElement('canvas'); canvas.width=600; canvas.height=620;
   const ctx=canvas.getContext('2d');
   // fondo crema lino
   ctx.fillStyle='#fdfbf3'; ctx.fillRect(0,0,720,320);
