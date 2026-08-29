@@ -235,7 +235,7 @@ async function load(){
     if(x.estado==='Pendiente'){
       btn=`<button class="btn sm primary" data-aprobar="${x.id}">Aprobar</button> <button class="btn sm btn-danger" data-rechazar="${x.id}">Rechazar</button> <button class="btn sm" data-desbloquear="${x.id}">Desbloquear</button>`;
     } else if(x.estado==='Aprobada'){
-      btn=`<button class="btn sm" data-ver="${x.id}">Ver ticket</button> <button class="btn sm" data-copyimg="${x.id}">Copiar imagen</button> <button class="btn sm" data-desbloquear="${x.id}">Desbloquear</button>`;
+      btn=`<button class="btn sm" data-ver="${x.id}">Ver ticket</button> <button class="btn sm" data-desbloquear="${x.id}">Desbloquear</button>`;
     } else {
       btn=`<span class="muted small">Usada</span>`;
     }
