@@ -3,10 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Sistema oficial CTPM — compra tu entrada por SINPE Móvil, recibe QR único y valida en puerta en tiempo real. Colegio Técnico Profesional de Matapalo.">
-<meta property="og:title" content="Entradas CTPM — Venta oficial">
-<meta property="og:description" content="Pago por SINPE Móvil · QR único · Validación instantánea">
+<meta name="description" content="Sistema oficial CTPM — compra tu entrada para el Gran Baile de Gala 2026 en el Gimnasio de Matapalo por SINPE Móvil. Recibe tu QR único por WhatsApp y valida en puerta en segundos. Gradas y Mesas VIP.">
+<link rel="canonical" href="https://entradas-ctpm.vercel.app/">
+<meta property="og:title" content="Entradas CTPM — Venta oficial | Gran Baile 2026">
+<meta property="og:description" content="Pago por SINPE Móvil · QR único · Validación instantánea en puerta. Gimnasio CTP Matapalo.">
 <meta property="og:type" content="website">
+<meta property="og:image" content="https://entradas-ctpm.vercel.app/static/img/logo_colegio_nuevo.png">
 <meta name="theme-color" content="#0a4c23">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Event","name":"Gran Baile de Gala - Matapalo 2026","location":{"@type":"Place","name":"Gimnasio CTP Matapalo","address":"Matapalo, Quepos, Costa Rica"},"offers":[{"@type":"Offer","name":"Gradas","price":"5000","priceCurrency":"CRC"},{"@type":"Offer","name":"Mesas","price":"10000","priceCurrency":"CRC"}],"organizer":{"@type":"Organization","name":"CTP Matapalo"}}</script>
 <title>{% block title %}Entradas CTPM — Venta oficial{% endblock %}</title>
@@ -23,7 +25,7 @@
 <header class="header">
   <div class="header-container">
     <div class="header-logos-left">
-      <a href="/" title="CTP Matapalo — Inicio"><img src="{{ url_for('static', filename='img/logo_colegio_nuevo.png') }}" class="logo-escudo" alt="Escudo CTP Matapalo" width="72" height="72" loading="eager" decoding="async"></a>
+      <a href="/" title="CTP Matapalo — Inicio"><img src="{{ url_for('static', filename='img/logo_colegio_nuevo.png') }}" class="logo-escudo" alt="Escudo CTP Matapalo" width="72" height="72" loading="eager" decoding="async" fetchpriority="high"></a>
     </div>
     <div class="nav-right">
       <nav class="nav" id="nav" aria-label="Principal">

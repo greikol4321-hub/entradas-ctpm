@@ -624,6 +624,14 @@ def uploads(fname):
 def not_found(e):
     return render_template("404.html"), 404
 
+@app.get("/robots.txt")
+def robots():
+    return send_from_directory("static", "robots.txt", mimetype="text/plain")
+
+@app.get("/sitemap.xml")
+def sitemap():
+    return send_from_directory("static", "sitemap.xml", mimetype="application/xml")
+
 @app.get("/health")
 def health():
     conn = db()
