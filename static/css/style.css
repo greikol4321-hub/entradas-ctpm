@@ -530,12 +530,12 @@ tr:hover td{background:#FFFEFB}
 }
 .qr-frame img{width:100%; height:100%; object-fit:contain; border-radius:12px}
 
-/* scanner */
+/* scanner — Responsive Infinix Hot 50 Pro (360px logical) — Fluid + explicit mobile collapse (design-taste + ponytail) */
 .scanner-shell{max-width:720px; margin:18px auto; padding:0 16px}
-.scanner-card{overflow:hidden}
+.scanner-card{overflow:hidden; border-radius:var(--radius-lg)}
 .scanner-head{padding:20px 22px 16px; border-bottom:1px solid var(--line-2); background:linear-gradient(180deg, var(--surface-2), #FFFEFB)}
-.scanner-head h1{margin:0; font-family:"Poppins", sans-serif; font-size:36px; font-weight:800; letter-spacing:-.02em; color:var(--ink)}
-.scanner-head p{margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.6}
+.scanner-head h1{margin:0; font-family:"Poppins", sans-serif; font-size:clamp(26px, 7vw, 36px); font-weight:800; letter-spacing:-.02em; color:var(--ink); line-height:1}
+.scanner-head p{margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.6; max-width:65ch}
 .reader-wrap{padding:18px 18px 0}
 .reader{
   width:100%; max-width:420px; margin:0 auto; aspect-ratio:1; background:#0B0D12; border-radius:20px; overflow:hidden;
@@ -549,6 +549,7 @@ tr:hover td{background:#FFFEFB}
   content:""; position:absolute; inset:0; border-radius:20px; border:1px solid rgba(255,255,255,.06); pointer-events:none;
 }
 .controls{display:flex; gap:10px; padding:16px 18px; flex-wrap:wrap; align-items:center}
+.controls .btn{min-height:44px; /* 44px touch target — ui-ux-pro-max */}
 .controls input{
   flex:1; min-width:180px; padding:11px 14px; border-radius:var(--radius-pill); border:1px solid var(--line); background:#fff; font-size:13px;
   transition:border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
@@ -565,12 +566,44 @@ tr:hover td{background:#FFFEFB}
 .result-icon{width:44px; height:44px; border-radius:50%; display:grid; place-items:center; font-size:20px; font-weight:800; box-shadow:0 4px 12px rgba(0,0,0,.12)}
 .result.ok .result-icon{background:var(--ok); color:#fff}
 .result.err .result-icon{background:var(--err); color:#fff}
-.result h2{margin:0; font-size:20px; letter-spacing:-.02em}
+.result h2{margin:0; font-size:clamp(18px, 4.8vw, 20px); letter-spacing:-.02em}
 .result p{margin:0; font-size:13px; color:inherit; opacity:1;}
 .reader-idle{font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#475569}
 .reader-error{padding:18px; text-align:center; font-size:12px; color:#94A3B8; line-height:1.5}
 .scanner-badges{padding:0 18px; display:flex; gap:8px; flex-wrap:wrap}
 .scanner-foot{padding:0 18px 18px; margin:0}
+/* Infinix Hot 50 Pro — 360-395px logical — explicit collapse per section (no Tailwind guess) */
+@media(max-width:480px){
+  .scanner-shell{padding:0 10px; margin:12px auto}
+  .scanner-head{padding:16px 14px 12px}
+  .scanner-head h1{font-size:clamp(24px, 6.8vw, 30px)}
+  .scanner-head p{font-size:12.5px; line-height:1.5}
+  .reader-wrap{padding:12px 12px 0}
+  .reader{max-width:100%; border-radius:16px}
+  .reader::before{inset:10px; border-radius:12px}
+  .controls{display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px; align-items:stretch}
+  .controls #btnStart{grid-column:1 / -1}
+  .controls #btnTorch{grid-column:1 / -1}
+  .controls input{grid-column:1 / -1; min-width:0; font-size:16px; /* 16px prevents iOS zoom */ padding:13px 14px}
+  .controls #btnManual{grid-column:1 / -1}
+  .result{margin:0 12px 12px; padding:14px; border-radius:14px; gap:6px}
+  .result h2{font-size:18px}
+  .result p{font-size:12.5px}
+  #historialWrap{margin:12px!important; padding:12px!important; border-radius:12px!important}
+  #historialWrap > div:first-child{flex-wrap:wrap}
+}
+@media(max-width:380px){
+  .scanner-shell{padding:0 8px}
+  .scanner-head{padding:14px 12px 10px}
+  .reader{border-radius:14px}
+  .controls{gap:6px; padding:10px}
+  .controls .btn{font-size:13px; padding:10px 12px}
+  .result{padding:12px; border-radius:12px}
+}
+@media(max-width:360px){
+  .scanner-head h1{font-size:24px}
+  .controls #btnStart, .controls #btnStop{font-size:12.5px; padding:10px 10px}
+}
 
 /* footer */
 .footer{margin-top:36px; border-top:1px solid var(--line); background:linear-gradient(180deg, var(--surface), #f5f1e8)}
@@ -787,4 +820,16 @@ tr:hover td{background:#FFFEFB}
   .shell-admin .table-wrap{ margin-top:4px; }
   .toolbar-actions .search-input{ flex:1 1 0; min-width:0; width:auto; }
   .toolbar-actions .btn{ flex-shrink:0; white-space:nowrap; }
+}
+/* scanner historial 360px — compact cards, no overflow (Infinix Hot 50 Pro) */
+@media(max-width:480px){
+  #historial > div[style]{padding:10px!important; gap:8px!important; border-radius:10px!important}
+  #historial div[style*="width:72px"]{width:60px!important}
+  #historial div[style*="width:72px"] .mono{font-size:11px!important; padding:6px 2px!important; letter-spacing:.08em!important}
+  #historial div[style*="flex:1"] > div:first-child{font-size:12px!important}
+  #historial button[data-revert]{padding:8px 10px!important; font-size:12px!important; min-height:36px}
+}
+@media(max-width:360px){
+  #historial > div[style]{padding:8px!important; gap:6px!important}
+  #historial div[style*="width:72px"]{width:56px!important}
 }
