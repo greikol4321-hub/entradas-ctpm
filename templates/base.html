@@ -18,10 +18,10 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="preconnect" href="https://jyfmimxzhpvcezwilkdd.supabase.co">
-<link rel="preload" href="{{ url_for('static', filename='css/style.css') }}?v=2.3" as="style">
+<link rel="preload" href="{{ url_for('static', filename='css/style.css') }}?v=2.5" as="style">
 <link rel="preload" href="{{ url_for('static', filename='img/logo_colegio_nuevo.png') }}" as="image" fetchpriority="high">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Fragment+Mono&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.3">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.5">
 </head>
 <body class="{% block body_class %}{% endblock %}">
 <a href="#main" class="skip-link">Saltar al contenido</a>
@@ -90,8 +90,8 @@
         <span class="muted small">Solo personal autorizado</span>
       {% endif %}
       <div class="footer-legal">
-        <a href="#" onclick="alert('Política de privacidad — tus datos solo se usan para validar la entrada.'); return false;">Privacidad</a>
-        <a href="#" onclick="alert('Términos — QR de un solo uso, no reembolsable.'); return false;">Términos</a>
+        <a href="#" onclick="showToast('info','Política de privacidad — tus datos solo se usan para validar la entrada.'); return false;">Privacidad</a>
+        <a href="#" onclick="showToast('info','Términos — QR de un solo uso, no reembolsable.'); return false;">Términos</a>
       </div>
     </div>
   </div>
@@ -101,7 +101,8 @@
   </div>
 </footer>
 
-<script src="{{ url_for('static', filename='js/app.js') }}?v=2.4" defer></script>
+<div id="toast-root" aria-live="polite" aria-atomic="false"></div>
+<script src="{{ url_for('static', filename='js/app.js') }}?v=2.5" defer></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -181,7 +181,7 @@ document.getElementById('historial')?.addEventListener('click', async e=>{
   if(!confirm(`¿Revertir ${code} a Aprobada para volver a usar?`)) return;
   const r=await fetch('/api/revertir/'+encodeURIComponent(code),{method:'POST'});
   const j=await r.json();
-  alert(j.msg|| (j.ok?'Revertido':'Error'));
+  showToast(j.ok?'success':'error', j.msg|| (j.ok?'Revertido':'Error'));
   if(r.ok) cargarHistorial();
 });
 // recargar historial después de cada validación exitosa

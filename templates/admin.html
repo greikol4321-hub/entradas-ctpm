@@ -514,8 +514,8 @@ function optimisticRemove(idOrCodigo){
 tbody.addEventListener('click', async e=>{
   const idA=e.target.closest('[data-aprobar]')?.dataset.aprobar, idR=e.target.closest('[data-rechazar]')?.dataset.rechazar, idD=e.target.closest('[data-desbloquear]')?.dataset.desbloquear, idV=e.target.closest('[data-ver]')?.dataset.ver, idC=e.target.closest('[data-copyimg]')?.dataset.copyimg;
   if(idA){ selId=idA; openModalWithFocus(idA); }
-  if(idR){ if(!confirm('¿Eliminar esta solicitud pendiente?')) return; optimisticRemove(idR); const r=await fetch('/api/rechazar/'+idR,{method:'POST'}); if(r.status===401){location.href='/login?nxt='+encodeURIComponent(location.pathname); return;} const j=await r.json(); alert(j.msg); _finETag=null; _finUpdatedAt=0; for(let k in _entrETags) delete _entrETags[k]; _lastRows=null; load(); }
-  if(idD){ if(!confirm('¿Desbloquear mesa y eliminar entrada?')) return; optimisticRemove(idD); const r=await fetch('/api/desbloquear/'+idD,{method:'POST'}); const j=await r.json(); alert(j.msg); _finETag=null; _finUpdatedAt=0; for(let k in _entrETags) delete _entrETags[k]; _lastRows=null; load(); }
+  if(idR){ if(!confirm('¿Eliminar esta solicitud pendiente?')) return; optimisticRemove(idR); const r=await fetch('/api/rechazar/'+idR,{method:'POST'}); if(r.status===401){location.href='/login?nxt='+encodeURIComponent(location.pathname); return;} const j=await r.json(); showToast(j.ok?'success':'error', j.msg); _finETag=null; _finUpdatedAt=0; for(let k in _entrETags) delete _entrETags[k]; _lastRows=null; load(); }
+  if(idD){ if(!confirm('¿Desbloquear mesa y eliminar entrada?')) return; optimisticRemove(idD); const r=await fetch('/api/desbloquear/'+idD,{method:'POST'}); const j=await r.json(); showToast(j.ok?'success':'error', j.msg); _finETag=null; _finUpdatedAt=0; for(let k in _entrETags) delete _entrETags[k]; _lastRows=null; load(); }
   if(idV){ selId=idV; openModalWithFocus(idV); }
   if(idC){ copiarTicketPorId(idC); }
 });
@@ -592,7 +592,7 @@ mDesbloquear.onclick=async()=>{
   const idOpt=selId;
   optimisticRemove(idOpt);
   closeModal();
-  const r=await fetch('/api/desbloquear/'+idOpt,{method:'POST'}); const j=await r.json(); alert(j.msg); _finETag=null; _finUpdatedAt=0; for(let k in _entrETags) delete _entrETags[k]; _lastRows=null; load();
+  const r=await fetch('/api/desbloquear/'+idOpt,{method:'POST'}); const j=await r.json(); showToast(j.ok?'success':'error', j.msg); _finETag=null; _finUpdatedAt=0; for(let k in _entrETags) delete _entrETags[k]; _lastRows=null; load();
 };
 mAprobar.onclick=async()=>{
   mAprobar.disabled=true; mAprobar.textContent='Generando…';
@@ -839,12 +839,12 @@ document.getElementById('btnCopyCodigo').addEventListener('click',()=>{
 async function copiarTicketPorId(id){
   try{
     const rr=await fetch('/api/entradas'); const rows=await rr.json(); const row=rows.find(x=>x.id===id);
-    if(!row||!row.qr_path){ alert('Ticket aún no generado'); return; }
+    if(!row||!row.qr_path){ showToast('warning','Ticket aún no generado'); return; }
     selRow=row; selId=id;
     // abrir modal con preview y copiar
     openModalWithFocus(id);
     setTimeout(()=>{ prepararBoleto(row); boletoPreview.classList.remove('hidden'); },300);
-  }catch(e){ alert('Error al cargar ticket'); }
+  }catch(e){ showToast('error','Error al cargar ticket'); }
 }
 // --- Usuarios ---
 let editUserId=null;
@@ -922,8 +922,8 @@ document.querySelector('#tablaUsuarios tbody')?.addEventListener('click', async 
     if(!confirm('¿Borrar este usuario?')) return;
     const r=await fetch('/api/usuarios/'+idDel,{method:'DELETE'});
     const j=await r.json();
-    if(!r.ok || !j.ok) alert(j.msg||'Error');
-    else loadUsuarios();
+    if(!r.ok || !j.ok) showToast('error', j.msg||'Error');
+    else { showToast('success','Usuario eliminado'); loadUsuarios(); }
   }
 });
 async function loadLogs(){

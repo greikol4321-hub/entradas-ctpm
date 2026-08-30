@@ -896,3 +896,62 @@ tr:hover td{background:#FFFEFB}
   #historial > div[style]{padding:8px!important; gap:6px!important}
   #historial div[style*="width:72px"]{width:56px!important}
 }
+
+/* ============ TOAST FUTURISTA — glassmorphism + glow ============ */
+#toast-root{
+  position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+  width:min(94vw, 380px); z-index:9999; pointer-events:none;
+}
+.toast{
+  width:100%; pointer-events:auto; cursor:pointer;
+  border-radius:16px; padding:1.5px;  /* borde luminoso degradado */
+  animation:toastDrop 320ms cubic-bezier(0.34,1.56,0.64,1) both;  /* squash & stretch: aterriza */
+  box-shadow:0 18px 40px rgba(10,20,30,.18);
+}
+.toast.anticipate{ animation:toastAnticipate 120ms ease-in forwards }  /* anticipación antes de irse */
+.toast.exiting{ animation:toastOut 200ms ease-in forwards }            /* salida ease-in */
+.toast.success{ background:linear-gradient(135deg, #12b76a, #0f7a52) }
+.toast.error{ background:linear-gradient(135deg, #f04438, #b42318) }
+.toast.info{ background:linear-gradient(135deg, #0ea5e9, #2563eb) }
+.toast.warning{ background:linear-gradient(135deg, #f59e0b, #d97706) }
+.toast-glass{
+  position:relative; display:flex; align-items:center; gap:12px;
+  padding:13px 15px; border-radius:15px; overflow:hidden;
+  background:rgba(255,255,255,.12); backdrop-filter:blur(14px) saturate(160%);
+  -webkit-backdrop-filter:blur(14px) saturate(160%);
+  border:1px solid rgba(255,255,255,.18);
+}
+.toast-icon{
+  flex-shrink:0; width:30px; height:30px; border-radius:9px;
+  display:grid; place-items:center; font-weight:800; font-size:15px;
+  background:rgba(255,255,255,.2); color:#fff;
+  box-shadow:0 0 14px rgba(255,255,255,.35), inset 0 0 8px rgba(255,255,255,.15);
+  animation:iconPulse 1s ease-out .3s;
+}
+.toast-msg{ flex:1; min-width:0; font-size:13px; font-weight:600; color:#fff; line-height:1.45 }
+.toast-progress{
+  position:absolute; left:0; bottom:0; height:3px; width:100%;
+  background:rgba(255,255,255,.85); transform-origin:left;
+  animation:toastProgress 3800ms linear forwards;
+}
+.toast.anticipate .toast-progress{ animation-play-state:paused }
+@keyframes toastDrop{
+  0%{opacity:0; transform:translateY(24px) scale(.85)}
+  60%{opacity:1; transform:translateY(-3px) scale(1.03)}  /* squash comprime al aterrizar */
+  100%{opacity:1; transform:translateY(0) scale(1)}
+}
+@keyframes toastAnticipate{ 0%{transform:scale(1)} 100%{transform:scale(.97)} }
+@keyframes toastOut{ 0%{opacity:1; transform:translateY(0) scale(1)} 100%{opacity:0; transform:translateY(-16px) scale(.92)} }
+@keyframes toastProgress{ 0%{transform:scaleX(1)} 100%{transform:scaleX(0)} }
+@keyframes iconPulse{ 0%{box-shadow:0 0 0 0 rgba(255,255,255,.5)} 70%{box-shadow:0 0 0 12px rgba(255,255,255,0)} 100%{box-shadow:0 0 14px rgba(255,255,255,.35)} }
+@media(prefers-reduced-motion:reduce){
+  .toast{animation:none}
+  .toast-icon{animation:none}
+  .toast-progress{animation-duration:3800ms; animation:none}
+}
+@media(max-width:480px){
+  #toast-root{ bottom:14px; gap:8px }
+  .toast-glass{padding:12px 13px; gap:10px; border-radius:14px}
+  .toast-msg{font-size:12.5px}
+}
