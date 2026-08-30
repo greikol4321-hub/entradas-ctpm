@@ -492,11 +492,30 @@ document.querySelectorAll('#filtersZona [data-z]').forEach(b=>b.addEventListener
 }));
 document.getElementById('search').addEventListener('input',e=>{ query=e.target.value; clearTimeout(_searchTimer); _searchTimer=setTimeout(()=> load(), 250); });
 document.getElementById('btnRefresh').onclick=load;
+function optimisticRemove(idOrCodigo){
+  const idStr=String(idOrCodigo);
+  if(_lastRows){
+    const before=_lastRows.length;
+    _lastRows=_lastRows.filter(x=> String(x.id)!==idStr && String(x.codigo)!==idStr);
+    if(_lastRows.length!==before){
+      // borra etags para forzar fresco en próxima carga, pero ya pintamos optimista
+      for(let k in _entrETags) delete _entrETags[k];
+      try{ renderKpis(_lastRows); }catch{}
+      // quita fila del DOM al instante (sin esperar fetch)
+      const btn=document.querySelector(`[data-desbloquear="${CSS.escape(idStr)}"], [data-rechazar="${CSS.escape(idStr)}"]`);
+      const tr=btn ? btn.closest('tr') : null;
+      if(tr){ tr.style.transition='opacity 160ms'; tr.style.opacity='0'; setTimeout(()=>{ try{tr.remove();}catch{} }, 180); }
+      // si tabla queda vacía muestra empty
+      const remaining=document.querySelectorAll('#tabla tbody tr:not(#skeleton)').length - (tr?1:0);
+      if(remaining<=0) document.getElementById('empty').classList.remove('hidden');
+    }
+  }
+}
 tbody.addEventListener('click', async e=>{
   const idA=e.target.closest('[data-aprobar]')?.dataset.aprobar, idR=e.target.closest('[data-rechazar]')?.dataset.rechazar, idD=e.target.closest('[data-desbloquear]')?.dataset.desbloquear, idV=e.target.closest('[data-ver]')?.dataset.ver, idC=e.target.closest('[data-copyimg]')?.dataset.copyimg;
   if(idA){ selId=idA; openModalWithFocus(idA); }
-  if(idR){ if(!confirm('¿Eliminar esta solicitud pendiente?')) return; const r=await fetch('/api/rechazar/'+idR,{method:'POST'}); if(r.status===401){location.href='/login?nxt='+encodeURIComponent(location.pathname); return;} const j=await r.json(); alert(j.msg); _finETag=null; _finUpdatedAt=0; load(); }
-  if(idD){ if(!confirm('¿Desbloquear mesa y eliminar entrada?')) return; const r=await fetch('/api/desbloquear/'+idD,{method:'POST'}); const j=await r.json(); alert(j.msg); _finETag=null; _finUpdatedAt=0; load(); }
+  if(idR){ if(!confirm('¿Eliminar esta solicitud pendiente?')) return; optimisticRemove(idR); const r=await fetch('/api/rechazar/'+idR,{method:'POST'}); if(r.status===401){location.href='/login?nxt='+encodeURIComponent(location.pathname); return;} const j=await r.json(); alert(j.msg); _finETag=null; _finUpdatedAt=0; for(let k in _entrETags) delete _entrETags[k]; _lastRows=null; load(); }
+  if(idD){ if(!confirm('¿Desbloquear mesa y eliminar entrada?')) return; optimisticRemove(idD); const r=await fetch('/api/desbloquear/'+idD,{method:'POST'}); const j=await r.json(); alert(j.msg); _finETag=null; _finUpdatedAt=0; for(let k in _entrETags) delete _entrETags[k]; _lastRows=null; load(); }
   if(idV){ selId=idV; openModalWithFocus(idV); }
   if(idC){ copiarTicketPorId(idC); }
 });
@@ -570,7 +589,10 @@ document.addEventListener('keydown', e=>{
 });
 mDesbloquear.onclick=async()=>{
   if(!confirm('¿Desbloquear esta mesa? Se eliminará la entrada.')) return;
-  const r=await fetch('/api/desbloquear/'+selId,{method:'POST'}); const j=await r.json(); alert(j.msg); closeModal(); _finETag=null; _finUpdatedAt=0; load();
+  const idOpt=selId;
+  optimisticRemove(idOpt);
+  closeModal();
+  const r=await fetch('/api/desbloquear/'+idOpt,{method:'POST'}); const j=await r.json(); alert(j.msg); _finETag=null; _finUpdatedAt=0; for(let k in _entrETags) delete _entrETags[k]; _lastRows=null; load();
 };
 mAprobar.onclick=async()=>{
   mAprobar.disabled=true; mAprobar.textContent='Generando…';
