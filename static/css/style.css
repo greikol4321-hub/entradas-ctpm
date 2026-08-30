@@ -633,15 +633,13 @@ tr:hover td{background:#FFFEFB}
   .hist-datos .mono{font-size:11px!important}
   .hist-datos > div:first-child{font-size:12px!important}
   .hist-datos > div:last-child{font-size:10px!important}
-   .historial-head{flex-direction:column; gap:10px; align-items:stretch}
+   .historial-head{flex-direction:row; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between}
    .hist-card button.btn{padding:7px 8px!important; font-size:11px!important; min-height:34px}
    /* compactar historial para móvil — una fila por entrada, datos secundarios ocultos (portero solo necesita revertir) */
    .historial-wrap{margin:12px!important; padding:10px!important; border-radius:12px!important}
    .historial-head{margin-bottom:8px}
    .historial-head .muted{display:none}
    .historial-title-row h3{font-size:13px}
-   #btnReloadHist{position:absolute; top:10px; right:10px; padding:6px 10px}
-   .historial-wrap{position:relative; padding-top:40px!important}
    .hist-card{flex-direction:row!important; align-items:center; gap:8px; padding:8px!important; border-radius:10px!important}
    .hist-codigo{width:auto!important; margin-bottom:0}
    .hist-codigo .mono{font-size:12px!important; padding:6px 8px!important; letter-spacing:.1em!important}
