@@ -3,7 +3,7 @@ Sistema CTPM — Venta y validación de entradas
 Soporta Postgres (Supabase) via DATABASE_URL o MySQL via variables DB_*
 Mesas numeradas + Finanzas
 """
-import os, uuid, pathlib, functools, secrets, io, time, json, hashlib
+import os, uuid, pathlib, functools, secrets, io, time, json, hashlib, threading
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from collections import defaultdict, deque
@@ -73,15 +73,66 @@ MESAS_TTL = 30
 def _etag(data): return hashlib.md5(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()[:12]
 def _fin_etag(data): return _etag(data)
 def invalidate_fin_cache():
-    _FIN_CACHE["data"] = None
-    _FIN_CACHE["ts"] = 0
-    _FIN_CACHE["etag"] = None
+    # SWR: no borra, marca stale y refresca en bg — próxima petición STALE 2ms no MISS 1.4s
+    if _FIN_CACHE["data"] is not None:
+        _FIN_CACHE["ts"] = 0
+        try: threading.Thread(target=_refresh_fin_cache_bg, daemon=True).start()
+        except: pass
+    else:
+        _FIN_CACHE["data"] = None
+        _FIN_CACHE["ts"] = 0
+        _FIN_CACHE["etag"] = None
+def _refresh_entradas_bg(cache_key, estado, ubicacion):
+    try:
+        base = "SELECT id,numero,codigo,nombre_completo,cedula,ubicacion,mesa_numero,monto,telefono,comprobante_path,qr_path,estado,fecha_compra,fecha_aprobacion,fecha_uso FROM entradas"
+        conds=[]; params=[]
+        if estado in ("Pendiente","Aprobada","Usada"):
+            conds.append("estado=%s"); params.append(estado)
+        if ubicacion in ("Gradas","Mesas"):
+            conds.append("ubicacion=%s"); params.append(ubicacion)
+        sql=base
+        if conds: sql+=" WHERE "+" AND ".join(conds)
+        sql+=" ORDER BY fecha_compra DESC"
+        rows=fetch_all(sql, tuple(params))
+        for r in rows:
+            for k in ("fecha_compra","fecha_aprobacion","fecha_uso"):
+                if r.get(k) and isinstance(r[k], datetime):
+                    r[k]=to_cr_str(r[k])
+        etag=_etag(rows)
+        _ENTRADAS_CACHE[cache_key]={"data": rows, "ts": time.time(), "etag": etag}
+    except Exception as e:
+        print(f"[entradas bg refresh] {e}")
+def _refresh_mesas_bg():
+    try:
+        rows=fetch_all("SELECT mesa_numero FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')")
+        ocupadas=[r["mesa_numero"] for r in rows if r.get("mesa_numero")]
+        todas=list(range(1, NUM_MESAS+1))
+        libres=[n for n in todas if n not in ocupadas]
+        payload={"ok": True, "ocupadas": ocupadas, "libres": libres, "total": NUM_MESAS}
+        etag=_etag(payload)
+        _MESAS_CACHE["data"]=payload
+        _MESAS_CACHE["ts"]=time.time()
+        _MESAS_CACHE["etag"]=etag
+    except Exception as e:
+        print(f"[mesas bg refresh] {e}")
 def invalidate_all_cache():
     invalidate_fin_cache()
-    _ENTRADAS_CACHE.clear()
-    _MESAS_CACHE["data"] = None
-    _MESAS_CACHE["ts"] = 0
-    _MESAS_CACHE["etag"] = None
+    # SWR para toda la página: expira pero conserva stale para servir instantáneo
+    for k in list(_ENTRADAS_CACHE.keys()):
+        _ENTRADAS_CACHE[k]["ts"]=0
+        # refresca cada key en bg
+        try:
+            estado, ubic=m=k.split(":")
+            threading.Thread(target=_refresh_entradas_bg, args=(k, estado, ubic), daemon=True).start()
+        except: pass
+    if _MESAS_CACHE["data"] is not None:
+        _MESAS_CACHE["ts"]=0
+        try: threading.Thread(target=_refresh_mesas_bg, daemon=True).start()
+        except: pass
+    else:
+        _MESAS_CACHE["data"]=None
+        _MESAS_CACHE["ts"]=0
+        _MESAS_CACHE["etag"]=None
 app.config['SESSION_COOKIE_SECURE'] = bool(os.getenv("VERCEL"))  # True en prod HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -275,6 +326,46 @@ def exec_sql(sql, params=()):
         except: pass
         cur.close(); conn.close()
         return e
+def _load_finanzas_payload():
+    conn = db()
+    if conn is None:
+        raise Exception("DB no disponible")
+    cur = conn.cursor()
+    cur.execute("SELECT estado, ubicacion, COUNT(*) as cnt, COALESCE(SUM(monto),0) as total FROM entradas GROUP BY estado, ubicacion")
+    cols = [c[0] for c in cur.description] if cur.description else []
+    rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+    cur.execute("SELECT COUNT(*) as total_entradas, COALESCE(SUM(CASE WHEN estado IN ('Aprobada','Usada') THEN monto ELSE 0 END),0) as recaudado, COALESCE(SUM(CASE WHEN estado='Pendiente' THEN monto ELSE 0 END),0) as por_confirmar, COALESCE(SUM(CASE WHEN estado='Usada' THEN 1 ELSE 0 END),0) as usadas, COALESCE(SUM(CASE WHEN estado='Aprobada' THEN 1 ELSE 0 END),0) as aprobadas, COALESCE(SUM(CASE WHEN estado='Pendiente' THEN 1 ELSE 0 END),0) as pendientes FROM entradas")
+    cols2 = [c[0] for c in cur.description] if cur.description else []
+    all_rows = [dict(zip(cols2, r)) for r in cur.fetchall()]
+    kpi = all_rows[0] if all_rows else {"total_entradas":0,"recaudado":0,"por_confirmar":0,"usadas":0,"aprobadas":0,"pendientes":0}
+    cur.execute("SELECT ubicacion, COUNT(*) as cnt, COALESCE(SUM(monto),0) as total FROM entradas GROUP BY ubicacion")
+    cols3 = [c[0] for c in cur.description] if cur.description else []
+    zona = [dict(zip(cols3, r)) for r in cur.fetchall()]
+    cur.execute("SELECT COUNT(*) as cnt FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')")
+    cols4 = [c[0] for c in cur.description] if cur.description else []
+    ocupadas = [dict(zip(cols4, r)) for r in cur.fetchall()]
+    ocup_cnt = ocupadas[0]["cnt"] if ocupadas else 0
+    cur.close(); conn.close()
+    return {"ok": True, "agrupado": rows, "kpi": kpi, "por_zona": zona, "mesas": {"ocupadas": ocup_cnt, "libres": NUM_MESAS - ocup_cnt, "total": NUM_MESAS}}
+def _refresh_fin_cache_bg():
+    try:
+        payload = _load_finanzas_payload()
+        _FIN_CACHE["data"] = payload
+        _FIN_CACHE["ts"] = time.time()
+        _FIN_CACHE["etag"] = _etag(payload)
+    except Exception as e:
+        print(f"[finanzas bg refresh] {e}")
+def _warm_all_bg():
+    try: _refresh_fin_cache_bg()
+    except: pass
+    try: _refresh_entradas_bg(":", "", "")
+    except: pass
+    try: _refresh_mesas_bg()
+    except: pass
+# warmup en bg para que primer HIT sea instantáneo (no 1.6s MISS) — se lanza después de definir db()
+try:
+    threading.Thread(target=_warm_all_bg, daemon=True).start()
+except: pass
 def log_audit(accion, entradas_id=None, detalle=None):
     try:
         ip = request.remote_addr if request else None
@@ -397,14 +488,28 @@ def api_login():
 # --- API: mesas disponibles ---
 @app.get("/api/mesas")
 def mesas_disponibles():
-    if _MESAS_CACHE["data"] is not None and time.time() - _MESAS_CACHE["ts"] < MESAS_TTL:
-        if request.headers.get("If-None-Match") == _MESAS_CACHE["etag"]:
-            return "", 304, {"ETag": _MESAS_CACHE["etag"], "Cache-Control": "public, max-age=30, must-revalidate", "X-Cache": "HIT"}
-        resp = jsonify(_MESAS_CACHE["data"])
-        resp.headers["ETag"] = _MESAS_CACHE["etag"]
-        resp.headers["Cache-Control"] = "public, max-age=30, must-revalidate"
-        resp.headers["X-Cache"] = "HIT"
-        return resp
+    if _MESAS_CACHE["data"] is not None:
+        age = time.time() - _MESAS_CACHE["ts"]
+        if age < MESAS_TTL:
+            if request.headers.get("If-None-Match") == _MESAS_CACHE["etag"]:
+                return "", 304, {"ETag": _MESAS_CACHE["etag"], "Cache-Control": "public, max-age=30, must-revalidate", "X-Cache": "HIT"}
+            resp = jsonify(_MESAS_CACHE["data"])
+            resp.headers["ETag"] = _MESAS_CACHE["etag"]
+            resp.headers["Cache-Control"] = "public, max-age=30, must-revalidate"
+            resp.headers["X-Cache"] = "HIT"
+            return resp
+        else:
+            if request.headers.get("If-None-Match") == _MESAS_CACHE["etag"]:
+                try: threading.Thread(target=_refresh_mesas_bg, daemon=True).start()
+                except: pass
+                return "", 304, {"ETag": _MESAS_CACHE["etag"], "Cache-Control": "public, max-age=30, stale-while-revalidate=30", "X-Cache": "STALE"}
+            resp = jsonify(_MESAS_CACHE["data"])
+            resp.headers["ETag"] = _MESAS_CACHE["etag"]
+            resp.headers["Cache-Control"] = "public, max-age=30, stale-while-revalidate=30"
+            resp.headers["X-Cache"] = "STALE"
+            try: threading.Thread(target=_refresh_mesas_bg, daemon=True).start()
+            except: pass
+            return resp
     try:
         rows = fetch_all("SELECT mesa_numero FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')")
         ocupadas = [r["mesa_numero"] for r in rows if r.get("mesa_numero")]
@@ -510,14 +615,29 @@ def listar():
     ubicacion = request.args.get("ubicacion","")
     cache_key = f"{estado}:{ubicacion}"
     ent = _ENTRADAS_CACHE.get(cache_key)
-    if ent and time.time() - ent["ts"] < ENTRADAS_TTL:
-        if request.headers.get("If-None-Match") == ent["etag"]:
-            return "", 304, {"ETag": ent["etag"], "Cache-Control": "private, max-age=10, must-revalidate", "X-Cache": "HIT"}
-        resp = jsonify(ent["data"])
-        resp.headers["ETag"] = ent["etag"]
-        resp.headers["Cache-Control"] = "private, max-age=10, must-revalidate"
-        resp.headers["X-Cache"] = "HIT"
-        return resp
+    if ent:
+        age = time.time() - ent["ts"]
+        if age < ENTRADAS_TTL:
+            if request.headers.get("If-None-Match") == ent["etag"]:
+                return "", 304, {"ETag": ent["etag"], "Cache-Control": "private, max-age=10, must-revalidate", "X-Cache": "HIT"}
+            resp = jsonify(ent["data"])
+            resp.headers["ETag"] = ent["etag"]
+            resp.headers["Cache-Control"] = "private, max-age=10, must-revalidate"
+            resp.headers["X-Cache"] = "HIT"
+            return resp
+        else:
+            # stale SWR — sirve instantáneo, refresca bg
+            if request.headers.get("If-None-Match") == ent["etag"]:
+                try: threading.Thread(target=_refresh_entradas_bg, args=(cache_key, estado, ubicacion), daemon=True).start()
+                except: pass
+                return "", 304, {"ETag": ent["etag"], "Cache-Control": "private, max-age=10, stale-while-revalidate=15", "X-Cache": "STALE"}
+            resp = jsonify(ent["data"])
+            resp.headers["ETag"] = ent["etag"]
+            resp.headers["Cache-Control"] = "private, max-age=10, stale-while-revalidate=15"
+            resp.headers["X-Cache"] = "STALE"
+            try: threading.Thread(target=_refresh_entradas_bg, args=(cache_key, estado, ubicacion), daemon=True).start()
+            except: pass
+            return resp
     try:
         base = "SELECT id,numero,codigo,nombre_completo,cedula,ubicacion,mesa_numero,monto,telefono,comprobante_path,qr_path,estado,fecha_compra,fecha_aprobacion,fecha_uso FROM entradas"
         conds = []
@@ -547,30 +667,36 @@ def listar():
         print(f"[CTPM] listar error: {e}\n{traceback.format_exc()}")
         return jsonify([])
 
-# --- API: finanzas ---  # kpi-dashboard: OLAP cache 45s evita hammer DB en dashboard en vivo
+# --- API: finanzas ---  # kpi-dashboard: 1 conexión + SWR stale-while-revalidate (HIT 0.8ms, STALE 0.8ms bg-refresh)
 @app.get("/api/finanzas")
 @login_required
 @role_required("admin")
 def finanzas():
-    # HIT rápido sin tocar DB
-    if _FIN_CACHE["data"] is not None and time.time() - _FIN_CACHE["ts"] < FIN_TTL:
+    # SWR: fresco <TTL → HIT, viejo → STALE sirve instant + refresca en bg (evita MISS 1.6s bloqueante)
+    if _FIN_CACHE["data"] is not None:
         etag = _FIN_CACHE["etag"]
-        if request.headers.get("If-None-Match") == etag:
-            return "", 304, {"ETag": etag, "Cache-Control": "private, max-age=30, must-revalidate", "X-Cache": "HIT"}
-        resp = jsonify(_FIN_CACHE["data"])
-        resp.headers["ETag"] = etag
-        resp.headers["Cache-Control"] = "private, max-age=30, must-revalidate"
-        resp.headers["X-Cache"] = "HIT"
-        return resp
+        age = time.time() - _FIN_CACHE["ts"]
+        if age < FIN_TTL:
+            if request.headers.get("If-None-Match") == etag:
+                return "", 304, {"ETag": etag, "Cache-Control": "private, max-age=30, must-revalidate", "X-Cache": "HIT"}
+            resp = jsonify(_FIN_CACHE["data"])
+            resp.headers["ETag"] = etag
+            resp.headers["Cache-Control"] = "private, max-age=30, must-revalidate"
+            resp.headers["X-Cache"] = "HIT"
+            return resp
+        else:
+            # stale — sirve instantáneo y refresca en background
+            if request.headers.get("If-None-Match") == etag:
+                threading.Thread(target=_refresh_fin_cache_bg, daemon=True).start()
+                return "", 304, {"ETag": etag, "Cache-Control": "private, max-age=30, stale-while-revalidate=30", "X-Cache": "STALE"}
+            resp = jsonify(_FIN_CACHE["data"])
+            resp.headers["ETag"] = etag
+            resp.headers["Cache-Control"] = "private, max-age=30, stale-while-revalidate=30"
+            resp.headers["X-Cache"] = "STALE"
+            threading.Thread(target=_refresh_fin_cache_bg, daemon=True).start()
+            return resp
     try:
-        rows = fetch_all("SELECT estado, ubicacion, COUNT(*) as cnt, COALESCE(SUM(monto),0) as total FROM entradas GROUP BY estado, ubicacion")
-        all_rows = fetch_all("SELECT COUNT(*) as total_entradas, COALESCE(SUM(CASE WHEN estado IN ('Aprobada','Usada') THEN monto ELSE 0 END),0) as recaudado, COALESCE(SUM(CASE WHEN estado='Pendiente' THEN monto ELSE 0 END),0) as por_confirmar, COALESCE(SUM(CASE WHEN estado='Usada' THEN 1 ELSE 0 END),0) as usadas, COALESCE(SUM(CASE WHEN estado='Aprobada' THEN 1 ELSE 0 END),0) as aprobadas, COALESCE(SUM(CASE WHEN estado='Pendiente' THEN 1 ELSE 0 END),0) as pendientes FROM entradas")
-        kpi = all_rows[0] if all_rows else {"total_entradas":0,"recaudado":0,"por_confirmar":0,"usadas":0,"aprobadas":0,"pendientes":0}
-        zona = fetch_all("SELECT ubicacion, COUNT(*) as cnt, COALESCE(SUM(monto),0) as total FROM entradas GROUP BY ubicacion")
-        ocupadas = fetch_all("SELECT COUNT(*) as cnt FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')")
-        ocup_cnt = ocupadas[0]["cnt"] if ocupadas else 0
-        payload = {"ok": True, "agrupado": rows, "kpi": kpi, "por_zona": zona, "mesas": {"ocupadas": ocup_cnt, "libres": NUM_MESAS - ocup_cnt, "total": NUM_MESAS}}
-        # guardar
+        payload = _load_finanzas_payload()
         _FIN_CACHE["data"] = payload
         _FIN_CACHE["ts"] = time.time()
         _FIN_CACHE["etag"] = _fin_etag(payload)

@@ -256,8 +256,8 @@
 </div>
 {% endblock %}
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.0/dist/apexcharts.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.0/dist/apexcharts.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <script>
 let filtro='', zonaFiltro='', query='', selId=null, selRow=null;
 let _finETag=null, _finUpdatedAt=0; let _entrETags={}, _lastRows=null, _lastEntrUrl=null;
@@ -357,6 +357,8 @@ async function loadFinanzas(force){
     document.getElementById('fMesasSub').textContent=(j.mesas.libres||0)+' libres';
     document.getElementById('fConversion').textContent=conv+'%';
     document.getElementById('fTicket').textContent='₡'+ticketAvg.toLocaleString('es-CR');
+    // KPIs pintados — gráficos en idle para no bloquear números (perceived perf)
+    const _doCharts=()=>{
     // zona — ApexCharts barra premium (SVG, gradiente, animado) — reemplaza Chart.js
     const porZona=j.por_zona||[];
     const cZona=document.getElementById('chartZona');
@@ -438,6 +440,9 @@ async function loadFinanzas(force){
       <div><div style="font-size:22px; font-weight:800; color:#0F7A52;">${libres}</div><div style="font-size:11px; font-weight:700; color:var(--muted);">Libres</div></div>
       <div><div style="font-size:22px; font-weight:800; color:#0a4c23;">${totalM}</div><div style="font-size:11px; font-weight:700; color:var(--muted);">${pct}% ocupación</div></div>
     </div>`;
+    }; // end _doCharts
+    if(window.requestIdleCallback) requestIdleCallback(_doCharts, {timeout:350});
+    else setTimeout(_doCharts, 16);
   }catch(e){ console.error(e); }
 }
 // tabs
