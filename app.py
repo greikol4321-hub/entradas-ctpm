@@ -4,8 +4,21 @@ Soporta Postgres (Supabase) via DATABASE_URL o MySQL via variables DB_*
 Mesas numeradas + Finanzas
 """
 import os, uuid, pathlib, functools, secrets, io, time, json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from collections import defaultdict, deque
+CR_TZ = ZoneInfo("America/Costa_Rica")
+def to_cr_str(dt, fmt="%Y-%m-%d %H:%M"):
+    if dt is None:
+        return None
+    try:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(CR_TZ).strftime(fmt)
+    except:
+        return dt.strftime(fmt) if hasattr(dt, "strftime") else str(dt)
+def now_cr():
+    return datetime.now(CR_TZ)
 from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, url_for, session, redirect
 from werkzeug.security import generate_password_hash, check_password_hash
 import qrcode
@@ -254,8 +267,11 @@ def role_required(*roles):
     return deco
 
 def ensure_admin_user():
-    """Crea admin por defecto si la tabla está vacía (Postgres o MySQL)."""
+    """Crea admin por defecto solo si no hay ningún admin (respeta si solo queda grei)."""
     try:
+        cnt = fetch_one("SELECT COUNT(*) as c FROM usuarios WHERE rol='admin'")
+        if cnt and cnt["c"] > 0:
+            return
         u = fetch_one("SELECT id FROM usuarios WHERE username=%s LIMIT 1", (DEMO_USER,))
         if not u:
             h = generate_password_hash(DEMO_PASS)
@@ -444,10 +460,8 @@ def listar():
         rows = fetch_all(sql, tuple(params))
         for r in rows:
             for k in ("fecha_compra","fecha_aprobacion","fecha_uso"):
-                if r.get(k):
-                    v = r[k]
-                    if isinstance(v, datetime):
-                        r[k] = v.strftime("%Y-%m-%d %H:%M")
+                if r.get(k) and isinstance(r[k], datetime):
+                    r[k] = to_cr_str(r[k])
         return jsonify(rows)
     except Exception as e:
         import traceback
@@ -483,7 +497,7 @@ def listar_usuarios():
     rows = fetch_all("SELECT id, username, rol, created_at FROM public.usuarios ORDER BY username")
     for r in rows:
         if r.get("created_at") and isinstance(r["created_at"], datetime):
-            r["created_at"] = r["created_at"].strftime("%Y-%m-%d %H:%M")
+            r["created_at"] = to_cr_str(r["created_at"])
     return jsonify(rows)
 
 @app.post("/api/usuarios")
@@ -553,7 +567,7 @@ def listar_auditoria():
     rows = fetch_all("SELECT id, accion, entradas_id, actor, ip, detalle, created_at FROM public.auditoria ORDER BY created_at DESC LIMIT 50")
     for r in rows:
         if r.get("created_at") and isinstance(r["created_at"], datetime):
-            r["created_at"] = r["created_at"].strftime("%Y-%m-%d %H:%M:%S")
+            r["created_at"] = to_cr_str(r["created_at"], "%Y-%m-%d %H:%M:%S")
         # detalle es jsonb, psycopg lo devuelve como dict o str según driver
         if isinstance(r.get("detalle"), str):
             try:
@@ -636,7 +650,7 @@ def aprobar(eid):
         img.save(qr_path, "PNG")
         qr_rel = f"static/qrcodes/{qr_name}"
         exec_sql("UPDATE entradas SET estado='Aprobada', qr_path=%s, fecha_aprobacion=%s WHERE id=%s",
-                 (qr_rel, datetime.now(), row["id"]))
+                 (qr_rel, now_cr(), row["id"]))
         log_audit("aprobar", row["id"], {"codigo": codigo, "numero": row.get("numero")})
         return jsonify(ok=True, msg=f"Aprobada — N° {row.get('numero')} · código {codigo}",
                       qr_url=url_for("serve_qr", fname=qr_name),
@@ -698,7 +712,7 @@ def validar():
         # usar id interno para update (codigo es solo alias humano)
         rid = row["id"]
         r = exec_sql("UPDATE entradas SET estado='Usada', fecha_uso=%s WHERE id=%s AND estado='Aprobada'",
-                     (datetime.now(), rid))
+                     (now_cr(), rid))
         if isinstance(r, Exception):
             return jsonify(ok=False, estado="ERROR", msg=f"Error: {r}"), 500
         if r["rowcount"] == 0:
@@ -723,7 +737,7 @@ def historial():
     rows = fetch_all("SELECT id, codigo, nombre_completo, cedula, ubicacion, mesa_numero, fecha_uso FROM entradas WHERE estado='Usada' ORDER BY fecha_uso DESC LIMIT 20")
     for r in rows:
         if r.get("fecha_uso") and isinstance(r["fecha_uso"], datetime):
-            r["fecha_uso"] = r["fecha_uso"].strftime("%Y-%m-%d %H:%M")
+            r["fecha_uso"] = to_cr_str(r["fecha_uso"])
     return jsonify(rows)
 
 @app.post("/api/revertir/<codigo>")
