@@ -304,6 +304,7 @@ def admin():
 
 @app.get("/scanner")
 @login_required
+@role_required("portero")
 def scanner():
     return render_template("scanner.html")
 
@@ -661,6 +662,7 @@ def desbloquear(eid):
 # --- API: validar ---
 @app.post("/api/validar")
 @login_required
+@role_required("portero")
 @rate_limited(30, 60)
 def validar():
     data = request.get_json(silent=True) or {}
@@ -698,8 +700,9 @@ def validar():
 
 @app.get("/api/historial")
 @login_required
+@role_required("portero")
 def historial():
-    if session.get("rol") not in ("admin", "portero"):
+    if session.get("rol") not in ("portero",):
         return jsonify(ok=False, msg="No autorizado"), 403
     rows = fetch_all("SELECT id, codigo, nombre_completo, cedula, ubicacion, mesa_numero, fecha_uso FROM entradas WHERE estado='Usada' ORDER BY fecha_uso DESC LIMIT 20")
     for r in rows:
@@ -709,8 +712,9 @@ def historial():
 
 @app.post("/api/revertir/<codigo>")
 @login_required
+@role_required("portero")
 def revertir(codigo):
-    if session.get("rol") not in ("admin", "portero"):
+    if session.get("rol") not in ("portero",):
         return jsonify(ok=False, msg="No autorizado"), 403
     code = codigo.strip().upper()
     row = fetch_one("SELECT id, estado, codigo FROM entradas WHERE codigo=%s", (code,))

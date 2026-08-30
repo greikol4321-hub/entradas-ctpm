@@ -33,8 +33,9 @@
           <a href="/" class="{% if request.path == '/' %}active{% endif %}">Comprar</a>
           {% if session.get('rol') == 'admin' %}
             <a href="/admin" class="{% if request.path == '/admin' %}active{% endif %}">Administración</a>
+          {% else %}
+            <a href="/scanner" class="{% if request.path == '/scanner' %}active{% endif %}">Validación</a>
           {% endif %}
-          <a href="/scanner" class="{% if request.path == '/scanner' %}active{% endif %}">Validación</a>
           <span class="nav-user" aria-label="Usuario {{ session.get('username') }}">{{ session.get('username') }} · {{ session.get('rol') }}</span>
           <a href="/logout" class="btn sm">Salir</a>
         {% else %}
@@ -48,8 +49,8 @@
   <div class="mobile-nav hidden" id="mobileNav" aria-label="Menú móvil">
     {% if session.get('uid') %}
       <a href="/">Comprar entrada</a>
-      {% if session.get('rol') == 'admin' %}<a href="/admin">Administración</a>{% endif %}
-      <a href="/scanner">Validación en puerta</a>
+      {% if session.get('rol') == 'admin' %}<a href="/admin">Administración</a>
+      {% else %}<a href="/scanner">Validación en puerta</a>{% endif %}
       <a href="/logout">Cerrar sesión ({{ session.get('username') }})</a>
     {% else %}
       <a href="/">Comprar entrada</a>
@@ -76,8 +77,8 @@
     <div class="footer-col">
       <span class="eyebrow">Acceso</span>
       {% if session.get('uid') %}
-        {% if session.get('rol') == 'admin' %}<a href="/admin">Panel administrativo</a>{% endif %}
-        <a href="/scanner">Puesto de validación</a>
+        {% if session.get('rol') == 'admin' %}<a href="/admin">Panel administrativo</a>
+        {% else %}<a href="/scanner">Puesto de validación</a>{% endif %}
         <a href="/logout">Cerrar sesión</a>
       {% else %}
         <a href="/login">Iniciar sesión</a>
