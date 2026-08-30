@@ -271,7 +271,6 @@ function renderMesas(){
       setTimeout(()=>{
         const nextBtn=document.querySelector('.wizard-step[data-step="2"] .wizard-next');
         if(nextBtn){
-          nextBtn.scrollIntoView({behavior:'smooth', block:'center'});
           nextBtn.animate([{transform:'scale(1)'},{transform:'scale(1.04)'},{transform:'scale(1)'}],{duration:320, easing:'ease-out'});
         }
       }, 180);
@@ -295,7 +294,6 @@ function showStep(n){
     else if(i < n-1) { barEl.style.width='100%'; }
     else { barEl.style.width='0%'; }
   });
-  window.scrollTo({top: document.querySelector('.form-wrap').offsetTop - 90, behavior:'smooth'});
   if(n===3) updateRef();
 }
 function validateStep(n){
@@ -355,7 +353,6 @@ document.querySelectorAll('.ubicacion-card').forEach(card=>{
       mesaWrap.classList.remove('hidden');
       cargarMesas().then(()=>{
         setTimeout(()=>{
-          mesaWrap.scrollIntoView({behavior:'smooth', block:'start'});
           const nextBtn=document.querySelector('.wizard-step[data-step="2"] .wizard-next');
           if(nextBtn) nextBtn.style.boxShadow='0 0 0 3px rgba(10,76,35,.25)';
         }, 300);
