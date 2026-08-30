@@ -546,6 +546,22 @@ def editar_usuario(uid):
     log_audit("editar_usuario", None, {"id": uid, "user": username or row["username"]})
     return jsonify(ok=True, msg="Usuario actualizado")
 
+@app.get("/api/auditoria")
+@login_required
+@role_required("admin")
+def listar_auditoria():
+    rows = fetch_all("SELECT id, accion, entradas_id, actor, ip, detalle, created_at FROM public.auditoria ORDER BY created_at DESC LIMIT 50")
+    for r in rows:
+        if r.get("created_at") and isinstance(r["created_at"], datetime):
+            r["created_at"] = r["created_at"].strftime("%Y-%m-%d %H:%M:%S")
+        # detalle es jsonb, psycopg lo devuelve como dict o str según driver
+        if isinstance(r.get("detalle"), str):
+            try:
+                r["detalle"] = json.loads(r["detalle"])
+            except:
+                pass
+    return jsonify(rows)
+
 @app.delete("/api/usuarios/<int:uid>")
 @login_required
 @role_required("admin")
