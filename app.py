@@ -113,8 +113,8 @@ def security_headers(resp):
     resp.headers["X-Frame-Options"] = "DENY"
     resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     resp.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-    # CSP mínima sin romper cdnjs/jspdf + google fonts
-    resp.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co"
+    # CSP mínima sin romper cdnjs/jspdf/google fonts/apexcharts
+    resp.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co"
     if os.getenv("VERCEL"):
         resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     # web-performance skill: cache toda la página — estático 1 año immutable, APIs con ETag+TTL, HTML private revalidate

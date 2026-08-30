@@ -256,10 +256,12 @@
 </div>
 {% endblock %}
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.0/dist/apexcharts.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 let filtro='', zonaFiltro='', query='', selId=null, selRow=null;
-let _finETag=null, _finUpdatedAt=0; let _entrETags={}, _lastRows=null, _lastEntrUrl=null; // web-performance: cache ETag para toda la página (entradas + finanzas)
+let _finETag=null, _finUpdatedAt=0; let _entrETags={}, _lastRows=null, _lastEntrUrl=null;
+let _apexZona=null, _apexEstado=null, _apexMesas=null; // ApexCharts instances (moderno, no Chart.js)
 const esc=s=>{const d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML;};
 const escAttr=s=>String(s==null?'':s).replace(/"/g,'&quot;');
 const tbody=document.querySelector('#tabla tbody'), empty=document.getElementById('empty'), skeleton=document.getElementById('skeleton');
@@ -357,26 +359,67 @@ async function loadFinanzas(force){
     document.getElementById('fMesasSub').textContent=(j.mesas.libres||0)+' libres';
     document.getElementById('fConversion').textContent=conv+'%';
     document.getElementById('fTicket').textContent='₡'+ticketAvg.toLocaleString('es-CR');
-    // zona — barras nativas sin librería
+    // zona — ApexCharts barra premium (SVG, gradiente, animado) — reemplaza Chart.js
     const porZona=j.por_zona||[];
-    const maxZ=Math.max(1, ...porZona.map(x=>Number(x.total||0)));
     const cZona=document.getElementById('chartZona');
-    if(!porZona.length){ cZona.innerHTML='<p class="muted small" style="padding:12px 0; text-align:center;">Sin datos aún</p>'; }
-    else {
+    if(!porZona.length){
+      if(_apexZona){ try{_apexZona.destroy();}catch(e){} _apexZona=null; }
+      cZona.innerHTML='<p class="muted small" style="padding:12px 0; text-align:center;">Sin datos aún</p>';
+    } else if(typeof ApexCharts !== 'undefined'){
+      const zonaCats=porZona.map(x=>x.ubicacion);
+      const zonaVals=porZona.map(x=>Number(x.total||0));
+      const zonaColors=porZona.map(x=> x.ubicacion==='Mesas'?'#0a4c23':'#15803d');
+      if(_apexZona) try{_apexZona.destroy();}catch(e){}
+      cZona.innerHTML=''; cZona.style.minHeight='220px';
+      _apexZona=new ApexCharts(cZona,{
+        chart:{type:'bar', height:220, toolbar:{show:false}, fontFamily:'Poppins, sans-serif', animations:{enabled:true, easing:'easeinout', speed:700}},
+        series:[{name:'Recaudado', data:zonaVals}],
+        xaxis:{categories:zonaCats, labels:{style:{fontSize:'11px', fontWeight:700, colors:'#475569'}}, axisBorder:{show:false}, axisTicks:{show:false}},
+        yaxis:{labels:{formatter:v=>'₡'+Number(v).toLocaleString('es-CR'), style:{colors:'#64748b'}}},
+        plotOptions:{bar:{borderRadius:12, borderRadiusApplication:'end', columnWidth:'44%', distributed:true, dataLabels:{position:'top'}}},
+        colors:zonaColors,
+        dataLabels:{enabled:true, formatter:v=>'₡'+Number(v).toLocaleString('es-CR'), style:{fontSize:'10px', fontWeight:800, colors:['#fff']}, offsetY:-20, background:{enabled:true, foreColor:'#0a4c23', borderRadius:6, padding:4, opacity:.92}},
+        grid:{strokeDashArray:3, borderColor:'#e2e8f0', xaxis:{lines:{show:false}}, yaxis:{lines:{show:true}}},
+        tooltip:{theme:'light', y:{formatter:v=>'₡'+Number(v).toLocaleString('es-CR')}},
+        fill:{type:'gradient', gradient:{shade:'light', type:'vertical', shadeIntensity:.18, gradientToColors:zonaColors.map(c=>c+'ef'), opacityFrom:.96, opacityTo:.82, stops:[0,95,100]}},
+        states:{hover:{filter:{type:'darken', value:.08}}}
+      });
+      _apexZona.render();
+    } else {
+      const maxZ=Math.max(1, ...porZona.map(x=>Number(x.total||0)));
       cZona.innerHTML=porZona.map(x=>{
         const v=Number(x.total||0), pct=Math.round(v/maxZ*100);
         const col=x.ubicacion==='Mesas'?'#0a4c23':'#1a6b3a';
         return `<div class="bar-row"><span class="bar-label">${x.ubicacion}</span><span class="bar-value">₡${v.toLocaleString('es-CR')}</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${col};"></div></div></div>`;
       }).join('');
     }
-    // estado — donut nativo con conic-gradient
+    // estado — ApexCharts donut premium (anillo, total centrado, leyenda)
     const agr=j.agrupado||[];
     const estados=[['Pendiente','#d4a256'],['Aprobada','#0a4c23'],['Usada','#64748b']];
     const vals=estados.map(([e])=> agr.filter(a=>a.estado===e).reduce((a,b)=>a+Number(b.total||0),0));
-    const totalE=vals.reduce((a,b)=>a+b,0)||1;
+    const totalE=vals.reduce((a,b)=>a+b,0);
     const cEstado=document.getElementById('chartEstado');
-    if(totalE<=1 && vals.every(v=>v===0)){ cEstado.innerHTML='<p class="muted small" style="padding:12px 0; text-align:center;">Sin datos aún</p>'; }
-    else {
+    if(totalE===0){
+      if(_apexEstado){ try{_apexEstado.destroy();}catch(e){} _apexEstado=null; }
+      cEstado.innerHTML='<p class="muted small" style="padding:12px 0; text-align:center;">Sin datos aún</p>';
+    } else if(typeof ApexCharts !== 'undefined'){
+      if(_apexEstado) try{_apexEstado.destroy();}catch(e){}
+      cEstado.innerHTML=''; cEstado.style.minHeight='240px';
+      _apexEstado=new ApexCharts(cEstado,{
+        chart:{type:'donut', height:240, fontFamily:'Poppins, sans-serif'},
+        series:vals,
+        labels:estados.map(s=>s[0]),
+        colors:estados.map(s=>s[1]),
+        plotOptions:{pie:{donut:{size:'62%', background:'transparent', labels:{show:true, name:{show:true, fontSize:'11px', fontWeight:700, color:'#475569'}, value:{show:true, fontSize:'13px', fontWeight:800, color:'#0a4c23', formatter:v=>'₡'+Number(v).toLocaleString('es-CR')}, total:{show:true, label:'Recaudado', color:'#64748b', fontSize:'11px', fontWeight:700, formatter:()=> '₡'+totalE.toLocaleString('es-CR')}}}}},
+        dataLabels:{enabled:false},
+        stroke:{width:2, colors:['#fdfbf3']},
+        legend:{position:'bottom', fontSize:'11px', fontWeight:600, markers:{width:10, height:10, radius:10}, itemMargin:{horizontal:10, vertical:4}},
+        tooltip:{y:{formatter:v=>'₡'+Number(v).toLocaleString('es-CR')}},
+        states:{hover:{filter:{type:'darken', value:.06}}},
+        responsive:[{breakpoint:480, options:{chart:{height:220}}}]
+      });
+      _apexEstado.render();
+    } else {
       let acc=0;
       const stops=vals.map((v,i)=>{
         const pct=v/totalE*100;
@@ -386,11 +429,31 @@ async function loadFinanzas(force){
       const totalFmt='₡'+vals.reduce((a,b)=>a+b,0).toLocaleString('es-CR');
       cEstado.innerHTML=`<div class="donut" style="background:conic-gradient(${stops});"><div class="donut-center"><span>${totalFmt}</span></div></div><div class="legend">${estados.map(([e,col],i)=>`<span class="legend-item"><span class="legend-dot" style="background:${col}"></span>${e} ₡${vals[i].toLocaleString('es-CR')}</span>`).join('')}</div>`;
     }
-    // mesas — barra segmentada nativa
+    // mesas — ApexCharts radialBar gauge (moderno, ocupa poco, se ve premium)
     const ocup=j.mesas.ocupadas||0, libres=j.mesas.libres||0, totalM=ocup+libres||1;
     const pctO=Math.round(ocup/totalM*100);
     const cMesas=document.getElementById('chartMesas');
-    cMesas.innerHTML=`<div class="mesa-track"><div class="mesa-seg" style="width:${pctO}%; background:#B42318;">${ocup?ocup+' ocup.':''}</div><div class="mesa-seg" style="width:${100-pctO}%; background:#0F7A52;">${libres?libres+' libres':''}</div></div><div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; color:var(--muted); margin-top:6px;"><span>${ocup} ocupadas</span><span>${libres} libres</span><span>${totalM} total</span></div>`;
+    if(typeof ApexCharts !== 'undefined'){
+      if(_apexMesas) try{_apexMesas.destroy();}catch(e){}
+      cMesas.innerHTML=''; cMesas.style.minHeight='220px';
+      _apexMesas=new ApexCharts(cMesas,{
+        chart:{type:'radialBar', height:220, fontFamily:'Poppins, sans-serif', sparkline:{enabled:false}},
+        series:[pctO],
+        plotOptions:{radialBar:{hollow:{size:'58%', background:'#fdfbf3', margin:10, dropShadow:{enabled:true, top:2, left:0, blur:8, opacity:.14, color:'#0a4c23'}}, track:{background:'#e2e8f0', strokeWidth:'100%', margin:8}, dataLabels:{name:{show:false}, value:{show:true, fontSize:'16px', fontWeight:800, color:'#0a4c23', offsetY:8, formatter:()=>' '+ocup+'/'+totalM+' mesas'}, total:{show:false}}}},
+        colors:['#0a4c23'],
+        stroke:{lineCap:'round'},
+        labels:['Ocupación'],
+        tooltip:{enabled:true, y:{formatter:()=> ocup+' ocupadas · '+libres+' libres ('+pctO+'%)'}},
+        grid:{padding:{top:0}}
+      });
+      _apexMesas.render();
+      const leg=document.createElement('div');
+      leg.style.cssText='display:flex; justify-content:space-between; font-size:11px; font-weight:700; color:var(--muted); margin-top:-6px; padding:0 6px;';
+      leg.innerHTML=`<span style="color:#B42318;">● ${ocup} ocupadas</span><span style="color:#0F7A52;">● ${libres} libres</span><span>${totalM} total</span>`;
+      cMesas.appendChild(leg);
+    } else {
+      cMesas.innerHTML=`<div class="mesa-track"><div class="mesa-seg" style="width:${pctO}%; background:#B42318;">${ocup?ocup+' ocup.':''}</div><div class="mesa-seg" style="width:${100-pctO}%; background:#0F7A52;">${libres?libres+' libres':''}</div></div><div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; color:var(--muted); margin-top:6px;"><span>${ocup} ocupadas</span><span>${libres} libres</span><span>${totalM} total</span></div>`;
+    }
   }catch(e){ console.error(e); }
 }
 // tabs
