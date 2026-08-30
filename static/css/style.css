@@ -88,7 +88,11 @@ button{font:inherit}
   color:#0a4c23;
   box-shadow:0 2px 8px rgba(0,0,0,.1);
   border-bottom:3px solid var(--ink);
+  transition:transform 280ms var(--ease-out), box-shadow 200ms var(--ease-out);
+  will-change:transform;
 }
+.header--hidden{ transform:translateY(-100%); }
+.header--scrolled{ box-shadow:0 8px 24px rgba(0,0,0,.14); }
 .header-container, .topbar{
   max-width:1200px; margin:0 auto;
   display:flex; justify-content:space-between; align-items:center;
@@ -139,6 +143,8 @@ button{font:inherit}
 .nav-user{font-size:11px; font-weight:700; letter-spacing:.04em; color:var(--muted); background:#fff; border:1px solid var(--line); padding:6px 10px; border-radius:999px; margin-left:2px}
 .nav-toggle{display:none; flex-direction:column; gap:5px; background:none; border:none; cursor:pointer; padding:8px; border-radius:10px}
 .nav-toggle span{width:18px; height:2px; background:var(--ink); border-radius:2px; transition:transform 260ms var(--ease-drawer), opacity 160ms var(--ease-out)}
+.nav-toggle.is-open span:nth-child(1){ transform:translateY(3.5px) rotate(45deg); }
+.nav-toggle.is-open span:nth-child(2){ transform:translateY(-3.5px) rotate(-45deg); }
 .mobile-nav{
   max-width:1120px; margin:8px auto 0; background:rgba(255,255,255,.96); backdrop-filter:blur(16px);
   border:1px solid var(--line); border-radius:20px; padding:8px; display:flex; flex-direction:column; box-shadow:var(--shadow-lift);
