@@ -1,4 +1,7 @@
 // CTPM — invisible details compound (Emil)
+// arrancar siempre en el tope: desactivar restauración de scroll (evita bajarse al form al recargar/entrar)
+if('scrollRestoration' in history) history.scrollRestoration='manual';
+window.scrollTo(0,0);
 const navToggle=document.getElementById('navToggle'), mobileNav=document.getElementById('mobileNav'), headerEl=document.querySelector('.header');
 if(navToggle && mobileNav){
   navToggle.addEventListener('click',()=>{
