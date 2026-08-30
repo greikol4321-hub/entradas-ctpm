@@ -593,6 +593,8 @@ tr:hover td{background:#FFFEFB}
 .hist-datos > div:first-child{font-size:13px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .hist-datos > div:last-child{font-size:11px; color:var(--muted); margin-top:2px}
 /* scanner page — herramienta de trabajo del portero: header compacto, footer colapsado en móvil */
+/* header siempre visible: quitar autohide (header--hidden lo esconde al bajar) en CUALQUIER tamaño */
+.page-scanner .header{transform:none!important}
 @media(max-width:480px){
   .page-scanner .header{padding:8px 0; border-bottom-width:2px}
   .page-scanner .header-container{flex-direction:row; padding:0 12px}
@@ -607,8 +609,6 @@ tr:hover td{background:#FFFEFB}
    .page-scanner .scanner-shell{margin-top:8px}
    /* sin contador en móvil — estorba junto a Actualizar */
    .hist-count{display:none!important}
-   /* header siempre visible: nada de esconderse al bajar — la página no se mueve */
-   .page-scanner .header{transform:none!important}
 }
 
 @media(max-width:480px){
