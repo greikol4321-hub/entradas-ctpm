@@ -44,7 +44,6 @@ function show(ok, title, msg, meta=''){
     : '<svg class="icon-svg lg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
   rTitle.textContent = title; rMsg.textContent = msg; rMeta.textContent = meta;
   result.classList.remove('hidden');
-  result.scrollIntoView({behavior:'smooth', block:'nearest'});
   if(navigator.vibrate) navigator.vibrate(ok ? 80 : [80,60,80]);
   document.documentElement.style.background = ok ? '#ECFDF5' : '#FEF2F2';
   setTimeout(()=>document.documentElement.style.background='', 800);
