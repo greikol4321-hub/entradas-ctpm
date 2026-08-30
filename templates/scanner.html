@@ -132,7 +132,6 @@ document.getElementById('btnStart').onclick=async()=>{
   try{
     await html5Qr.start({facingMode:"environment"}, {fps:10, qrbox:{width:240, height:240}},
       (decoded)=> validar(decoded.trim()), ()=>{});
-    el.innerHTML='<span class="reader-idle">Escaneando...</span>';
   }catch(e){
     el.innerHTML='<span class="reader-error">No se pudo iniciar la cámara: '+e.message+'<br>Usa el campo manual.</span>';
     html5Qr=null;
