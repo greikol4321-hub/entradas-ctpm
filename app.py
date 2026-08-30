@@ -3,7 +3,7 @@ Sistema CTPM — Venta y validación de entradas
 Soporta Postgres (Supabase) via DATABASE_URL o MySQL via variables DB_*
 Mesas numeradas + Finanzas
 """
-import os, uuid, pathlib, functools, secrets, io, time, json, hashlib, threading
+import os, uuid, pathlib, functools, secrets, io, time, json, hashlib, threading, sys
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from collections import defaultdict, deque
@@ -19,7 +19,7 @@ def to_cr_str(dt, fmt="%Y-%m-%d %H:%M"):
         return dt.strftime(fmt) if hasattr(dt, "strftime") else str(dt)
 def now_cr():
     return datetime.now(CR_TZ)
-from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, url_for, session, redirect
+from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, url_for, session, redirect, g
 from werkzeug.security import generate_password_hash, check_password_hash
 import qrcode
 from dotenv import load_dotenv
@@ -39,8 +39,40 @@ except ImportError:
 # --- Config ---
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
-app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET", "ctpm-dev-secret-cambia-en-produccion-2026")
+_flask_secret = os.getenv("FLASK_SECRET")
+if not _flask_secret:
+    if os.getenv("VERCEL") or os.getenv("FLASK_ENV") == "production":
+        raise RuntimeError("FLASK_SECRET es obligatorio en producción — configúralo en Vercel env / .env")
+    _flask_secret = "ctpm-dev-secret-cambia-en-produccion-2026"
+    # se loguea después de configurar logging
+app.config['SECRET_KEY'] = _flask_secret
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
+# logging estructurado JSON + X-Request-ID + Sentry (4.3)
+import logging as _logging
+_logging.basicConfig(level=_logging.INFO, format="%(message)s", stream=sys.stdout)
+for h in app.logger.handlers:
+    h.setFormatter(_logging.Formatter("%(message)s"))
+if not _flask_secret or _flask_secret.startswith("ctpm-dev"):
+    app.logger.warning(json.dumps({"event":"warn_flask_secret_dev","request_id":"startup"}))
+if os.getenv("SENTRY_DSN"):
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+        sentry_sdk.init(dsn=os.getenv("SENTRY_DSN"), integrations=[FlaskIntegration()], traces_sample_rate=0.1, environment=os.getenv("VERCEL_ENV","production"))
+        app.logger.info(json.dumps({"event":"sentry_init","request_id":"startup"}))
+    except Exception as e:
+        app.logger.warning(json.dumps({"event":"sentry_init_failed","error":str(e),"request_id":"startup"}))
+@app.before_request
+def _set_request_id():
+    g.request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:8]
+    g._t0 = time.time()
+@app.after_request
+def _log_request(resp):
+    try:
+        dur = int((time.time() - getattr(g, "_t0", time.time()))*1000)
+        app.logger.info(json.dumps({"event":"request","request_id":getattr(g,"request_id","-"),"method":request.method,"path":request.path,"status":resp.status_code,"duration_ms":dur,"ip":request.remote_addr,"user":session.get("username")}))
+    except: pass
+    return resp
 BASE = pathlib.Path(__file__).parent
 if os.getenv("VERCEL"):
     UPLOAD_FOLDER = pathlib.Path("/tmp") / "uploads"
@@ -61,8 +93,17 @@ PRECIO_MESAS  = "₡10.000"
 PRECIO_GRADAS_VAL = 5000
 PRECIO_MESAS_VAL = 10000
 NUM_MESAS = 12
-DEMO_USER = "admin"
-DEMO_PASS = "admin123"
+# credenciales iniciales solo vía env — sin default en producción (Vercel)
+_INITIAL_USER = os.getenv("INITIAL_ADMIN_USER") or os.getenv("DEMO_USER")
+_INITIAL_PASS = os.getenv("INITIAL_ADMIN_PASSWORD") or os.getenv("DEMO_PASS")
+if os.getenv("VERCEL"):
+    DEMO_USER = _INITIAL_USER  # None si no configurado → no se crea admin
+    DEMO_PASS = _INITIAL_PASS
+else:
+    DEMO_USER = _INITIAL_USER or "admin"
+    DEMO_PASS = _INITIAL_PASS or "admin123"
+    if not _INITIAL_USER:
+        app.logger.warning(f"[WARN] INITIAL_ADMIN_USER no configurado — usando {DEMO_USER}/*** solo para desarrollo")
 # ponytail: caches en memoria sin deps (TTL corto, invalidación en mutaciones) — web-performance skill: cache API + static
 _FIN_CACHE = {"data": None, "ts": 0, "etag": None}
 FIN_TTL = 45
@@ -73,11 +114,12 @@ MESAS_TTL = 30
 def _etag(data): return hashlib.md5(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()[:12]
 def _fin_etag(data): return _etag(data)
 def invalidate_fin_cache():
-    # SWR: no borra, marca stale y refresca en bg — próxima petición STALE 2ms no MISS 1.4s
+    # SWR: marca stale — en local refresca en bg (2ms), en Vercel deja que CDN revalide (threads congelados en serverless)
     if _FIN_CACHE["data"] is not None:
         _FIN_CACHE["ts"] = 0
-        try: threading.Thread(target=_refresh_fin_cache_bg, daemon=True).start()
-        except: pass
+        if not os.getenv("VERCEL"):
+            try: threading.Thread(target=_refresh_fin_cache_bg, daemon=True).start()
+            except: pass
     else:
         _FIN_CACHE["data"] = None
         _FIN_CACHE["ts"] = 0
@@ -101,7 +143,7 @@ def _refresh_entradas_bg(cache_key, estado, ubicacion):
         etag=_etag(rows)
         _ENTRADAS_CACHE[cache_key]={"data": rows, "ts": time.time(), "etag": etag}
     except Exception as e:
-        print(f"[entradas bg refresh] {e}")
+        app.logger.warning(f"[entradas bg refresh] {e}")
 def _refresh_mesas_bg():
     try:
         rows=fetch_all("SELECT mesa_numero FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')")
@@ -114,21 +156,22 @@ def _refresh_mesas_bg():
         _MESAS_CACHE["ts"]=time.time()
         _MESAS_CACHE["etag"]=etag
     except Exception as e:
-        print(f"[mesas bg refresh] {e}")
+        app.logger.warning(f"[mesas bg refresh] {e}")
 def invalidate_all_cache():
     invalidate_fin_cache()
-    # SWR para toda la página: expira pero conserva stale para servir instantáneo
+    # SWR para toda la página: expira pero conserva stale para servir instantáneo (solo local, Vercel usa CDN)
     for k in list(_ENTRADAS_CACHE.keys()):
         _ENTRADAS_CACHE[k]["ts"]=0
-        # refresca cada key en bg
-        try:
-            estado, ubic=m=k.split(":")
-            threading.Thread(target=_refresh_entradas_bg, args=(k, estado, ubic), daemon=True).start()
-        except: pass
+        if not os.getenv("VERCEL"):
+            try:
+                estado, ubic=m=k.split(":")
+                threading.Thread(target=_refresh_entradas_bg, args=(k, estado, ubic), daemon=True).start()
+            except: pass
     if _MESAS_CACHE["data"] is not None:
         _MESAS_CACHE["ts"]=0
-        try: threading.Thread(target=_refresh_mesas_bg, daemon=True).start()
-        except: pass
+        if not os.getenv("VERCEL"):
+            try: threading.Thread(target=_refresh_mesas_bg, daemon=True).start()
+            except: pass
     else:
         _MESAS_CACHE["data"]=None
         _MESAS_CACHE["ts"]=0
@@ -163,7 +206,7 @@ def security_headers(resp):
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["X-Frame-Options"] = "DENY"
     resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    resp.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    resp.headers["Permissions-Policy"] = "camera=(self), microphone=(), geolocation=()"
     # CSP mínima sin romper cdnjs/jspdf/google fonts/apexcharts
     resp.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co"
     if os.getenv("VERCEL"):
@@ -224,7 +267,21 @@ def supabase_upload(bucket, fname, data_bytes, content_type="application/octet-s
                     return resp2.status in (200,201)
             return False
     except Exception as e:
-        print(f"[storage] upload {bucket}/{fname} err: {e}")
+        app.logger.warning(f"[storage] upload {bucket}/{fname} err: {e}")
+        return False
+def supabase_delete(bucket, fname):
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        return False
+    try:
+        import urllib.request, urllib.error
+        url = f"{SUPABASE_URL}/storage/v1/object/{bucket}/{fname}"
+        # Supabase storage delete via DELETE method
+        req = urllib.request.Request(url, method="DELETE", headers={"apikey": SUPABASE_SERVICE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.status in (200,204)
+    except Exception as e:
+        # silenciar — orphan cleanup best-effort
+        app.logger.warning(f"[storage] delete {bucket}/{fname} warn: {e}")
         return False
 
 def supabase_download(bucket, fname):
@@ -277,7 +334,7 @@ def db():
             conn = psycopg.connect(dsn, connect_timeout=10)
             return conn
         except Exception as e:
-            print(f"[CTPM] db connect failed: {e}")
+            app.logger.error(f"[CTPM] db connect failed: {e}")
             return None
     if _is_mysql():
         cfg = dict(host=os.getenv("DB_HOST","localhost"),
@@ -290,6 +347,30 @@ def db():
         except Exception:
             return None
     return None
+def _get_conn():
+    # 2.1: reutiliza 1 conexión TLS por request (Flask g) — evita 4 handshakes por checkout
+    try:
+        if 'pg_conn' in g:
+            c = g.pg_conn
+            try:
+                if c.closed == 0:
+                    return c
+            except: pass
+        c = db()
+        if c is not None:
+            try: g.pg_conn = c
+            except: pass  # fuera de app context (warmup thread)
+        return c
+    except:
+        return db()
+@app.teardown_appcontext
+def _close_pg_conn(exc):
+    try:
+        c = g.pop('pg_conn', None)
+        if c is not None:
+            try: c.close()
+            except: pass
+    except: pass
 
 def fetch_all(sql, params=()):
     conn = db()
@@ -354,7 +435,7 @@ def _refresh_fin_cache_bg():
         _FIN_CACHE["ts"] = time.time()
         _FIN_CACHE["etag"] = _etag(payload)
     except Exception as e:
-        print(f"[finanzas bg refresh] {e}")
+        app.logger.warning(f"[finanzas bg refresh] {e}")
 def _warm_all_bg():
     try: _refresh_fin_cache_bg()
     except: pass
@@ -362,10 +443,11 @@ def _warm_all_bg():
     except: pass
     try: _refresh_mesas_bg()
     except: pass
-# warmup en bg para que primer HIT sea instantáneo (no 1.6s MISS) — se lanza después de definir db()
-try:
-    threading.Thread(target=_warm_all_bg, daemon=True).start()
-except: pass
+# warmup en bg solo en local — en Vercel serverless el hilo se congela tras la respuesta (2.2)
+if not os.getenv("VERCEL"):
+    try:
+        threading.Thread(target=_warm_all_bg, daemon=True).start()
+    except: pass
 def log_audit(accion, entradas_id=None, detalle=None):
     try:
         ip = request.remote_addr if request else None
@@ -373,7 +455,7 @@ def log_audit(accion, entradas_id=None, detalle=None):
         det = json.dumps(detalle) if isinstance(detalle, dict) else (str(detalle) if detalle is not None else None)
         exec_sql("INSERT INTO public.auditoria (accion, entradas_id, actor, ip, detalle) VALUES (%s,%s,%s,%s,%s::jsonb)", (accion, entradas_id, actor, ip, det))
     except Exception as e:
-        print(f"[audit] {accion} err: {e}")
+        app.logger.warning(f"[audit] {accion} err: {e}")
 
 # --- Auth helpers ---
 def login_required(fn):
@@ -403,7 +485,10 @@ def role_required(*roles):
     return deco
 
 def ensure_admin_user():
-    """Crea admin por defecto solo si no hay ningún admin (respeta si solo queda grei)."""
+    """Crea admin por defecto solo si no hay ningún admin (respeta si solo queda grei). Requiere env en producción."""
+    if not DEMO_USER or not DEMO_PASS:
+        app.logger.info("[CTPM] ensure_admin_user omitido: INITIAL_ADMIN_USER/PASSWORD no configurados")
+        return
     try:
         cnt = fetch_one("SELECT COUNT(*) as c FROM usuarios WHERE rol='admin'")
         if cnt and cnt["c"] > 0:
@@ -414,11 +499,11 @@ def ensure_admin_user():
             r = exec_sql("INSERT INTO usuarios (username, password_hash, rol) VALUES (%s,%s,%s)",
                          (DEMO_USER, h, "admin"))
             if isinstance(r, Exception):
-                print(f"[CTPM] ensure_admin_user error: {r}")
+                app.logger.error(f"[CTPM] ensure_admin_user error: {r}")
             elif r is not None:
-                print(f"[CTPM] Usuario admin creado: {DEMO_USER} / {DEMO_PASS}")
+                app.logger.info(f"[CTPM] Usuario admin creado: {DEMO_USER} (password oculto)")
     except Exception as e:
-        print(f"[CTPM] ensure_admin_user omitido: {e}")
+        app.logger.warning(f"[CTPM] ensure_admin_user omitido: {e}")
 # asegurar admin también en Vercel (import, no solo __main__)
 try:
     ensure_admin_user()
@@ -481,7 +566,7 @@ def api_login():
             log_audit("login_ok", None, {"user": username, "rol": u["rol"]})
             return jsonify(ok=True, msg="Bienvenido", rol=u["rol"], redirect=dest)
     except Exception as e:
-        print(f"[CTPM] login db err: {e}")
+        app.logger.warning(f"[CTPM] login db err: {e}")
     log_audit("login_fail", None, {"user": username})
     return jsonify(ok=False, msg="Credenciales inválidas"), 401
 
@@ -500,15 +585,17 @@ def mesas_disponibles():
             return resp
         else:
             if request.headers.get("If-None-Match") == _MESAS_CACHE["etag"]:
-                try: threading.Thread(target=_refresh_mesas_bg, daemon=True).start()
-                except: pass
+                if not os.getenv("VERCEL"):
+                    try: threading.Thread(target=_refresh_mesas_bg, daemon=True).start()
+                    except: pass
                 return "", 304, {"ETag": _MESAS_CACHE["etag"], "Cache-Control": "public, max-age=30, stale-while-revalidate=30", "X-Cache": "STALE"}
             resp = jsonify(_MESAS_CACHE["data"])
             resp.headers["ETag"] = _MESAS_CACHE["etag"]
             resp.headers["Cache-Control"] = "public, max-age=30, stale-while-revalidate=30"
             resp.headers["X-Cache"] = "STALE"
-            try: threading.Thread(target=_refresh_mesas_bg, daemon=True).start()
-            except: pass
+            if not os.getenv("VERCEL"):
+                try: threading.Thread(target=_refresh_mesas_bg, daemon=True).start()
+                except: pass
             return resp
     try:
         rows = fetch_all("SELECT mesa_numero FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')")
@@ -558,10 +645,7 @@ def comprar():
             return jsonify(ok=False, msg="Mesa inválida"), 400
         if not (1 <= mesa_numero <= NUM_MESAS):
             return jsonify(ok=False, msg=f"Mesa debe ser 1 a {NUM_MESAS}"), 400
-        # Verificar disponibilidad
-        ocup = fetch_all("SELECT id FROM entradas WHERE ubicacion='Mesas' AND mesa_numero=%s AND estado IN ('Pendiente','Aprobada')", (mesa_numero,))
-        if ocup:
-            return jsonify(ok=False, msg=f"Mesa {mesa_numero} ya está ocupada"), 409
+        # nota: verificación rápida sin lock — la atomicidad real está en el índice único uq_mesa_ocupada + transacción FOR UPDATE
     else:
         mesa_numero = None
     eid = str(uuid.uuid4())
@@ -569,39 +653,67 @@ def comprar():
     ext = pathlib.Path(file.filename).suffix.lower()
     fname = f"{eid}{ext}"
     dest = UPLOAD_FOLDER / fname
-    file.save(dest)
     rel = f"uploads/{fname}"
-    # subir a Supabase Storage para que "Ver" no 404 en Vercel (/tmp efímero) — fallback silencioso si no hay keys
+    # leer bytes antes de tocar DB — evita orphan file si la mesa ya fue tomada
     try:
-        # leer bytes del archivo guardado (file ya guardado, pero también intentar file.read)
-        data_bytes = dest.read_bytes() if dest.exists() else None
-        if data_bytes:
-            ct = "image/jpeg" if ext in (".jpg",".jpeg") else "image/png" if ext==".png" else "image/webp" if ext==".webp" else "application/pdf" if ext==".pdf" else "application/octet-stream"
-            supabase_upload(COMPROBANTES_BUCKET, fname, data_bytes, ct)
-    except Exception as e:
-        print(f"[comprar] supabase upload warn: {e}")
-    try:
-        if _is_pg():
-            r = exec_sql(
-                "INSERT INTO entradas (id, codigo, nombre_completo, cedula, ubicacion, mesa_numero, monto, telefono, comprobante_path) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                (eid, codigo, nombre, cedula, ubicacion, mesa_numero, monto, telefono, rel))
-        else:
-            r = exec_sql(
-                "INSERT INTO entradas (id, codigo, nombre_completo, cedula, ubicacion, mesa_numero, monto, telefono, comprobante_path) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                (eid, codigo, nombre, cedula, ubicacion, mesa_numero, monto, telefono, rel))
-        if isinstance(r, Exception):
-            # Detectar violación de índice único de mesa
-            msg = str(r)
-            if "uq_mesa_ocupada" in msg or "Duplicate" in msg:
-                return jsonify(ok=False, msg=f"Mesa {mesa_numero} ya fue tomada, elige otra"), 409
-            return jsonify(ok=False, msg="Error al guardar en base de datos", id=eid)
-        if r is None:
-            return jsonify(ok=False, msg="Base de datos no disponible", id=eid)
-        # obtener numero correlativo generado por DB
-        row_num = fetch_one("SELECT numero FROM entradas WHERE id=%s", (eid,))
-        numero = row_num.get("numero") if row_num else None
+        file_bytes = file.read()
+        if not file_bytes:
+            return jsonify(ok=False, msg="Comprobante vacío"), 400
     except Exception:
-        return jsonify(ok=False, msg="Error interno del servidor", id=eid)
+        return jsonify(ok=False, msg="No se pudo leer el comprobante"), 400
+    # inserción atómica con FOR UPDATE (1 conexión, 2 queries) — evita TOCTOU sin dejar archivos huérfanos
+    try:
+        conn = db()
+        if conn is None:
+            return jsonify(ok=False, msg="Base de datos no disponible", id=eid), 503
+        cur = conn.cursor()
+        try:
+            # bloquear fila de mesa si existe — segunda petición espera aquí
+            if ubicacion == "Mesas" and mesa_numero is not None:
+                cur.execute("SELECT id FROM entradas WHERE ubicacion='Mesas' AND mesa_numero=%s AND estado IN ('Pendiente','Aprobada') FOR UPDATE", (mesa_numero,))
+                if cur.fetchone():
+                    conn.rollback()
+                    cur.close(); conn.close()
+                    return jsonify(ok=False, msg=f"Mesa {mesa_numero} ya está ocupada"), 409
+            cur.execute(
+                "INSERT INTO entradas (id, codigo, nombre_completo, cedula, ubicacion, mesa_numero, monto, telefono, comprobante_path) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (eid, codigo, nombre, cedula, ubicacion, mesa_numero, monto, telefono, rel))
+            conn.commit()
+        except Exception as e:
+            try: conn.rollback()
+            except: pass
+            cur.close(); conn.close()
+            msg = str(e)
+            if "uq_mesa_ocupada" in msg or "Duplicate" in msg or "unique" in msg.lower():
+                return jsonify(ok=False, msg=f"Mesa {mesa_numero} ya fue tomada, elige otra"), 409
+            app.logger.error(f"[comprar] insert err: {e}")
+            return jsonify(ok=False, msg="Error al guardar en base de datos", id=eid), 500
+        # obtener numero correlativo
+        cur2 = conn.cursor()
+        cur2.execute("SELECT numero FROM entradas WHERE id=%s", (eid,))
+        row_num = cur2.fetchone()
+        cols = [c[0] for c in cur2.description] if cur2.description else []
+        row_dict = dict(zip(cols, row_num)) if row_num else None
+        numero = row_dict.get("numero") if row_dict else None
+        cur2.close(); conn.close()
+    except Exception as e:
+        app.logger.error(f"[comprar] transaction err: {e}")
+        return jsonify(ok=False, msg="Error interno del servidor", id=eid), 500
+    # ahora que el INSERT está confirmado, guardar archivo local y subir a Supabase — sin orphan si había carrera
+    try:
+        dest.write_bytes(file_bytes)
+    except Exception as e:
+        # rollback DB si no se pudo guardar archivo — evita fila sin comprobante
+        try:
+            exec_sql("DELETE FROM entradas WHERE id=%s", (eid,))
+        except: pass
+        app.logger.error(f"[comprar] file save err: {e}")
+        return jsonify(ok=False, msg="Error al guardar comprobante"), 500
+    try:
+        ct = "image/jpeg" if ext in (".jpg",".jpeg") else "image/png" if ext==".png" else "image/webp" if ext==".webp" else "application/pdf" if ext==".pdf" else "application/octet-stream"
+        supabase_upload(COMPROBANTES_BUCKET, fname, file_bytes, ct)
+    except Exception as e:
+        app.logger.warning(f"[comprar] supabase upload warn: {e}")
     log_audit("comprar", eid, {"numero": numero, "codigo": codigo, "ubicacion": ubicacion, "mesa": mesa_numero, "monto": monto})
     invalidate_all_cache()
     return jsonify(ok=True, msg=f"Comprobante recibido. Tu código es {codigo} · Entrada N° {numero or ''}. Te enviaremos tu QR por WhatsApp en máximo 48 horas.", id=eid, codigo=codigo, numero=numero)
@@ -626,17 +738,19 @@ def listar():
             resp.headers["X-Cache"] = "HIT"
             return resp
         else:
-            # stale SWR — sirve instantáneo, refresca bg
+            # stale SWR — sirve instantáneo, refresca bg solo en local (Vercel usa CDN s-maxage)
             if request.headers.get("If-None-Match") == ent["etag"]:
-                try: threading.Thread(target=_refresh_entradas_bg, args=(cache_key, estado, ubicacion), daemon=True).start()
-                except: pass
+                if not os.getenv("VERCEL"):
+                    try: threading.Thread(target=_refresh_entradas_bg, args=(cache_key, estado, ubicacion), daemon=True).start()
+                    except: pass
                 return "", 304, {"ETag": ent["etag"], "Cache-Control": "private, max-age=10, stale-while-revalidate=15", "X-Cache": "STALE"}
             resp = jsonify(ent["data"])
             resp.headers["ETag"] = ent["etag"]
             resp.headers["Cache-Control"] = "private, max-age=10, stale-while-revalidate=15"
             resp.headers["X-Cache"] = "STALE"
-            try: threading.Thread(target=_refresh_entradas_bg, args=(cache_key, estado, ubicacion), daemon=True).start()
-            except: pass
+            if not os.getenv("VERCEL"):
+                try: threading.Thread(target=_refresh_entradas_bg, args=(cache_key, estado, ubicacion), daemon=True).start()
+                except: pass
             return resp
     try:
         base = "SELECT id,numero,codigo,nombre_completo,cedula,ubicacion,mesa_numero,monto,telefono,comprobante_path,qr_path,estado,fecha_compra,fecha_aprobacion,fecha_uso FROM entradas"
@@ -664,7 +778,7 @@ def listar():
         return resp
     except Exception as e:
         import traceback
-        print(f"[CTPM] listar error: {e}\n{traceback.format_exc()}")
+        app.logger.error(f"[CTPM] listar error: {e}\n{traceback.format_exc()}")
         return jsonify([])
 
 # --- API: finanzas ---  # kpi-dashboard: 1 conexión + SWR stale-while-revalidate (HIT 0.8ms, STALE 0.8ms bg-refresh)
@@ -685,15 +799,19 @@ def finanzas():
             resp.headers["X-Cache"] = "HIT"
             return resp
         else:
-            # stale — sirve instantáneo y refresca en background
+            # stale — sirve instantáneo y refresca en background solo local (Vercel congela hilos)
             if request.headers.get("If-None-Match") == etag:
-                threading.Thread(target=_refresh_fin_cache_bg, daemon=True).start()
+                if not os.getenv("VERCEL"):
+                    try: threading.Thread(target=_refresh_fin_cache_bg, daemon=True).start()
+                    except: pass
                 return "", 304, {"ETag": etag, "Cache-Control": "private, max-age=30, stale-while-revalidate=30", "X-Cache": "STALE"}
             resp = jsonify(_FIN_CACHE["data"])
             resp.headers["ETag"] = etag
             resp.headers["Cache-Control"] = "private, max-age=30, stale-while-revalidate=30"
             resp.headers["X-Cache"] = "STALE"
-            threading.Thread(target=_refresh_fin_cache_bg, daemon=True).start()
+            if not os.getenv("VERCEL"):
+                try: threading.Thread(target=_refresh_fin_cache_bg, daemon=True).start()
+                except: pass
             return resp
     try:
         payload = _load_finanzas_payload()
@@ -707,7 +825,7 @@ def finanzas():
         return resp
     except Exception as e:
         import traceback
-        print(f"[CTPM] finanzas error: {e}\n{traceback.format_exc()}")
+        app.logger.error(f"[CTPM] finanzas error: {e}\n{traceback.format_exc()}")
         return jsonify(ok=False, msg=str(e), tb=traceback.format_exc()), 500
 
 # --- API: usuarios (solo admin) ---
@@ -1020,5 +1138,5 @@ def health():
 
 if __name__ == "__main__":
     ensure_admin_user()
-    print(f"[CTPM] DB: {db_kind()}")
+    app.logger.info(f"[CTPM] DB: {db_kind()}")
     app.run(debug=True, host="0.0.0.0", port=5000)

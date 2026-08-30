@@ -17,6 +17,7 @@
       <div class="controls">
         <button id="btnStart" class="btn primary"><svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/></svg> Iniciar cámara</button>
         <button id="btnStop" class="btn">Detener</button>
+        <button id="btnTorch" class="btn" title="Flash para noche" aria-pressed="false">🔦 Linterna</button>
         <input id="manualId" placeholder="Código corto (ej: A7K9P) — 5 letras/números" aria-label="Código corto" maxlength="12" style="text-transform:uppercase; letter-spacing:.12em;" autocomplete="off">
         <button id="btnManual" class="btn">Validar <svg class="icon-svg sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
       </div>
@@ -47,9 +48,43 @@
 {% block scripts %}
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
+const esc=s=>{const d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML;};
+const escAttr=s=>String(s==null?'':s).replace(/"/g,'&quot;');
 const result=document.getElementById('result'), rTitle=document.getElementById('resultTitle'),
       rMsg=document.getElementById('resultMsg'), rMeta=document.getElementById('resultMeta'), rIcon=document.getElementById('resultIcon');
 let html5Qr=null, lastId=null, lastAt=0;
+let audioCtx=null, torchOn=false;
+// chime sintetizado sin archivos (Web Audio) — agudo OK, grave doble ERR
+function chime(ok){
+  try{
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const play=(freq, dur, delay=0)=>{
+      setTimeout(()=>{
+        const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        o.connect(g); g.connect(audioCtx.destination);
+        o.frequency.value=freq; o.type='sine';
+        g.gain.setValueAtTime(0.18, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime+dur);
+        o.start(); o.stop(audioCtx.currentTime+dur);
+      }, delay);
+    };
+    if(ok) play(880, 0.28);
+    else { play(220,0.38); play(180,0.35,180); }
+  }catch{}
+}
+async function toggleTorch(){
+  const video=document.querySelector('#reader video');
+  if(!video || !video.srcObject) { show(false,'Linterna no disponible','Activa la cámara primero'); return; }
+  const track=video.srcObject.getVideoTracks()[0];
+  const caps=track.getCapabilities?.();
+  if(!caps || !('torch' in caps)) { show(false,'Linterna no soportada','Este dispositivo no tiene flash'); return; }
+  torchOn=!torchOn;
+  try{
+    await track.applyConstraints({advanced:[{torch: torchOn}]});
+    const b=document.getElementById('btnTorch');
+    if(b){ b.textContent=torchOn?'🔦 Apagar':'🔦 Linterna'; b.setAttribute('aria-pressed', torchOn?'true':'false'); b.classList.toggle('primary', torchOn); }
+  }catch(e){ show(false,'Error linterna', e.message); torchOn=!torchOn; }
+}
 
 function show(ok, title, msg, meta=''){
   result.className = 'result ' + (ok ? 'ok' : 'err');
@@ -68,18 +103,25 @@ async function validar(id){
   const code=raw.replace(/\s+/g,'').replace(/-/g,'').toUpperCase();
   const now=Date.now(); if(code===lastId && now-lastAt<1800) return;
   lastId=code; lastAt=now;
+  const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), 6000);
   try{
-    const r=await fetch('/api/validar',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id: code})});
+    const r=await fetch('/api/validar',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id: code}), signal: ctrl.signal});
+    clearTimeout(to);
     if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
     const j=await r.json();
     const displayCode=j.codigo || code;
-    if(j.ok) show(true, j.msg, `${j.nombre} — ${j.ubicacion}${j.mesa_numero?' Mesa '+j.mesa_numero:''}`, `Cédula ${j.cedula} · Código ${displayCode} · acceso concedido`);
+    if(j.ok) { show(true, j.msg, `${j.nombre} — ${j.ubicacion}${j.mesa_numero?' Mesa '+j.mesa_numero:''}`, `Cédula ${j.cedula} · Código ${displayCode} · acceso concedido`); chime(true); }
     else {
       const msg = j.msg || 'Denegado';
       const extra = j.nombre ? `${j.nombre} — ${j.ubicacion} · Código ${displayCode}` : `Código ${displayCode}`;
-      show(false, msg, j.estado||'', extra);
+      show(false, msg, j.estado||'', extra); chime(false);
     }
-  }catch(e){ show(false,'Error de red', e.message); }
+  }catch(e){
+    clearTimeout(to);
+    if(e.name==='AbortError') show(false,'Timeout','El servidor tardó >6s — verifica 4G/Wi-Fi e intenta de nuevo');
+    else show(false,'Error de red', e.message);
+    chime(false);
+  }
 }
 document.getElementById('btnStart').onclick=async()=>{
   if(html5Qr) return;
@@ -99,6 +141,7 @@ document.getElementById('btnStop').onclick=async()=>{
   html5Qr=null; document.getElementById('reader').innerHTML='<span class="reader-idle">Cámara inactiva</span>';
 };
 document.getElementById('btnManual').onclick=()=> validar(document.getElementById('manualId').value);
+document.getElementById('btnTorch').onclick=toggleTorch;
 document.getElementById('manualId').addEventListener('keydown',e=>{ if(e.key==='Enter') validar(e.target.value); });
 // historial usadas + revertir — diseño frontend con sello distintivo
 async function cargarHistorial(){
@@ -114,15 +157,15 @@ async function cargarHistorial(){
     h.innerHTML = rows.map(u=>`
       <div style="display:flex; gap:12px; align-items:center; padding:12px; background:var(--surface-2); border:1px solid var(--line); border-radius:12px; transition:border-color 160ms;">
         <div style="width:72px; flex-shrink:0; text-align:center;">
-          <div class="mono" style="font-size:13px; font-weight:800; letter-spacing:.12em; color:var(--ink); background:#fff; border:1px solid var(--line); padding:7px 4px; border-radius:8px; line-height:1;">${u.codigo||''}</div>
-          <div class="muted small" style="font-size:10px; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${u.fecha_uso||''}</div>
+          <div class="mono" style="font-size:13px; font-weight:800; letter-spacing:.12em; color:var(--ink); background:#fff; border:1px solid var(--line); padding:7px 4px; border-radius:8px; line-height:1;">${esc(u.codigo||'')}</div>
+          <div class="muted small" style="font-size:10px; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(u.fecha_uso||'')}</div>
         </div>
         <div style="flex:1; min-width:0;">
-          <div style="font-size:13px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${u.nombre_completo||''}</div>
-          <div class="mono" style="font-size:11px; color:var(--muted); margin-top:1px;">${u.cedula||''}</div>
-          <div class="muted small" style="font-size:11px; margin-top:2px;">${u.ubicacion||''}${u.mesa_numero?' · Mesa '+u.mesa_numero:''}</div>
+          <div style="font-size:13px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(u.nombre_completo||'')}</div>
+          <div class="mono" style="font-size:11px; color:var(--muted); margin-top:1px;">${esc(u.cedula||'')}</div>
+          <div class="muted small" style="font-size:11px; margin-top:2px;">${esc(u.ubicacion||'')}${u.mesa_numero?' · Mesa '+esc(String(u.mesa_numero)):''}</div>
         </div>
-        <button class="btn sm" data-revert="${u.codigo||''}" title="Volver a Aprobada" style="flex-shrink:0;">↩ Revertir</button>
+        <button class="btn sm" data-revert="${escAttr(u.codigo||'')}" title="Volver a Aprobada" style="flex-shrink:0;">↩ Revertir</button>
       </div>
     `).join('');
   }catch(e){ h.innerHTML='<p class="muted small" style="text-align:center; color:var(--err);">Error al cargar historial</p>'; }

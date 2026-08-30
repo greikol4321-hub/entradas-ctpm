@@ -87,7 +87,7 @@
           </div>
           <div class="ubicacion-grid">
             <label class="ubicacion-card" data-val="Gradas">
-              <input type="radio" name="ubicacion" value="Gradas" required hidden>
+              <input type="radio" name="ubicacion" value="Gradas" required class="sr-only">
               <div class="ubicacion-inner">
                 <span class="ubicacion-check" aria-hidden="true"><svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
                 <strong>Gradas</strong>
@@ -96,7 +96,7 @@
               </div>
             </label>
             <label class="ubicacion-card" data-val="Mesas">
-              <input type="radio" name="ubicacion" value="Mesas" hidden>
+              <input type="radio" name="ubicacion" value="Mesas" class="sr-only">
               <div class="ubicacion-inner">
                 <span class="ubicacion-check" aria-hidden="true"><svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
                 <strong>Mesas</strong>
@@ -190,6 +190,7 @@
             <input type="file" name="comprobante" id="comprobante" accept=".jpg,.jpeg,.png,.webp,.pdf" required>
           </label>
           <div class="file-meta hidden" id="fileMeta"></div>
+          <div id="previewThumb" class="hidden" style="margin-top:12px; border:1px solid var(--line); border-radius:12px; overflow:hidden; max-width:320px; background:var(--surface-2);"><img id="previewImg" style="width:100%; height:auto; display:block; max-height:220px; object-fit:contain; background:#fff;" alt="Vista previa comprobante"><div id="previewName" class="small muted" style="padding:8px; text-align:center; font-size:11px;"></div></div>
           <p class="field-error hidden" id="err4"></p>
           <div class="wizard-nav">
             <button type="button" class="btn wizard-prev">Atrás</button>
@@ -372,7 +373,9 @@ document.querySelectorAll('.ubicacion-card').forEach(card=>{
 });
 // referencia personalizada
 function updateRef(){
-  const n=(nombre.value.trim().split(/\s+/)[0]||'CTPM').toUpperCase().replace(/[^A-Z]/g,'').slice(0,8) || 'CTPM';
+  // normalize tildes: ÁLVARO → ALVARO (NFD)
+  const rawFirst=(nombre.value.trim().split(/\s+/)[0]||'CTPM').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const n=rawFirst.toUpperCase().replace(/[^A-Z]/g,'').slice(0,8) || 'CTPM';
   const c=cedula.value.replace(/\D/g,'').slice(-4).padStart(4,'0');
   const u=(document.querySelector('input[name="ubicacion"]:checked')?.value||'').toUpperCase().slice(0,5) || 'GRAD';
   let ref=`CTPM-${n}-${c}-${u}`;
@@ -381,13 +384,20 @@ function updateRef(){
   if(ub==='Mesas' && m) ref+=`-M${m}`;
   refText.textContent=ref;
 }
-// ponytail: auto-formato cédula 1-2345-0678 sin escribir guiones
+// ponytail: auto-formato cédula — soporta DIMEX 11-12 (no trunca a 9) y preserva cursor
 function formatCedula(el){
-  const d=el.value.replace(/\D/g,'').slice(0,9);
+  const start=el.selectionStart||0, before=el.value;
+  const d=el.value.replace(/\D/g,'').slice(0,12);
   let f=d;
   if(d.length>1) f=d.slice(0,1)+'-'+d.slice(1);
   if(d.length>5) f=d.slice(0,1)+'-'+d.slice(1,5)+'-'+d.slice(5);
+  // 10-12 dígitos: DIMEX/jurídica — añade segundo guion ya hecho, el resto queda pegado (ej 1-2345-678901)
   el.value=f;
+  try{
+    const diff=f.length-before.length;
+    const newPos=Math.max(0, start+diff);
+    el.setSelectionRange(newPos,newPos);
+  }catch{}
 }
 cedula.addEventListener('input', e=>{ formatCedula(e.target); updateRef(); });
 cedula.addEventListener('paste', e=>{
@@ -413,13 +423,28 @@ function setupCopy(btnId, textId){
 }
 setupCopy('copyNum','sinpeNum');
 setupCopy('copyRef','refText');
-// file
+// file + preview
 const drop=document.getElementById('drop'), input=document.getElementById('comprobante'), meta=document.getElementById('fileMeta');
+const previewWrap=document.getElementById('previewThumb'), previewImg=document.getElementById('previewImg'), previewName=document.getElementById('previewName');
 function showFile(f){
-  if(!f){ meta.classList.add('hidden'); return; }
+  if(!f){ meta.classList.add('hidden'); if(previewWrap) previewWrap.classList.add('hidden'); return; }
   meta.innerHTML = `<em class="mono">${f.name}</em> <span>${(f.size/1024).toFixed(0)} KB</span> <button type="button" id="clearFile" class="btn sm">Quitar</button>`;
   meta.classList.remove('hidden');
-  document.getElementById('clearFile').onclick=()=>{ input.value=''; meta.classList.add('hidden'); };
+  document.getElementById('clearFile').onclick=()=>{ input.value=''; meta.classList.add('hidden'); if(previewWrap){ previewWrap.classList.add('hidden'); previewImg.removeAttribute('src'); } };
+  // preview miniatura
+  if(previewWrap && f.type && f.type.startsWith('image/')){
+    const url=URL.createObjectURL(f);
+    previewImg.src=url; previewImg.onload=()=>URL.revokeObjectURL(url);
+    previewName.textContent=f.name+' · '+(f.size/1024).toFixed(0)+' KB — revisa que se vea el monto y la referencia';
+    previewWrap.classList.remove('hidden');
+  } else if(previewWrap){
+    previewImg.removeAttribute('src');
+    previewName.textContent=f.name+' (PDF) · '+(f.size/1024).toFixed(0)+' KB';
+    previewWrap.classList.remove('hidden');
+    previewImg.alt='PDF seleccionado';
+    previewImg.style.display='none';
+    setTimeout(()=>previewImg.style.display='block', 0);
+  }
 }
 drop.addEventListener('click',()=>input.click());
 drop.addEventListener('dragover',e=>{e.preventDefault(); drop.classList.add('drag')});

@@ -1,7 +1,7 @@
--- Auditoria para acciones críticas (aprobar/rechazar/desbloquear/validar/login)
+-- Auditoria para acciones críticas (aprobar/rechazar/desbloquear/validar/login + usuarios/revertir)
 CREATE TABLE IF NOT EXISTS public.auditoria (
   id BIGSERIAL PRIMARY KEY,
-  accion TEXT NOT NULL CHECK (accion IN ('aprobar','rechazar','desbloquear','validar','login_ok','login_fail','comprar')),
+  accion TEXT NOT NULL CHECK (accion IN ('aprobar','rechazar','desbloquear','validar','login_ok','login_fail','comprar','crear_usuario','editar_usuario','borrar_usuario','revertir')),
   entradas_id UUID REFERENCES public.entradas(id) ON DELETE SET NULL,
   actor TEXT,
   ip TEXT,

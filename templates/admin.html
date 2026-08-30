@@ -261,7 +261,20 @@
 <script>
 let filtro='', zonaFiltro='', query='', selId=null, selRow=null;
 let _finETag=null, _finUpdatedAt=0; let _entrETags={}, _lastRows=null, _lastEntrUrl=null;
-let _apexZona=null, _apexEstado=null, _apexMesas=null; // ApexCharts instances (moderno, no Chart.js)
+let _apexZona=null, _apexEstado=null, _apexMesas=null;
+let _loadAbort=null, _searchTimer=null;
+let _apexLoaded=!!window.ApexCharts, _apexLoading=null;
+function ensureApex(){
+  if(_apexLoaded) return Promise.resolve();
+  if(_apexLoading) return _apexLoading;
+  _apexLoading=new Promise((res, rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/apexcharts@3.54.0/dist/apexcharts.min.js';
+    s.async=true; s.onload=()=>{ _apexLoaded=true; res(); }; s.onerror=rej;
+    document.head.appendChild(s);
+  });
+  return _apexLoading;
+}
 const esc=s=>{const d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML;};
 const escAttr=s=>String(s==null?'':s).replace(/"/g,'&quot;');
 const tbody=document.querySelector('#tabla tbody'), empty=document.getElementById('empty'), skeleton=document.getElementById('skeleton');
@@ -286,13 +299,15 @@ function renderKpis(rows){
 async function load(){
   let url='/api/entradas?estado='+encodeURIComponent(filtro);
   if(zonaFiltro) url+='&ubicacion='+encodeURIComponent(zonaFiltro);
-  // web-performance: ETag + X-Cache, skeleton solo primera carga (stale-while-revalidate)
+  // web-performance: ETag + X-Cache + AbortController (evita carrera al escribir rápido)
   const firstLoad = !_lastRows;
   if(firstLoad) skeleton.classList.remove('hidden');
   const headers={}; if(_entrETags[url]) headers['If-None-Match']=_entrETags[url];
+  if(_loadAbort) try{_loadAbort.abort();}catch{}
+  _loadAbort=new AbortController();
   let r, rows;
   try{
-    r=await fetch(url,{headers});
+    r=await fetch(url,{headers, signal:_loadAbort.signal});
     if(r.status===304){ rows=_lastRows||[]; }
     else {
       if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
@@ -300,7 +315,7 @@ async function load(){
       rows=await r.json(); if(!Array.isArray(rows)) throw new Error(rows.msg||'Error');
       _lastRows=rows; _lastEntrUrl=url;
     }
-  }catch(e){ skeleton.classList.add('hidden'); tbody.innerHTML=`<tr><td colspan="11" class="empty">No se pudo cargar: ${esc(e.message)}</td></tr>`; return; }
+  }catch(e){ if(e.name==='AbortError') return; skeleton.classList.add('hidden'); tbody.innerHTML=`<tr><td colspan="11" class="empty">No se pudo cargar: ${esc(e.message)}</td></tr>`; return; }
   const q=query.trim().toLowerCase();
   if(q) rows=rows.filter(x=> (x.numero+' '+x.nombre_completo+' '+x.cedula+' '+(x.mesa_numero||'')+' '+(x.codigo||'')).toLowerCase().includes(q));
   renderKpis(rows);
@@ -357,9 +372,10 @@ async function loadFinanzas(force){
     document.getElementById('fMesasSub').textContent=(j.mesas.libres||0)+' libres';
     document.getElementById('fConversion').textContent=conv+'%';
     document.getElementById('fTicket').textContent='₡'+ticketAvg.toLocaleString('es-CR');
-    // KPIs pintados — gráficos en idle para no bloquear números (perceived perf)
+    // KPIs pintados — gráficos en idle para no bloquear números (lazy Apex solo en Finanzas)
     const _doCharts=()=>{
-    // zona — ApexCharts barra premium (SVG, gradiente, animado) — reemplaza Chart.js
+      ensureApex().catch(()=>{}).then(()=>{
+      // zona — ApexCharts barra premium (SVG, gradiente, animado) — reemplaza Chart.js
     const porZona=j.por_zona||[];
     const cZona=document.getElementById('chartZona');
     if(!porZona.length){
@@ -440,6 +456,7 @@ async function loadFinanzas(force){
       <div><div style="font-size:22px; font-weight:800; color:#0F7A52;">${libres}</div><div style="font-size:11px; font-weight:700; color:var(--muted);">Libres</div></div>
       <div><div style="font-size:22px; font-weight:800; color:#0a4c23;">${totalM}</div><div style="font-size:11px; font-weight:700; color:var(--muted);">${pct}% ocupación</div></div>
     </div>`;
+      }); // end ensureApex
     }; // end _doCharts
     if(window.requestIdleCallback) requestIdleCallback(_doCharts, {timeout:350});
     else setTimeout(_doCharts, 16);
@@ -473,14 +490,14 @@ document.querySelectorAll('#filtersZona [data-z]').forEach(b=>b.addEventListener
   document.querySelectorAll('#filtersZona [data-z]').forEach(x=>x.classList.remove('active'));
   b.classList.add('active'); zonaFiltro=b.dataset.z; load();
 }));
-document.getElementById('search').addEventListener('input',e=>{ query=e.target.value; load(); });
+document.getElementById('search').addEventListener('input',e=>{ query=e.target.value; clearTimeout(_searchTimer); _searchTimer=setTimeout(()=> load(), 250); });
 document.getElementById('btnRefresh').onclick=load;
 tbody.addEventListener('click', async e=>{
   const idA=e.target.closest('[data-aprobar]')?.dataset.aprobar, idR=e.target.closest('[data-rechazar]')?.dataset.rechazar, idD=e.target.closest('[data-desbloquear]')?.dataset.desbloquear, idV=e.target.closest('[data-ver]')?.dataset.ver, idC=e.target.closest('[data-copyimg]')?.dataset.copyimg;
-  if(idA){ selId=idA; openModal(idA); }
+  if(idA){ selId=idA; openModalWithFocus(idA); }
   if(idR){ if(!confirm('¿Eliminar esta solicitud pendiente?')) return; const r=await fetch('/api/rechazar/'+idR,{method:'POST'}); if(r.status===401){location.href='/login?nxt='+encodeURIComponent(location.pathname); return;} const j=await r.json(); alert(j.msg); _finETag=null; _finUpdatedAt=0; load(); }
   if(idD){ if(!confirm('¿Desbloquear mesa y eliminar entrada?')) return; const r=await fetch('/api/desbloquear/'+idD,{method:'POST'}); const j=await r.json(); alert(j.msg); _finETag=null; _finUpdatedAt=0; load(); }
-  if(idV){ selId=idV; openModal(idV); }
+  if(idV){ selId=idV; openModalWithFocus(idV); }
   if(idC){ copiarTicketPorId(idC); }
 });
 async function openModal(id){
@@ -529,10 +546,28 @@ async function openModal(id){
   }
   modal.classList.remove('hidden');
 }
-function closeModal(){ modal.classList.add('hidden'); }
+let _lastFocus=null;
+function openModalWithFocus(id){ _lastFocus=document.activeElement; openModal(id); setTimeout(()=>{ const f=modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'); if(f) f.focus(); }, 30); }
+function closeModal(){ modal.classList.add('hidden'); if(_lastFocus) try{_lastFocus.focus();}catch{} }
 document.getElementById('mCerrar').onclick=closeModal;
 document.getElementById('modalBg').onclick=closeModal;
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+let _lastFocusUser=null;
+document.addEventListener('keydown', e=>{
+  const mOpen=!modal.classList.contains('hidden'), uOpen=!document.getElementById('modalUser').classList.contains('hidden');
+  if(e.key==='Escape'){
+    if(mOpen) closeModal();
+    if(uOpen) closeUserModal();
+  }
+  if(e.key==='Tab'){
+    const activeM=mOpen? modal : (uOpen? document.getElementById('modalUser') : null);
+    if(!activeM) return;
+    const focusable=activeM.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if(!focusable.length) return;
+    const first=focusable[0], last=focusable[focusable.length-1];
+    if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+  }
+});
 mDesbloquear.onclick=async()=>{
   if(!confirm('¿Desbloquear esta mesa? Se eliminará la entrada.')) return;
   const r=await fetch('/api/desbloquear/'+selId,{method:'POST'}); const j=await r.json(); alert(j.msg); closeModal(); _finETag=null; _finUpdatedAt=0; load();
@@ -785,7 +820,7 @@ async function copiarTicketPorId(id){
     if(!row||!row.qr_path){ alert('Ticket aún no generado'); return; }
     selRow=row; selId=id;
     // abrir modal con preview y copiar
-    openModal(id);
+    openModalWithFocus(id);
     setTimeout(()=>{ prepararBoleto(row); boletoPreview.classList.remove('hidden'); },300);
   }catch(e){ alert('Error al cargar ticket'); }
 }
@@ -819,6 +854,7 @@ function renderUsuarios(rows){
   }
 }
 function openUserModal(user){
+  _lastFocusUser=document.activeElement;
   editUserId=user ? user.id : null;
   document.getElementById('mUserTitle').textContent=user ? 'Editar usuario' : 'Nuevo usuario';
   document.getElementById('mUserName').value=user ? user.username : '';
@@ -827,8 +863,9 @@ function openUserModal(user){
   document.getElementById('mUserRol').value=user ? user.rol : 'admin';
   document.getElementById('mUserMsg').className='alert hidden'; document.getElementById('mUserMsg').textContent='';
   document.getElementById('modalUser').classList.remove('hidden');
+  setTimeout(()=>{ const f=document.getElementById('modalUser').querySelector('input, button, select'); if(f) f.focus(); }, 30);
 }
-function closeUserModal(){ document.getElementById('modalUser').classList.add('hidden'); editUserId=null; }
+function closeUserModal(){ document.getElementById('modalUser').classList.add('hidden'); editUserId=null; if(_lastFocusUser) try{_lastFocusUser.focus();}catch{} }
 document.getElementById('btnNuevoUser')?.addEventListener('click',()=>openUserModal(null));
 document.getElementById('mUserCerrar')?.addEventListener('click',closeUserModal);
 document.getElementById('modalUserBg')?.addEventListener('click',closeUserModal);
