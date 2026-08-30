@@ -67,10 +67,10 @@ button{font:inherit}
 }
 /* logo fondo — totalmente detrás, debajo de todo, watermark sutil */
 .bg-watermark{
-  position:fixed; inset:0; display:grid; place-items:center; pointer-events:none; z-index:0; opacity:.095;
+  position:fixed; inset:0; display:grid; place-items:center; pointer-events:none; z-index:0; opacity:.14;
 }
 .bg-watermark img{
-  width:min(75vw, 760px); height:auto; object-fit:contain; filter:grayscale(0.05) contrast(1);
+  width:min(42vw, 480px); height:auto; object-fit:contain; filter:grayscale(0) contrast(1.05);
 }
 @media(max-width:768px){ .bg-watermark img{ width:88vw; } }
 /* skip-link — redesign audit: esencial para teclado */
