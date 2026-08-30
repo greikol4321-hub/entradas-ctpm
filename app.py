@@ -474,6 +474,96 @@ def finanzas():
         print(f"[CTPM] finanzas error: {e}\n{traceback.format_exc()}")
         return jsonify(ok=False, msg=str(e), tb=traceback.format_exc()), 500
 
+# --- API: usuarios (solo admin) ---
+@app.get("/api/usuarios")
+@login_required
+@role_required("admin")
+def listar_usuarios():
+    rows = fetch_all("SELECT id, username, rol, created_at FROM public.usuarios ORDER BY username")
+    for r in rows:
+        if r.get("created_at") and isinstance(r["created_at"], datetime):
+            r["created_at"] = r["created_at"].strftime("%Y-%m-%d %H:%M")
+    return jsonify(rows)
+
+@app.post("/api/usuarios")
+@login_required
+@role_required("admin")
+@rate_limited(10, 60)
+def crear_usuario():
+    data = request.get_json() or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+    rol = (data.get("rol") or "admin").strip()
+    if not username or not password:
+        return jsonify(ok=False, msg="Usuario y contraseña requeridos"), 400
+    if rol not in ("admin","portero"):
+        return jsonify(ok=False, msg="Rol inválido"), 400
+    if len(username) < 3 or len(password) < 4:
+        return jsonify(ok=False, msg="Usuario mínimo 3, contraseña mínimo 4"), 400
+    if fetch_one("SELECT id FROM public.usuarios WHERE username=%s", (username,)):
+        return jsonify(ok=False, msg="Usuario ya existe"), 409
+    h = generate_password_hash(password)
+    r = exec_sql("INSERT INTO public.usuarios (username, password_hash, rol) VALUES (%s,%s,%s)", (username, h, rol))
+    if isinstance(r, Exception):
+        return jsonify(ok=False, msg=str(r)), 500
+    log_audit("crear_usuario", None, {"user": username, "rol": rol})
+    return jsonify(ok=True, msg="Usuario creado")
+
+@app.put("/api/usuarios/<int:uid>")
+@login_required
+@role_required("admin")
+def editar_usuario(uid):
+    data = request.get_json() or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+    rol = (data.get("rol") or "").strip()
+    row = fetch_one("SELECT id, username FROM public.usuarios WHERE id=%s", (uid,))
+    if not row:
+        return jsonify(ok=False, msg="Usuario no existe"), 404
+    if username and username != row["username"] and fetch_one("SELECT id FROM public.usuarios WHERE username=%s AND id!=%s", (username, uid)):
+        return jsonify(ok=False, msg="Nombre ya en uso"), 409
+    sets = []
+    params = []
+    if username:
+        if len(username) < 3:
+            return jsonify(ok=False, msg="Usuario mínimo 3"), 400
+        sets.append("username=%s"); params.append(username)
+    if rol:
+        if rol not in ("admin","portero"):
+            return jsonify(ok=False, msg="Rol inválido"), 400
+        sets.append("rol=%s"); params.append(rol)
+    if password:
+        if len(password) < 4:
+            return jsonify(ok=False, msg="Contraseña mínimo 4"), 400
+        sets.append("password_hash=%s"); params.append(generate_password_hash(password))
+    if not sets:
+        return jsonify(ok=False, msg="Nada que actualizar"), 400
+    params.append(uid)
+    r = exec_sql(f"UPDATE public.usuarios SET {', '.join(sets)} WHERE id=%s", tuple(params))
+    if isinstance(r, Exception):
+        return jsonify(ok=False, msg=str(r)), 500
+    log_audit("editar_usuario", None, {"id": uid, "user": username or row["username"]})
+    return jsonify(ok=True, msg="Usuario actualizado")
+
+@app.delete("/api/usuarios/<int:uid>")
+@login_required
+@role_required("admin")
+def borrar_usuario(uid):
+    row = fetch_one("SELECT id, username FROM public.usuarios WHERE id=%s", (uid,))
+    if not row:
+        return jsonify(ok=False, msg="Usuario no existe"), 404
+    if str(session.get("uid")) == str(uid) or session.get("username") == row["username"]:
+        return jsonify(ok=False, msg="No puedes borrar tu propio usuario"), 400
+    cnt = fetch_one("SELECT COUNT(*) as c FROM public.usuarios WHERE rol='admin'")
+    is_admin = fetch_one("SELECT rol FROM public.usuarios WHERE id=%s", (uid,))
+    if is_admin and is_admin["rol"] == "admin" and cnt and cnt["c"] <= 1:
+        return jsonify(ok=False, msg="Debe quedar al menos un admin"), 400
+    r = exec_sql("DELETE FROM public.usuarios WHERE id=%s", (uid,))
+    if isinstance(r, Exception):
+        return jsonify(ok=False, msg=str(r)), 500
+    log_audit("borrar_usuario", None, {"id": uid, "user": row["username"]})
+    return jsonify(ok=True, msg="Usuario eliminado")
+
 # --- QR servir en Vercel (/tmp) y local (static) ---
 @app.get("/static/qrcodes/<path:fname>")
 @app.get("/qrcodes/<path:fname>")

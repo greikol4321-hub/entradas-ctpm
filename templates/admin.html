@@ -22,6 +22,7 @@
       <div class="admin-tabs" id="adminTabs" style="display:flex; gap:6px; padding:14px 14px 0; border-bottom:1px solid var(--line-2);">
         <button class="btn sm primary" data-tab="tickets" id="tabBtnTickets">Tickets</button>
         <button class="btn sm" data-tab="finanzas" id="tabBtnFinanzas">Finanzas</button>
+        <button class="btn sm" data-tab="usuarios" id="tabBtnUsuarios">Usuarios</button>
       </div>
 
       <!-- Finanzas — sin Chart.js, 0KB externo, render nativo CSS -->
@@ -37,6 +38,24 @@
           <div class="fin-card"><div class="fin-card-head"><h4>Por estado</h4><span class="muted small">Pendiente / Aprobada / Usada</span></div><div id="chartEstado" class="chart-estado"></div></div>
         </div>
         <div class="fin-card" style="margin-top:18px;"><div class="fin-card-head"><h4>Ocupación de mesas</h4><span class="muted small">12 mesas totales</span></div><div id="chartMesas" class="chart-mesas"></div></div>
+      </div>
+
+      <!-- Usuarios -->
+      <div id="tabUsuarios" class="admin-tab hidden" style="padding:18px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; flex-wrap:wrap;">
+          <div>
+            <h3 style="margin:0; font-size:16px;">Usuarios</h3>
+            <p class="muted small" style="margin:4px 0 0;">Crea y edita accesos para admin y portero.</p>
+          </div>
+          <button class="btn sm primary" id="btnNuevoUser">Nuevo usuario</button>
+        </div>
+        <div class="table-wrap">
+          <table id="tablaUsuarios">
+            <thead><tr><th>Usuario</th><th>Rol</th><th>Creado</th><th>Acción</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="msgUsuarios" class="alert hidden" style="margin-top:12px;"></div>
       </div>
 
       <!-- Tickets -->
@@ -181,6 +200,40 @@
     </div>
   </div>
 </div>
+<div id="modalUser" class="modal hidden" aria-modal="true" role="dialog">
+  <div class="modal-backdrop" id="modalUserBg"></div>
+  <div class="modal-card" style="max-width:420px;">
+    <div class="modal-head">
+      <div>
+        <h3 id="mUserTitle">Nuevo usuario</h3>
+        <p class="muted small">Usuario mínimo 3, contraseña mínimo 4. Rol admin ve todo, portero solo valida.</p>
+      </div>
+      <button class="btn sm" id="mUserCerrar" aria-label="Cerrar"><svg class="icon-svg sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    </div>
+    <div class="modal-body" style="display:flex; flex-direction:column; gap:12px;">
+      <div class="field">
+        <label for="mUserName">Usuario *</label>
+        <input id="mUserName" placeholder="ej: maria" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="mUserPass">Contraseña <span id="mUserPassHint" class="muted" style="font-weight:400; text-transform:none;">* nuevo</span></label>
+        <input id="mUserPass" type="password" placeholder="••••">
+      </div>
+      <div class="field">
+        <label for="mUserRol">Rol *</label>
+        <select id="mUserRol" style="width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#fff;">
+          <option value="admin">admin</option>
+          <option value="portero">portero</option>
+        </select>
+      </div>
+      <div id="mUserMsg" class="alert hidden"></div>
+      <div class="modal-actions" style="display:flex; gap:8px;">
+        <button id="mUserGuardar" class="btn primary" style="flex:1;">Guardar</button>
+        <button id="mUserCancelar" class="btn" style="flex:1;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 {% block scripts %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -296,19 +349,19 @@ async function loadFinanzas(){
   }catch(e){ console.error(e); }
 }
 // tabs
-document.getElementById('tabBtnTickets').addEventListener('click',()=>{
-  document.getElementById('tabBtnTickets').className='btn sm primary';
-  document.getElementById('tabBtnFinanzas').className='btn sm';
-  document.getElementById('tabTickets').classList.remove('hidden');
-  document.getElementById('tabFinanzas').classList.add('hidden');
-});
-document.getElementById('tabBtnFinanzas').addEventListener('click',()=>{
-  document.getElementById('tabBtnFinanzas').className='btn sm primary';
-  document.getElementById('tabBtnTickets').className='btn sm';
-  document.getElementById('tabFinanzas').classList.remove('hidden');
-  document.getElementById('tabTickets').classList.add('hidden');
-  loadFinanzas();
-});
+function setTab(name){
+  document.getElementById('tabBtnTickets').className = name==='tickets' ? 'btn sm primary' : 'btn sm';
+  document.getElementById('tabBtnFinanzas').className = name==='finanzas' ? 'btn sm primary' : 'btn sm';
+  document.getElementById('tabBtnUsuarios').className = name==='usuarios' ? 'btn sm primary' : 'btn sm';
+  document.getElementById('tabTickets').classList.toggle('hidden', name!=='tickets');
+  document.getElementById('tabFinanzas').classList.toggle('hidden', name!=='finanzas');
+  document.getElementById('tabUsuarios').classList.toggle('hidden', name!=='usuarios');
+  if(name==='finanzas') loadFinanzas();
+  if(name==='usuarios') loadUsuarios();
+}
+document.getElementById('tabBtnTickets').addEventListener('click',()=>setTab('tickets'));
+document.getElementById('tabBtnFinanzas').addEventListener('click',()=>setTab('finanzas'));
+document.getElementById('tabBtnUsuarios').addEventListener('click',()=>setTab('usuarios'));
 document.querySelectorAll('#filtersEstado [data-f]').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('#filtersEstado [data-f]').forEach(x=>x.classList.remove('active'));
   b.classList.add('active'); filtro=b.dataset.f; load();
@@ -633,6 +686,84 @@ async function copiarTicketPorId(id){
     setTimeout(()=>{ prepararBoleto(row); boletoPreview.classList.remove('hidden'); },300);
   }catch(e){ alert('Error al cargar ticket'); }
 }
+// --- Usuarios ---
+let editUserId=null;
+async function loadUsuarios(){
+  const tbodyU=document.querySelector('#tablaUsuarios tbody'), msgU=document.getElementById('msgUsuarios');
+  if(!tbodyU) return;
+  tbodyU.innerHTML='<tr><td colspan="4" class="muted" style="padding:16px; text-align:center;">Cargando...</td></tr>';
+  try{
+    const r=await fetch('/api/usuarios');
+    if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
+    const rows=await r.json();
+    if(!Array.isArray(rows)) throw new Error(rows.msg||'Error');
+    renderUsuarios(rows);
+  }catch(e){
+    tbodyU.innerHTML=`<tr><td colspan="4" class="empty">No se pudo cargar: ${esc(e.message)}</td></tr>`;
+  }
+}
+function renderUsuarios(rows){
+  const tbodyU=document.querySelector('#tablaUsuarios tbody');
+  tbodyU.innerHTML='';
+  if(!rows.length){
+    tbodyU.innerHTML='<tr><td colspan="4" class="muted" style="padding:16px; text-align:center;">Sin usuarios</td></tr>';
+    return;
+  }
+  for(const u of rows){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="mono" style="font-weight:700;">${esc(u.username)}</td><td><span class="badge ${esc(u.rol)}">${esc(u.rol)}</span></td><td class="muted small">${esc(u.created_at||'')}</td><td><div style="display:flex; gap:6px;"><button class="btn sm" data-edit="${u.id}">Editar</button><button class="btn sm btn-danger" data-del="${u.id}">Borrar</button></div></td>`;
+    tbodyU.appendChild(tr);
+  }
+}
+function openUserModal(user){
+  editUserId=user ? user.id : null;
+  document.getElementById('mUserTitle').textContent=user ? 'Editar usuario' : 'Nuevo usuario';
+  document.getElementById('mUserName').value=user ? user.username : '';
+  document.getElementById('mUserPass').value='';
+  document.getElementById('mUserPassHint').textContent=user ? 'dejar vacío para no cambiar' : '* nuevo';
+  document.getElementById('mUserRol').value=user ? user.rol : 'admin';
+  document.getElementById('mUserMsg').className='alert hidden'; document.getElementById('mUserMsg').textContent='';
+  document.getElementById('modalUser').classList.remove('hidden');
+}
+function closeUserModal(){ document.getElementById('modalUser').classList.add('hidden'); editUserId=null; }
+document.getElementById('btnNuevoUser')?.addEventListener('click',()=>openUserModal(null));
+document.getElementById('mUserCerrar')?.addEventListener('click',closeUserModal);
+document.getElementById('modalUserBg')?.addEventListener('click',closeUserModal);
+document.getElementById('mUserCancelar')?.addEventListener('click',closeUserModal);
+document.getElementById('mUserGuardar')?.addEventListener('click', async()=>{
+  const username=document.getElementById('mUserName').value.trim();
+  const password=document.getElementById('mUserPass').value;
+  const rol=document.getElementById('mUserRol').value;
+  const msgEl=document.getElementById('mUserMsg');
+  msgEl.className='alert hidden'; msgEl.textContent='';
+  if(!username || (!password && !editUserId)){ msgEl.textContent='Usuario y contraseña requeridos'; msgEl.className='alert err'; msgEl.classList.remove('hidden'); return; }
+  const payload={username, rol}; if(password) payload.password=password;
+  if(!editUserId && !password){ msgEl.textContent='Contraseña requerida'; msgEl.className='alert err'; msgEl.classList.remove('hidden'); return; }
+  try{
+    const url=editUserId ? `/api/usuarios/${editUserId}` : '/api/usuarios';
+    const method=editUserId ? 'PUT' : 'POST';
+    const r=await fetch(url,{method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    const j=await r.json();
+    if(!r.ok || !j.ok) throw new Error(j.msg||'Error');
+    closeUserModal(); loadUsuarios();
+  }catch(e){ msgEl.textContent=e.message; msgEl.className='alert err'; msgEl.classList.remove('hidden'); }
+});
+document.querySelector('#tablaUsuarios tbody')?.addEventListener('click', async e=>{
+  const idEdit=e.target.closest('[data-edit]')?.dataset.edit, idDel=e.target.closest('[data-del]')?.dataset.del;
+  if(idEdit){
+    try{
+      const r=await fetch('/api/usuarios'); const rows=await r.json(); const u=rows.find(x=>String(x.id)===String(idEdit));
+      if(u) openUserModal(u);
+    }catch{}
+  }
+  if(idDel){
+    if(!confirm('¿Borrar este usuario?')) return;
+    const r=await fetch('/api/usuarios/'+idDel,{method:'DELETE'});
+    const j=await r.json();
+    if(!r.ok || !j.ok) alert(j.msg||'Error');
+    else loadUsuarios();
+  }
+});
 load();
 </script>
 {% endblock %}
