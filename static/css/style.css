@@ -604,7 +604,11 @@ tr:hover td{background:#FFFEFB}
   .page-scanner .footer-brand .footer-logo{width:32px; height:32px}
   .page-scanner .footer-col:not(:nth-child(3)){display:none}
   .page-scanner .footer-bottom{padding:8px 16px; font-size:10px}
-  .page-scanner .scanner-shell{margin-top:8px}
+   .page-scanner .scanner-shell{margin-top:8px}
+   /* sin contador en móvil — estorba junto a Actualizar */
+   .hist-count{display:none!important}
+   /* header siempre visible: nada de esconderse al bajar — la página no se mueve */
+   .page-scanner .header{transform:none!important}
 }
 
 @media(max-width:480px){
