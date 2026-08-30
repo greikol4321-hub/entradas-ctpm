@@ -293,13 +293,18 @@ function showStep(n){
     el.classList.toggle('active', isActive);
     el.classList.toggle('done', isDone);
   });
-  // Fix: fill each bar segment progressively, not just first bar
   bars.forEach((barEl, i)=>{
     if(n===5) { barEl.style.width='100%'; }
     else if(i < n-1) { barEl.style.width='100%'; }
     else { barEl.style.width='0%'; }
   });
   if(n===3) updateRef();
+  // fix movil: al dar Continuar quedaba al fondo (footer) porque el paso 2 es largo (mapa) — subir arriba del wizard
+  try{
+    const form=document.getElementById('formCompra');
+    const top=form ? form.getBoundingClientRect().top + window.scrollY - 72 : 0;
+    window.scrollTo({top: Math.max(0, top), behavior:'smooth'});
+  }catch{}
 }
 function validateStep(n){
   const err=document.getElementById('err'+n);
