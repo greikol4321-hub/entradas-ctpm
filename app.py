@@ -3,7 +3,7 @@ Sistema CTPM — Venta y validación de entradas
 Soporta Postgres (Supabase) via DATABASE_URL o MySQL via variables DB_*
 Mesas numeradas + Finanzas
 """
-import os, uuid, pathlib, functools, secrets, io, time, json
+import os, uuid, pathlib, functools, secrets, io, time, json, hashlib
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from collections import defaultdict, deque
@@ -63,6 +63,14 @@ PRECIO_MESAS_VAL = 10000
 NUM_MESAS = 12
 DEMO_USER = "admin"
 DEMO_PASS = "admin123"
+# ponytail: cache en memoria para /api/finanzas 45s — evita 4 queries por switch de pestaña (skill python-performance + kpi-dashboard)
+_FIN_CACHE = {"data": None, "ts": 0, "etag": None}
+FIN_TTL = 45
+def _fin_etag(data): return hashlib.md5(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()[:12]
+def invalidate_fin_cache():
+    _FIN_CACHE["data"] = None
+    _FIN_CACHE["ts"] = 0
+    _FIN_CACHE["etag"] = None
 app.config['SESSION_COOKIE_SECURE'] = bool(os.getenv("VERCEL"))  # True en prod HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -98,6 +106,23 @@ def security_headers(resp):
     resp.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co"
     if os.getenv("VERCEL"):
         resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    # web-performance skill: cache estático 1 año inmmutable, API finanzas 45s private (evita hammer DB en live dashboard), otras APIs 10s
+    try:
+        p = request.path
+        if p.startswith("/static/"):
+            resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            # version hint para Vercel CDN
+            resp.headers["Vary"] = "Accept-Encoding"
+        elif p == "/api/finanzas":
+            # ETag ya puesto en handler si es HIT; si no, poner max-age por defecto
+            if "Cache-Control" not in resp.headers:
+                resp.headers["Cache-Control"] = "private, max-age=30, must-revalidate"
+            resp.headers["Vary"] = "Cookie"
+        elif p.startswith("/api/"):
+            if "Cache-Control" not in resp.headers:
+                resp.headers["Cache-Control"] = "private, max-age=10, must-revalidate"
+            resp.headers["Vary"] = "Cookie"
+    except: pass
     return resp
 
 # --- Supabase Storage (para que "Ver" comprobante no 404 en Vercel /tmp efímero) ---
@@ -436,6 +461,7 @@ def comprar():
     except Exception:
         return jsonify(ok=False, msg="Error interno del servidor", id=eid)
     log_audit("comprar", eid, {"numero": numero, "codigo": codigo, "ubicacion": ubicacion, "mesa": mesa_numero, "monto": monto})
+    invalidate_fin_cache()
     return jsonify(ok=True, msg=f"Comprobante recibido. Tu código es {codigo} · Entrada N° {numero or ''}. Te enviaremos tu QR por WhatsApp en máximo 48 horas.", id=eid, codigo=codigo, numero=numero)
 
 # --- API: listar ---
@@ -468,22 +494,38 @@ def listar():
         print(f"[CTPM] listar error: {e}\n{traceback.format_exc()}")
         return jsonify([])
 
-# --- API: finanzas ---
+# --- API: finanzas ---  # kpi-dashboard: OLAP cache 45s evita hammer DB en dashboard en vivo
 @app.get("/api/finanzas")
 @login_required
 @role_required("admin")
 def finanzas():
+    # HIT rápido sin tocar DB
+    if _FIN_CACHE["data"] is not None and time.time() - _FIN_CACHE["ts"] < FIN_TTL:
+        etag = _FIN_CACHE["etag"]
+        if request.headers.get("If-None-Match") == etag:
+            return "", 304, {"ETag": etag, "Cache-Control": "private, max-age=30, must-revalidate", "X-Cache": "HIT"}
+        resp = jsonify(_FIN_CACHE["data"])
+        resp.headers["ETag"] = etag
+        resp.headers["Cache-Control"] = "private, max-age=30, must-revalidate"
+        resp.headers["X-Cache"] = "HIT"
+        return resp
     try:
         rows = fetch_all("SELECT estado, ubicacion, COUNT(*) as cnt, COALESCE(SUM(monto),0) as total FROM entradas GROUP BY estado, ubicacion")
-        # Totales globales
-        all_rows = fetch_all("SELECT COUNT(*) as total_entradas, COALESCE(SUM(CASE WHEN estado IN ('Aprobada','Usada') THEN monto ELSE 0 END),0) as recaudado, COALESCE(SUM(CASE WHEN estado='Pendiente' THEN monto ELSE 0 END),0) as por_confirmar, COALESCE(SUM(CASE WHEN estado='Usada' THEN 1 ELSE 0 END),0) as usadas FROM entradas")
-        kpi = all_rows[0] if all_rows else {"total_entradas":0,"recaudado":0,"por_confirmar":0,"usadas":0}
-        # Por zona
+        all_rows = fetch_all("SELECT COUNT(*) as total_entradas, COALESCE(SUM(CASE WHEN estado IN ('Aprobada','Usada') THEN monto ELSE 0 END),0) as recaudado, COALESCE(SUM(CASE WHEN estado='Pendiente' THEN monto ELSE 0 END),0) as por_confirmar, COALESCE(SUM(CASE WHEN estado='Usada' THEN 1 ELSE 0 END),0) as usadas, COALESCE(SUM(CASE WHEN estado='Aprobada' THEN 1 ELSE 0 END),0) as aprobadas, COALESCE(SUM(CASE WHEN estado='Pendiente' THEN 1 ELSE 0 END),0) as pendientes FROM entradas")
+        kpi = all_rows[0] if all_rows else {"total_entradas":0,"recaudado":0,"por_confirmar":0,"usadas":0,"aprobadas":0,"pendientes":0}
         zona = fetch_all("SELECT ubicacion, COUNT(*) as cnt, COALESCE(SUM(monto),0) as total FROM entradas GROUP BY ubicacion")
-        # Mesas ocupadas/libres
         ocupadas = fetch_all("SELECT COUNT(*) as cnt FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')")
         ocup_cnt = ocupadas[0]["cnt"] if ocupadas else 0
-        return jsonify(ok=True, agrupado=rows, kpi=kpi, por_zona=zona, mesas={"ocupadas": ocup_cnt, "libres": NUM_MESAS - ocup_cnt, "total": NUM_MESAS})
+        payload = {"ok": True, "agrupado": rows, "kpi": kpi, "por_zona": zona, "mesas": {"ocupadas": ocup_cnt, "libres": NUM_MESAS - ocup_cnt, "total": NUM_MESAS}}
+        # guardar
+        _FIN_CACHE["data"] = payload
+        _FIN_CACHE["ts"] = time.time()
+        _FIN_CACHE["etag"] = _fin_etag(payload)
+        resp = jsonify(payload)
+        resp.headers["ETag"] = _FIN_CACHE["etag"]
+        resp.headers["Cache-Control"] = "private, max-age=30, must-revalidate"
+        resp.headers["X-Cache"] = "MISS"
+        return resp
     except Exception as e:
         import traceback
         print(f"[CTPM] finanzas error: {e}\n{traceback.format_exc()}")
@@ -652,6 +694,7 @@ def aprobar(eid):
         exec_sql("UPDATE entradas SET estado='Aprobada', qr_path=%s, fecha_aprobacion=%s WHERE id=%s",
                  (qr_rel, now_cr(), row["id"]))
         log_audit("aprobar", row["id"], {"codigo": codigo, "numero": row.get("numero")})
+        invalidate_fin_cache()
         return jsonify(ok=True, msg=f"Aprobada — N° {row.get('numero')} · código {codigo}",
                       qr_url=url_for("serve_qr", fname=qr_name),
                       qr_path=qr_rel, id=row["id"], codigo=codigo, numero=row.get("numero"))
@@ -671,6 +714,7 @@ def rechazar(eid):
     if isinstance(r, Exception):
         return jsonify(ok=False, msg=str(r)), 500
     log_audit("rechazar", row["id"], {"codigo": row.get("codigo")})
+    invalidate_fin_cache()
     return jsonify(ok=True, msg="Eliminada")
 
 @app.post("/api/desbloquear/<eid>")
@@ -687,6 +731,7 @@ def desbloquear(eid):
     if isinstance(r, Exception):
         return jsonify(ok=False, msg=str(r)), 500
     log_audit("desbloquear", row["id"], {"mesa": row.get("mesa_numero"), "ubicacion": row.get("ubicacion")})
+    invalidate_fin_cache()
     return jsonify(ok=True, msg=f"Mesa {row.get('mesa_numero') or ''} liberada" if row.get("ubicacion")=="Mesas" else "Entrada eliminada")
 
 # --- API: validar ---
@@ -723,6 +768,7 @@ def validar():
             return jsonify(ok=False, estado="PENDIENTE", msg="Entrada pendiente de aprobación",
                           nombre=row["nombre_completo"], ubicacion=row["ubicacion"])
         log_audit("validar", rid, {"codigo": row.get("codigo"), "numero": row.get("numero"), "resultado": "VALIDA"})
+        invalidate_fin_cache()
         return jsonify(ok=True, estado="VALIDA", msg="¡ENTRADA VÁLIDA!",
                       nombre=row["nombre_completo"], ubicacion=row["ubicacion"], cedula=row["cedula"], mesa_numero=row.get("mesa_numero"), monto=row.get("monto"), codigo=row.get("codigo"), numero=row.get("numero"))
     except Exception as e:
@@ -756,6 +802,7 @@ def revertir(codigo):
     if isinstance(r, Exception):
         return jsonify(ok=False, msg=str(r)), 500
     log_audit("revertir", row["id"], {"codigo": code})
+    invalidate_fin_cache()
     return jsonify(ok=True, msg=f"Código {code} revertido a Aprobada")
 
 @app.get("/uploads/<path:fname>")

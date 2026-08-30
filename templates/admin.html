@@ -26,13 +26,19 @@
         <button class="btn sm" data-tab="logs" id="tabBtnLogs">Logs</button>
       </div>
 
-      <!-- Finanzas — sin Chart.js, 0KB externo, render nativo CSS -->
+      <!-- Finanzas — kpi-dashboard skill: 5-7 KPIs, colores consistentes, metodología visible, cache 45s -->
       <div id="tabFinanzas" class="admin-tab hidden" style="padding:18px;">
-        <div class="finanzas-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:18px;">
-          <div class="kpi"><span>Total entradas</span><strong id="fTotal">—</strong></div>
-          <div class="kpi"><span>Recaudado (Aprobadas+Usadas)</span><strong id="fRecaudado">—</strong></div>
-          <div class="kpi"><span>Por confirmar (Pendiente)</span><strong id="fPendiente">—</strong></div>
-          <div class="kpi"><span>Mesas ocupadas</span><strong id="fMesas">—</strong></div>
+        <div class="finanzas-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:12px;">
+          <div class="kpi" title="Total de registros en DB (Pendiente+Aprobada+Usada)" style="cursor:help;"><span>Total entradas</span><strong id="fTotal">—</strong><span class="small muted" id="fTotalSub">—</span></div>
+          <div class="kpi" style="background:#0a4c23; color:#fff; border-color:#0a4c23; cursor:help;" title="Fórmula: SUM(monto) WHERE estado IN (Aprobada,Usada)"><span style="color:#f5f1e8;">Recaudado</span><strong id="fRecaudado">—</strong><span class="small" style="color:#d6e8d6;" id="fRecaudadoSub">Aprobadas+Usadas</span></div>
+          <div class="kpi" style="border-left:3px solid #d4a256; cursor:help;" title="Fórmula: SUM(monto) WHERE estado = Pendiente"><span>Por confirmar</span><strong id="fPendiente">—</strong><span class="small muted" id="fPendienteSub">Pendiente</span></div>
+          <div class="kpi" style="cursor:help;" title="Mesas 1-12 ocupadas por entradas Pendiente/Aprobada — Usada libera"><span>Mesas ocupadas</span><strong id="fMesas">—</strong><span class="small muted" id="fMesasSub">— libres</span></div>
+          <div class="kpi" style="cursor:help;" title="Tasa conversión = (Aprobadas+Usadas)/Total · indica % pagos confirmados"><span>Conversión</span><strong id="fConversion">—</strong><span class="small muted">confirmadas / total</span></div>
+          <div class="kpi" style="cursor:help;" title="Ticket promedio = Recaudado / (Aprobadas+Usadas)"><span>Ticket promedio</span><strong id="fTicket">—</strong><span class="small muted" id="fTicketSub">por entrada paga</span></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:18px; flex-wrap:wrap;">
+          <span class="small muted" id="finUpdated">—</span>
+          <span class="small muted" id="finCache" style="font-variant-numeric: tabular-nums; background: var(--surface-2); border:1px solid var(--line); padding:2px 8px; border-radius:999px;">cache: —</span>
         </div>
         <div class="finanzas-charts" style="display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:12px;">
           <div class="fin-card"><div class="fin-card-head"><h4>Recaudado por zona</h4><span class="muted small">Gradas vs Mesas</span></div><div id="chartZona" class="chart-bars"></div></div>
@@ -253,6 +259,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 let filtro='', zonaFiltro='', query='', selId=null, selRow=null;
+let _finETag=null, _finUpdatedAt=0; // ponytail: ETag + stale-while-revalidate para Finanzas (evita flash)
 const esc=s=>{const d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML;};
 const escAttr=s=>String(s==null?'':s).replace(/"/g,'&quot;');
 const tbody=document.querySelector('#tabla tbody'), empty=document.getElementById('empty'), skeleton=document.getElementById('skeleton');
@@ -316,16 +323,32 @@ async function load(){
   // actualizar finanzas si pestaña finanzas visible
   if(!document.getElementById('tabFinanzas').classList.contains('hidden')) loadFinanzas();
 }
-async function loadFinanzas(){
+async function loadFinanzas(force){
+  // ponytail: stale-while-revalidate + debounce 8s — evita hammer DB en live dashboard
+  if(!force && _finUpdatedAt && Date.now()-_finUpdatedAt < 8000) return;
   try{
-    const r=await fetch('/api/finanzas');
+    const headers={};
+    if(_finETag && !force) headers['If-None-Match']=_finETag;
+    const r=await fetch('/api/finanzas',{headers});
+    if(r.status===304){ document.getElementById('finUpdated').textContent='Actualizado ahora · sin cambios'; document.getElementById('finCache').textContent='cache: HIT (304)'; return; }
     if(r.status===401) return;
+    const isHit=r.headers.get('X-Cache')==='HIT';
+    if(r.headers.get('ETag')) _finETag=r.headers.get('ETag');
     const j=await r.json(); if(!j.ok) return;
+    _finUpdatedAt=Date.now();
+    document.getElementById('finCache').textContent='cache: '+(isHit?'HIT':'MISS')+' · ETag '+(_finETag||'—').slice(0,6);
+    document.getElementById('finUpdated').textContent='Actualizado '+new Date().toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'})+' · CR';
     const k=j.kpi;
     document.getElementById('fTotal').textContent=k.total_entradas||0;
+    const conv = k.total_entradas ? Math.round(((Number(k.aprobadas||0)+Number(k.usadas||0))/k.total_entradas*100)) : 0;
+    const ticketAvg = (Number(k.aprobadas||0)+Number(k.usadas||0)) ? Math.round(Number(k.recaudado||0)/(Number(k.aprobadas||0)+Number(k.usadas||0))) : 0;
+    document.getElementById('fTotalSub').textContent=k.pendientes+' pend. · '+k.aprobadas+' aprov. · '+k.usadas+' usadas';
     document.getElementById('fRecaudado').textContent='₡'+Number(k.recaudado||0).toLocaleString('es-CR');
     document.getElementById('fPendiente').textContent='₡'+Number(k.por_confirmar||0).toLocaleString('es-CR');
     document.getElementById('fMesas').textContent=(j.mesas.ocupadas||0)+'/'+(j.mesas.total||12);
+    document.getElementById('fMesasSub').textContent=(j.mesas.libres||0)+' libres';
+    document.getElementById('fConversion').textContent=conv+'%';
+    document.getElementById('fTicket').textContent='₡'+ticketAvg.toLocaleString('es-CR');
     // zona — barras nativas sin librería
     const porZona=j.por_zona||[];
     const maxZ=Math.max(1, ...porZona.map(x=>Number(x.total||0)));
@@ -380,6 +403,8 @@ document.getElementById('tabBtnTickets').addEventListener('click',()=>setTab('ti
 document.getElementById('tabBtnFinanzas').addEventListener('click',()=>setTab('finanzas'));
 document.getElementById('tabBtnUsuarios').addEventListener('click',()=>setTab('usuarios'));
 document.getElementById('tabBtnLogs').addEventListener('click',()=>setTab('logs'));
+document.getElementById('finCache')?.addEventListener('click',()=>loadFinanzas(true));
+document.getElementById('finUpdated')?.addEventListener('click',()=>loadFinanzas(true));
 document.querySelectorAll('#filtersEstado [data-f]').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('#filtersEstado [data-f]').forEach(x=>x.classList.remove('active'));
   b.classList.add('active'); filtro=b.dataset.f; load();
@@ -393,8 +418,8 @@ document.getElementById('btnRefresh').onclick=load;
 tbody.addEventListener('click', async e=>{
   const idA=e.target.closest('[data-aprobar]')?.dataset.aprobar, idR=e.target.closest('[data-rechazar]')?.dataset.rechazar, idD=e.target.closest('[data-desbloquear]')?.dataset.desbloquear, idV=e.target.closest('[data-ver]')?.dataset.ver, idC=e.target.closest('[data-copyimg]')?.dataset.copyimg;
   if(idA){ selId=idA; openModal(idA); }
-  if(idR){ if(!confirm('¿Eliminar esta solicitud pendiente?')) return; const r=await fetch('/api/rechazar/'+idR,{method:'POST'}); if(r.status===401){location.href='/login?nxt='+encodeURIComponent(location.pathname); return;} const j=await r.json(); alert(j.msg); load(); }
-  if(idD){ if(!confirm('¿Desbloquear mesa y eliminar entrada?')) return; const r=await fetch('/api/desbloquear/'+idD,{method:'POST'}); const j=await r.json(); alert(j.msg); load(); }
+  if(idR){ if(!confirm('¿Eliminar esta solicitud pendiente?')) return; const r=await fetch('/api/rechazar/'+idR,{method:'POST'}); if(r.status===401){location.href='/login?nxt='+encodeURIComponent(location.pathname); return;} const j=await r.json(); alert(j.msg); _finETag=null; _finUpdatedAt=0; load(); }
+  if(idD){ if(!confirm('¿Desbloquear mesa y eliminar entrada?')) return; const r=await fetch('/api/desbloquear/'+idD,{method:'POST'}); const j=await r.json(); alert(j.msg); _finETag=null; _finUpdatedAt=0; load(); }
   if(idV){ selId=idV; openModal(idV); }
   if(idC){ copiarTicketPorId(idC); }
 });
@@ -450,7 +475,7 @@ document.getElementById('modalBg').onclick=closeModal;
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
 mDesbloquear.onclick=async()=>{
   if(!confirm('¿Desbloquear esta mesa? Se eliminará la entrada.')) return;
-  const r=await fetch('/api/desbloquear/'+selId,{method:'POST'}); const j=await r.json(); alert(j.msg); closeModal(); load();
+  const r=await fetch('/api/desbloquear/'+selId,{method:'POST'}); const j=await r.json(); alert(j.msg); closeModal(); _finETag=null; _finUpdatedAt=0; load();
 };
 mAprobar.onclick=async()=>{
   mAprobar.disabled=true; mAprobar.textContent='Generando…';
@@ -474,7 +499,7 @@ mAprobar.onclick=async()=>{
     btnQrCopy.classList.remove('hidden'); btnQrDownload.classList.remove('hidden'); btnQrPdf.classList.remove('hidden');
     if(selRow){ selRow.qr_path=j.qr_path; selRow.codigo=j.codigo; selRow.numero=j.numero; prepararBoleto(selRow); }
     mMsg.innerHTML=`Aprobada ${esc(numStr)} · Código <strong class="mono">${esc(j.codigo)}</strong> — QR solo, listo para enviar por WhatsApp.`; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
-    mAprobar.classList.add('hidden'); load();
+    mAprobar.classList.add('hidden'); _finETag=null; _finUpdatedAt=0; load();
   }catch(e){ mMsg.textContent=''+(e.message); mMsg.className='alert err'; mMsg.classList.remove('hidden'); mAprobar.disabled=false; mAprobar.innerHTML='Reintentar'; }
 };
 // Ticket vertical — canvas premium portrait (360x520 @2x) para PNG
