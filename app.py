@@ -63,14 +63,25 @@ PRECIO_MESAS_VAL = 10000
 NUM_MESAS = 12
 DEMO_USER = "admin"
 DEMO_PASS = "admin123"
-# ponytail: cache en memoria para /api/finanzas 45s — evita 4 queries por switch de pestaña (skill python-performance + kpi-dashboard)
+# ponytail: caches en memoria sin deps (TTL corto, invalidación en mutaciones) — web-performance skill: cache API + static
 _FIN_CACHE = {"data": None, "ts": 0, "etag": None}
 FIN_TTL = 45
-def _fin_etag(data): return hashlib.md5(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()[:12]
+_ENTRADAS_CACHE = {}  # key -> {data, ts, etag}
+ENTRADAS_TTL = 15
+_MESAS_CACHE = {"data": None, "ts": 0, "etag": None}
+MESAS_TTL = 30
+def _etag(data): return hashlib.md5(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()[:12]
+def _fin_etag(data): return _etag(data)
 def invalidate_fin_cache():
     _FIN_CACHE["data"] = None
     _FIN_CACHE["ts"] = 0
     _FIN_CACHE["etag"] = None
+def invalidate_all_cache():
+    invalidate_fin_cache()
+    _ENTRADAS_CACHE.clear()
+    _MESAS_CACHE["data"] = None
+    _MESAS_CACHE["ts"] = 0
+    _MESAS_CACHE["etag"] = None
 app.config['SESSION_COOKIE_SECURE'] = bool(os.getenv("VERCEL"))  # True en prod HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -106,21 +117,30 @@ def security_headers(resp):
     resp.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co"
     if os.getenv("VERCEL"):
         resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    # web-performance skill: cache estático 1 año inmmutable, API finanzas 45s private (evita hammer DB en live dashboard), otras APIs 10s
+    # web-performance skill: cache toda la página — estático 1 año immutable, APIs con ETag+TTL, HTML private revalidate
     try:
         p = request.path
+        ctype = resp.headers.get("Content-Type","")
         if p.startswith("/static/"):
             resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-            # version hint para Vercel CDN
             resp.headers["Vary"] = "Accept-Encoding"
         elif p == "/api/finanzas":
-            # ETag ya puesto en handler si es HIT; si no, poner max-age por defecto
             if "Cache-Control" not in resp.headers:
                 resp.headers["Cache-Control"] = "private, max-age=30, must-revalidate"
             resp.headers["Vary"] = "Cookie"
         elif p.startswith("/api/"):
             if "Cache-Control" not in resp.headers:
                 resp.headers["Cache-Control"] = "private, max-age=10, must-revalidate"
+            resp.headers["Vary"] = "Cookie"
+        elif "text/html" in ctype and resp.status_code==200:
+            # HTML private revalidate con ETag (evita re-descarga completa si no cambió)
+            body = resp.get_data()
+            etag = hashlib.md5(body).hexdigest()[:12]
+            if request.headers.get("If-None-Match") == etag:
+                return app.response_class("", 304, headers={"ETag": etag, "Cache-Control": "private, max-age=0, must-revalidate", "Vary": "Cookie"})
+            resp.headers["ETag"] = etag
+            if "Cache-Control" not in resp.headers:
+                resp.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
             resp.headers["Vary"] = "Cookie"
     except: pass
     return resp
@@ -377,12 +397,29 @@ def api_login():
 # --- API: mesas disponibles ---
 @app.get("/api/mesas")
 def mesas_disponibles():
+    if _MESAS_CACHE["data"] is not None and time.time() - _MESAS_CACHE["ts"] < MESAS_TTL:
+        if request.headers.get("If-None-Match") == _MESAS_CACHE["etag"]:
+            return "", 304, {"ETag": _MESAS_CACHE["etag"], "Cache-Control": "public, max-age=30, must-revalidate", "X-Cache": "HIT"}
+        resp = jsonify(_MESAS_CACHE["data"])
+        resp.headers["ETag"] = _MESAS_CACHE["etag"]
+        resp.headers["Cache-Control"] = "public, max-age=30, must-revalidate"
+        resp.headers["X-Cache"] = "HIT"
+        return resp
     try:
         rows = fetch_all("SELECT mesa_numero FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')")
         ocupadas = [r["mesa_numero"] for r in rows if r.get("mesa_numero")]
         todas = list(range(1, NUM_MESAS+1))
         libres = [n for n in todas if n not in ocupadas]
-        return jsonify(ok=True, ocupadas=ocupadas, libres=libres, total=NUM_MESAS)
+        payload = {"ok": True, "ocupadas": ocupadas, "libres": libres, "total": NUM_MESAS}
+        etag = _etag(payload)
+        _MESAS_CACHE["data"] = payload
+        _MESAS_CACHE["ts"] = time.time()
+        _MESAS_CACHE["etag"] = etag
+        resp = jsonify(payload)
+        resp.headers["ETag"] = etag
+        resp.headers["Cache-Control"] = "public, max-age=30, must-revalidate"
+        resp.headers["X-Cache"] = "MISS"
+        return resp
     except Exception as e:
         return jsonify(ok=False, msg=str(e)), 500
 
@@ -461,16 +498,26 @@ def comprar():
     except Exception:
         return jsonify(ok=False, msg="Error interno del servidor", id=eid)
     log_audit("comprar", eid, {"numero": numero, "codigo": codigo, "ubicacion": ubicacion, "mesa": mesa_numero, "monto": monto})
-    invalidate_fin_cache()
+    invalidate_all_cache()
     return jsonify(ok=True, msg=f"Comprobante recibido. Tu código es {codigo} · Entrada N° {numero or ''}. Te enviaremos tu QR por WhatsApp en máximo 48 horas.", id=eid, codigo=codigo, numero=numero)
 
-# --- API: listar ---
+# --- API: listar ---  # web-performance: cache 15s con ETag, evita  SELECT * en cada filtro/búsqueda
 @app.get("/api/entradas")
 @login_required
 @role_required("admin")
 def listar():
     estado = request.args.get("estado","")
     ubicacion = request.args.get("ubicacion","")
+    cache_key = f"{estado}:{ubicacion}"
+    ent = _ENTRADAS_CACHE.get(cache_key)
+    if ent and time.time() - ent["ts"] < ENTRADAS_TTL:
+        if request.headers.get("If-None-Match") == ent["etag"]:
+            return "", 304, {"ETag": ent["etag"], "Cache-Control": "private, max-age=10, must-revalidate", "X-Cache": "HIT"}
+        resp = jsonify(ent["data"])
+        resp.headers["ETag"] = ent["etag"]
+        resp.headers["Cache-Control"] = "private, max-age=10, must-revalidate"
+        resp.headers["X-Cache"] = "HIT"
+        return resp
     try:
         base = "SELECT id,numero,codigo,nombre_completo,cedula,ubicacion,mesa_numero,monto,telefono,comprobante_path,qr_path,estado,fecha_compra,fecha_aprobacion,fecha_uso FROM entradas"
         conds = []
@@ -488,7 +535,13 @@ def listar():
             for k in ("fecha_compra","fecha_aprobacion","fecha_uso"):
                 if r.get(k) and isinstance(r[k], datetime):
                     r[k] = to_cr_str(r[k])
-        return jsonify(rows)
+        etag = _etag(rows)
+        _ENTRADAS_CACHE[cache_key] = {"data": rows, "ts": time.time(), "etag": etag}
+        resp = jsonify(rows)
+        resp.headers["ETag"] = etag
+        resp.headers["Cache-Control"] = "private, max-age=10, must-revalidate"
+        resp.headers["X-Cache"] = "MISS"
+        return resp
     except Exception as e:
         import traceback
         print(f"[CTPM] listar error: {e}\n{traceback.format_exc()}")
@@ -694,7 +747,7 @@ def aprobar(eid):
         exec_sql("UPDATE entradas SET estado='Aprobada', qr_path=%s, fecha_aprobacion=%s WHERE id=%s",
                  (qr_rel, now_cr(), row["id"]))
         log_audit("aprobar", row["id"], {"codigo": codigo, "numero": row.get("numero")})
-        invalidate_fin_cache()
+        invalidate_all_cache()
         return jsonify(ok=True, msg=f"Aprobada — N° {row.get('numero')} · código {codigo}",
                       qr_url=url_for("serve_qr", fname=qr_name),
                       qr_path=qr_rel, id=row["id"], codigo=codigo, numero=row.get("numero"))
@@ -714,7 +767,7 @@ def rechazar(eid):
     if isinstance(r, Exception):
         return jsonify(ok=False, msg=str(r)), 500
     log_audit("rechazar", row["id"], {"codigo": row.get("codigo")})
-    invalidate_fin_cache()
+    invalidate_all_cache()
     return jsonify(ok=True, msg="Eliminada")
 
 @app.post("/api/desbloquear/<eid>")
@@ -731,7 +784,7 @@ def desbloquear(eid):
     if isinstance(r, Exception):
         return jsonify(ok=False, msg=str(r)), 500
     log_audit("desbloquear", row["id"], {"mesa": row.get("mesa_numero"), "ubicacion": row.get("ubicacion")})
-    invalidate_fin_cache()
+    invalidate_all_cache()
     return jsonify(ok=True, msg=f"Mesa {row.get('mesa_numero') or ''} liberada" if row.get("ubicacion")=="Mesas" else "Entrada eliminada")
 
 # --- API: validar ---
@@ -768,7 +821,7 @@ def validar():
             return jsonify(ok=False, estado="PENDIENTE", msg="Entrada pendiente de aprobación",
                           nombre=row["nombre_completo"], ubicacion=row["ubicacion"])
         log_audit("validar", rid, {"codigo": row.get("codigo"), "numero": row.get("numero"), "resultado": "VALIDA"})
-        invalidate_fin_cache()
+        invalidate_all_cache()
         return jsonify(ok=True, estado="VALIDA", msg="¡ENTRADA VÁLIDA!",
                       nombre=row["nombre_completo"], ubicacion=row["ubicacion"], cedula=row["cedula"], mesa_numero=row.get("mesa_numero"), monto=row.get("monto"), codigo=row.get("codigo"), numero=row.get("numero"))
     except Exception as e:
@@ -802,7 +855,7 @@ def revertir(codigo):
     if isinstance(r, Exception):
         return jsonify(ok=False, msg=str(r)), 500
     log_audit("revertir", row["id"], {"codigo": code})
-    invalidate_fin_cache()
+    invalidate_all_cache()
     return jsonify(ok=True, msg=f"Código {code} revertido a Aprobada")
 
 @app.get("/uploads/<path:fname>")

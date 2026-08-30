@@ -259,7 +259,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 let filtro='', zonaFiltro='', query='', selId=null, selRow=null;
-let _finETag=null, _finUpdatedAt=0; // ponytail: ETag + stale-while-revalidate para Finanzas (evita flash)
+let _finETag=null, _finUpdatedAt=0; let _entrETags={}, _lastRows=null, _lastEntrUrl=null; // web-performance: cache ETag para toda la página (entradas + finanzas)
 const esc=s=>{const d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML;};
 const escAttr=s=>String(s==null?'':s).replace(/"/g,'&quot;');
 const tbody=document.querySelector('#tabla tbody'), empty=document.getElementById('empty'), skeleton=document.getElementById('skeleton');
@@ -282,14 +282,22 @@ function renderKpis(rows){
   document.getElementById('kpiRec').textContent='₡'+recaudado.toLocaleString('es-CR');
 }
 async function load(){
-  skeleton.classList.remove('hidden');
   let url='/api/entradas?estado='+encodeURIComponent(filtro);
   if(zonaFiltro) url+='&ubicacion='+encodeURIComponent(zonaFiltro);
+  // web-performance: ETag + X-Cache, skeleton solo primera carga (stale-while-revalidate)
+  const firstLoad = !_lastRows;
+  if(firstLoad) skeleton.classList.remove('hidden');
+  const headers={}; if(_entrETags[url]) headers['If-None-Match']=_entrETags[url];
   let r, rows;
   try{
-    r=await fetch(url);
-    if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
-    rows=await r.json(); if(!Array.isArray(rows)) throw new Error(rows.msg||'Error');
+    r=await fetch(url,{headers});
+    if(r.status===304){ rows=_lastRows||[]; }
+    else {
+      if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
+      if(r.headers.get('ETag')) _entrETags[url]=r.headers.get('ETag');
+      rows=await r.json(); if(!Array.isArray(rows)) throw new Error(rows.msg||'Error');
+      _lastRows=rows; _lastEntrUrl=url;
+    }
   }catch(e){ skeleton.classList.add('hidden'); tbody.innerHTML=`<tr><td colspan="11" class="empty">No se pudo cargar: ${esc(e.message)}</td></tr>`; return; }
   const q=query.trim().toLowerCase();
   if(q) rows=rows.filter(x=> (x.numero+' '+x.nombre_completo+' '+x.cedula+' '+(x.mesa_numero||'')+' '+(x.codigo||'')).toLowerCase().includes(q));

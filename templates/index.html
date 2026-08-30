@@ -235,10 +235,14 @@ const nombre=document.getElementById('nombre'), cedula=document.getElementById('
 const monto=document.getElementById('montoInfo'), refText=document.getElementById('refText');
 const mesaWrap=document.getElementById('mesaWrap'), mesaGrid=document.getElementById('mesaGrid'), mesaInput=document.getElementById('mesa_numero'), errMesa=document.getElementById('errMesa');
 let current=1;
-let ocupadasCache=[];
-async function cargarMesas(){
+let ocupadasCache=[]; let _mesasETag=null;
+async function cargarMesas(force){
   try{
-    const r=await fetch('/api/mesas'); const j=await r.json();
+    const hdr={}; if(_mesasETag && !force) hdr['If-None-Match']=_mesasETag;
+    const r=await fetch('/api/mesas',{headers:hdr});
+    if(r.status===304) return; // usa cache vieja
+    if(r.headers.get('ETag')) _mesasETag=r.headers.get('ETag');
+    const j=await r.json();
     ocupadasCache=j.ocupadas||[];
     renderMesas();
   }catch(e){ ocupadasCache=[]; renderMesas(); }
