@@ -26,13 +26,19 @@
         <p id="resultMsg"></p>
         <p id="resultMeta" class="small muted"></p>
       </div>
-      <div id="historialWrap" style="margin:18px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:10px;">
-          <h3 style="margin:0; font-size:14px;">Usadas recientes — revertir si fue error</h3>
-          <button id="btnReloadHist" class="btn sm">Actualizar</button>
+      <div id="historialWrap" style="margin:18px; background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:var(--shadow-soft);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:14px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <span style="width:28px; height:28px; border-radius:8px; background:var(--ok-bg); border:1px solid var(--ok-ring); display:grid; place-items:center; color:var(--ok);"><svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+              <h3 style="margin:0; font-size:14px; font-weight:800; letter-spacing:-.01em;">Usadas recientes</h3>
+              <span id="histCount" class="mono" style="font-size:11px; font-weight:700; background:var(--surface-2); border:1px solid var(--line); padding:2px 7px; border-radius:999px;">—</span>
+            </div>
+            <p class="muted small" style="margin:0; font-size:11px; line-height:1.4;">Si validaste por error, toca <strong style="color:var(--ink);">Revertir</strong> y vuelve a quedar como Aprobada.</p>
+          </div>
+          <button id="btnReloadHist" class="btn sm" style="flex-shrink:0;">Actualizar</button>
         </div>
-        <div id="historial" class="muted small" style="text-align:center; padding:12px;">Cargando...</div>
-        <p class="muted small" style="margin:8px 0 0; font-size:11px;">Solo ves las usadas. Si validaste por error, toca Revertir y vuelve a quedar como Aprobada.</p>
+        <div id="historial" style="display:flex; flex-direction:column; gap:10px; min-height:40px;"><p class="muted small" style="text-align:center; padding:12px;">Cargando...</p></div>
       </div>
     </div>
   </div>
@@ -94,18 +100,32 @@ document.getElementById('btnStop').onclick=async()=>{
 };
 document.getElementById('btnManual').onclick=()=> validar(document.getElementById('manualId').value);
 document.getElementById('manualId').addEventListener('keydown',e=>{ if(e.key==='Enter') validar(e.target.value); });
-// historial usadas + revertir (como centro de datos)
+// historial usadas + revertir — diseño frontend con sello distintivo
 async function cargarHistorial(){
-  const h=document.getElementById('historial');
+  const h=document.getElementById('historial'), cnt=document.getElementById('histCount');
   if(!h) return;
-  h.innerHTML='<p class="muted small" style="text-align:center;">Cargando...</p>';
+  h.innerHTML='<p class="muted small" style="text-align:center; padding:8px;">Cargando...</p>';
   try{
     const r=await fetch('/api/historial');
     if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
     const rows=await r.json();
-    if(!Array.isArray(rows) || !rows.length){ h.innerHTML='<p class="muted small" style="text-align:center;">Sin usadas aún</p>'; return; }
-    h.innerHTML = rows.map(u=>`<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line-2);"><div style="text-align:left;"><strong class="mono">${u.codigo||''}</strong> — ${u.nombre_completo||''} <span class="muted small">${u.cedula||''}</span> · ${u.ubicacion||''}${u.mesa_numero?' Mesa '+u.mesa_numero:''}<br><span class="muted small">${u.fecha_uso||''}</span></div><button class="btn sm" data-revert="${u.codigo||''}">Revertir</button></div>`).join('');
-  }catch(e){ h.textContent='Error al cargar historial'; }
+    if(cnt) cnt.textContent = Array.isArray(rows) ? rows.length + ' usadas' : '—';
+    if(!Array.isArray(rows) || !rows.length){ h.innerHTML='<p class="muted small" style="text-align:center; padding:16px; background:var(--surface-2); border:1px dashed var(--line); border-radius:12px;">Sin usadas aún — cuando valides un QR aparece aquí con nombre, cédula y código.</p>'; return; }
+    h.innerHTML = rows.map(u=>`
+      <div style="display:flex; gap:12px; align-items:center; padding:12px; background:var(--surface-2); border:1px solid var(--line); border-radius:12px; transition:border-color 160ms;">
+        <div style="width:72px; flex-shrink:0; text-align:center;">
+          <div class="mono" style="font-size:13px; font-weight:800; letter-spacing:.12em; color:var(--ink); background:#fff; border:1px solid var(--line); padding:7px 4px; border-radius:8px; line-height:1;">${u.codigo||''}</div>
+          <div class="muted small" style="font-size:10px; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${u.fecha_uso||''}</div>
+        </div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${u.nombre_completo||''}</div>
+          <div class="mono" style="font-size:11px; color:var(--muted); margin-top:1px;">${u.cedula||''}</div>
+          <div class="muted small" style="font-size:11px; margin-top:2px;">${u.ubicacion||''}${u.mesa_numero?' · Mesa '+u.mesa_numero:''}</div>
+        </div>
+        <button class="btn sm" data-revert="${u.codigo||''}" title="Volver a Aprobada" style="flex-shrink:0;">↩ Revertir</button>
+      </div>
+    `).join('');
+  }catch(e){ h.innerHTML='<p class="muted small" style="text-align:center; color:var(--err);">Error al cargar historial</p>'; }
 }
 document.getElementById('btnReloadHist')?.addEventListener('click', cargarHistorial);
 document.getElementById('historial')?.addEventListener('click', async e=>{
