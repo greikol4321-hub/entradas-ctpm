@@ -17,4 +17,9 @@ static/qrcodes/
 supabase/.temp/
 *.log
 .muse/
+.claude/
+.agents/
+.opencode/
+skills-lock.json
+tmp/
 .vercel
