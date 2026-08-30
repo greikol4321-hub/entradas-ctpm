@@ -811,6 +811,12 @@ async function loadLogs(){
         if(l.accion==='validar' && detObj.codigo) detText=`Validó ${detObj.codigo} ${detObj.numero ? '#'+String(detObj.numero).padStart(3,'0'):''}`;
         else if(l.accion==='aprobar' && detObj.codigo) detText=`Aprobó ${detObj.codigo}`;
         else if(l.accion==='comprar' && detObj.codigo) detText=`Compra ${detObj.codigo} ${detObj.ubicacion||''} ${detObj.mesa?'M'+detObj.mesa:''}`;
+        else if(l.accion==='login_ok') detText=`Sesión — ${detObj.user||''} (${detObj.rol||''})`;
+        else if(l.accion==='login_fail') detText=`Intento fallido — ${detObj.user||''}`;
+        else if(l.accion==='crear_usuario') detText=`Creó ${detObj.user||''} (${detObj.rol||''})`;
+        else if(l.accion==='editar_usuario') detText=`Editó ${detObj.user||detObj.id||''}`;
+        else if(l.accion==='borrar_usuario') detText=`Borró ${detObj.user||''}`;
+        else if(l.accion==='revertir') detText=`Revirtió ${detObj.codigo||''}`;
         else detText=JSON.stringify(detObj);
       } else if(detObj) detText=String(detObj);
       const item=document.createElement('div');
