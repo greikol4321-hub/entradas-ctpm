@@ -592,7 +592,21 @@ tr:hover td{background:#FFFEFB}
 .hist-datos{flex:1; min-width:0}
 .hist-datos > div:first-child{font-size:13px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .hist-datos > div:last-child{font-size:11px; color:var(--muted); margin-top:2px}
-/* Infinix Hot 50 Pro — 360-395px logical — explicit collapse per section (no Tailwind guess) */
+/* scanner page — herramienta de trabajo del portero: header compacto, footer colapsado en móvil */
+@media(max-width:480px){
+  .page-scanner .header{padding:8px 0; border-bottom-width:2px}
+  .page-scanner .header-container{flex-direction:row; padding:0 12px}
+  .page-scanner .logo-escudo{height:36px}
+  .page-scanner .header-logos-left{flex-direction:row; gap:8px}
+  .page-scanner .footer{margin-top:16px}
+  .page-scanner .footer-inner{grid-template-columns:1fr; padding:14px 16px; gap:10px}
+  .page-scanner .footer-brand p, .page-scanner .footer-col a, .page-scanner .footer-col .muted{font-size:11px; line-height:1.4}
+  .page-scanner .footer-brand .footer-logo{width:32px; height:32px}
+  .page-scanner .footer-col:not(:nth-child(3)){display:none}
+  .page-scanner .footer-bottom{padding:8px 16px; font-size:10px}
+  .page-scanner .scanner-shell{margin-top:8px}
+}
+
 @media(max-width:480px){
   .scanner-shell{padding:0 10px; margin:12px auto}
   .scanner-head{padding:16px 14px 12px}

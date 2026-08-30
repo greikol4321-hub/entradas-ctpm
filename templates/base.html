@@ -23,7 +23,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Fragment+Mono&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.2">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 <a href="#main" class="skip-link">Saltar al contenido</a>
 <div class="bg-watermark" aria-hidden="true"><img src="{{ url_for('static', filename='img/logo_colegio_nuevo.png') }}" alt="" width="680" height="680" loading="lazy" decoding="async"></div>
 <div class="noise" aria-hidden="true"></div>
