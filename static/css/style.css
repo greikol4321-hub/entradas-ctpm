@@ -549,7 +549,10 @@ tr:hover td{background:#FFFEFB}
   content:""; position:absolute; inset:0; border-radius:20px; border:1px solid rgba(255,255,255,.06); pointer-events:none;
 }
 .controls{display:flex; gap:10px; padding:16px 18px; flex-wrap:wrap; align-items:center}
-.controls .btn{min-height:44px; /* 44px touch target — ui-ux-pro-max */}
+.controls .btn{min-height:44px}
+.controls .btn.hidden{display:none}
+.controls #btnStop{display:none}
+.controls #btnStop.active{display:inline-flex}
 .controls input{
   flex:1; min-width:180px; padding:11px 14px; border-radius:var(--radius-pill); border:1px solid var(--line); background:#fff; font-size:13px;
   transition:border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
@@ -572,6 +575,23 @@ tr:hover td{background:#FFFEFB}
 .reader-error{padding:18px; text-align:center; font-size:12px; color:#94A3B8; line-height:1.5}
 .scanner-badges{padding:0 18px; display:flex; gap:8px; flex-wrap:wrap}
 .scanner-foot{padding:0 18px 18px; margin:0}
+/* historial — CSS classes replacing inline styles (responsive design-taste + ponytail) */
+.historial-wrap{margin:16px; background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:var(--shadow-soft)}
+.historial-head{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:14px}
+.historial-title-row{display:flex; align-items:center; gap:8px; margin-bottom:4px}
+.historial-icon{width:28px; height:28px; border-radius:8px; background:var(--ok-bg); border:1px solid var(--ok-ring); display:grid; place-items:center; color:var(--ok)}
+.historial-title-row h3{margin:0; font-size:14px; font-weight:800; letter-spacing:-.01em}
+.hist-count{font-size:11px; font-weight:700; background:var(--surface-2); border:1px solid var(--line); padding:2px 7px; border-radius:999px}
+.historial-list{display:flex; flex-direction:column; gap:10px; min-height:40px}
+.hist-loading{text-align:center; padding:12px}
+.hist-card{display:flex; align-items:center; gap:10px; padding:12px; background:var(--surface-2); border:1px solid var(--line); border-radius:12px; transition:border-color 160ms}
+.hist-card:hover{border-color:rgba(15,23,42,.14)}
+.hist-codigo{flex-shrink:0; text-align:center; width:56px}
+.hist-codigo .mono{font-size:13px; font-weight:800; letter-spacing:.12em; color:var(--ink); background:#fff; border:1px solid var(--line); padding:7px 4px; border-radius:8px; line-height:1; display:block}
+.hist-codigo .muted{font-size:10px; margin-top:4px}
+.hist-datos{flex:1; min-width:0}
+.hist-datos > div:first-child{font-size:13px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.hist-datos > div:last-child{font-size:11px; color:var(--muted); margin-top:2px}
 /* Infinix Hot 50 Pro — 360-395px logical — explicit collapse per section (no Tailwind guess) */
 @media(max-width:480px){
   .scanner-shell{padding:0 10px; margin:12px auto}
@@ -583,6 +603,7 @@ tr:hover td{background:#FFFEFB}
   .reader::before{inset:10px; border-radius:12px}
   .controls{display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px; align-items:stretch}
   .controls #btnStart{grid-column:1 / -1}
+  .controls #btnStop{grid-column:1 / -1}
   .controls #btnTorch{grid-column:1 / -1}
   .controls input{grid-column:1 / -1; min-width:0; font-size:16px; /* 16px prevents iOS zoom */ padding:13px 14px}
   .controls #btnManual{grid-column:1 / -1}
@@ -590,7 +611,16 @@ tr:hover td{background:#FFFEFB}
   .result h2{font-size:18px}
   .result p{font-size:12.5px}
   #historialWrap{margin:12px!important; padding:12px!important; border-radius:12px!important}
-  #historialWrap > div:first-child{flex-wrap:wrap}
+  .hist-card{flex-direction:column; align-items:flex-start; gap:6px; padding:10px!important; border-radius:10px!important}
+  .hist-card button{margin-top:6px; align-self:flex-start}
+  .hist-codigo{width:56px!important}
+  .hist-codigo .mono{font-size:11px!important; padding:5px 2px!important}
+  .hist-codigo .muted{font-size:8px!important}
+  .hist-datos .mono{font-size:11px!important}
+  .hist-datos > div:first-child{font-size:12px!important}
+  .hist-datos > div:last-child{font-size:10px!important}
+   .historial-head{flex-direction:column; gap:10px; align-items:stretch}
+   .hist-card button.btn{padding:7px 8px!important; font-size:11px!important; min-height:34px}
 }
 @media(max-width:380px){
   .scanner-shell{padding:0 8px}
