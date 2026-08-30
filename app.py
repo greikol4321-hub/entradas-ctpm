@@ -265,6 +265,11 @@ def ensure_admin_user():
                 print(f"[CTPM] Usuario admin creado: {DEMO_USER} / {DEMO_PASS}")
     except Exception as e:
         print(f"[CTPM] ensure_admin_user omitido: {e}")
+# asegurar admin también en Vercel (import, no solo __main__)
+try:
+    ensure_admin_user()
+except:
+    pass
 
 # --- Vistas ---
 @app.get("/")
