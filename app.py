@@ -246,7 +246,9 @@ def role_required(*roles):
                     return jsonify(ok=False, msg="No autenticado"), 401
                 return redirect(url_for("login"))
             if roles and session.get("rol") not in roles:
-                return jsonify(ok=False, msg="Sin permiso"), 403 if request.path.startswith("/api/") else (render_template("403.html"), 403)
+                if request.path.startswith("/api/"):
+                    return jsonify(ok=False, msg="Sin permiso"), 403
+                return render_template("403.html"), 403
             return fn(*a, **kw)
         return wrapper
     return deco
@@ -325,16 +327,8 @@ def api_login():
             dest = nxt if nxt.startswith("/") else (url_for("admin") if u["rol"]=="admin" else url_for("scanner"))
             log_audit("login_ok", None, {"user": username, "rol": u["rol"]})
             return jsonify(ok=True, msg="Bienvenido", rol=u["rol"], redirect=dest)
-    except Exception:
-        pass
-    if username==DEMO_USER and password==DEMO_PASS:
-        session.permanent=True
-        session["uid"]="demo-admin"
-        session["username"]=DEMO_USER
-        session["rol"]="admin"
-        dest = nxt if nxt.startswith("/") else url_for("admin")
-        log_audit("login_ok", None, {"user": username, "rol": "admin", "demo": True})
-        return jsonify(ok=True, msg="Bienvenido", rol="admin", redirect=dest)
+    except Exception as e:
+        print(f"[CTPM] login db err: {e}")
     log_audit("login_fail", None, {"user": username})
     return jsonify(ok=False, msg="Credenciales inválidas"), 401
 
@@ -430,6 +424,7 @@ def comprar():
 # --- API: listar ---
 @app.get("/api/entradas")
 @login_required
+@role_required("admin")
 def listar():
     estado = request.args.get("estado","")
     ubicacion = request.args.get("ubicacion","")
@@ -700,6 +695,34 @@ def validar():
                       nombre=row["nombre_completo"], ubicacion=row["ubicacion"], cedula=row["cedula"], mesa_numero=row.get("mesa_numero"), monto=row.get("monto"), codigo=row.get("codigo"), numero=row.get("numero"))
     except Exception as e:
         return jsonify(ok=False, estado="ERROR", msg=f"Error: {e}"), 500
+
+@app.get("/api/historial")
+@login_required
+def historial():
+    if session.get("rol") not in ("admin", "portero"):
+        return jsonify(ok=False, msg="No autorizado"), 403
+    rows = fetch_all("SELECT id, codigo, nombre_completo, cedula, ubicacion, mesa_numero, fecha_uso FROM entradas WHERE estado='Usada' ORDER BY fecha_uso DESC LIMIT 20")
+    for r in rows:
+        if r.get("fecha_uso") and isinstance(r["fecha_uso"], datetime):
+            r["fecha_uso"] = r["fecha_uso"].strftime("%Y-%m-%d %H:%M")
+    return jsonify(rows)
+
+@app.post("/api/revertir/<codigo>")
+@login_required
+def revertir(codigo):
+    if session.get("rol") not in ("admin", "portero"):
+        return jsonify(ok=False, msg="No autorizado"), 403
+    code = codigo.strip().upper()
+    row = fetch_one("SELECT id, estado, codigo FROM entradas WHERE codigo=%s", (code,))
+    if not row:
+        return jsonify(ok=False, msg="Código no encontrado"), 404
+    if row["estado"] != "Usada":
+        return jsonify(ok=False, msg=f"Solo se puede revertir Usada, está {row['estado']}"), 400
+    r = exec_sql("UPDATE entradas SET estado='Aprobada', fecha_uso=NULL WHERE id=%s", (row["id"],))
+    if isinstance(r, Exception):
+        return jsonify(ok=False, msg=str(r)), 500
+    log_audit("revertir", row["id"], {"codigo": code})
+    return jsonify(ok=True, msg=f"Código {code} revertido a Aprobada")
 
 @app.get("/uploads/<path:fname>")
 @login_required

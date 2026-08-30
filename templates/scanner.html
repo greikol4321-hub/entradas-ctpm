@@ -26,6 +26,14 @@
         <p id="resultMsg"></p>
         <p id="resultMeta" class="small muted"></p>
       </div>
+      <div id="historialWrap" style="margin:18px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:10px;">
+          <h3 style="margin:0; font-size:14px;">Usadas recientes — revertir si fue error</h3>
+          <button id="btnReloadHist" class="btn sm">Actualizar</button>
+        </div>
+        <div id="historial" class="muted small" style="text-align:center; padding:12px;">Cargando...</div>
+        <p class="muted small" style="margin:8px 0 0; font-size:11px;">Solo ves las usadas. Si validaste por error, toca Revertir y vuelve a quedar como Aprobada.</p>
+      </div>
     </div>
   </div>
 </div>
@@ -86,5 +94,35 @@ document.getElementById('btnStop').onclick=async()=>{
 };
 document.getElementById('btnManual').onclick=()=> validar(document.getElementById('manualId').value);
 document.getElementById('manualId').addEventListener('keydown',e=>{ if(e.key==='Enter') validar(e.target.value); });
+// historial usadas + revertir (como centro de datos)
+async function cargarHistorial(){
+  const h=document.getElementById('historial');
+  if(!h) return;
+  h.innerHTML='<p class="muted small" style="text-align:center;">Cargando...</p>';
+  try{
+    const r=await fetch('/api/historial');
+    if(r.status===401){ location.href='/login?nxt='+encodeURIComponent(location.pathname); return; }
+    const rows=await r.json();
+    if(!Array.isArray(rows) || !rows.length){ h.innerHTML='<p class="muted small" style="text-align:center;">Sin usadas aún</p>'; return; }
+    h.innerHTML = rows.map(u=>`<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line-2);"><div style="text-align:left;"><strong class="mono">${u.codigo||''}</strong> — ${u.nombre_completo||''} <span class="muted small">${u.cedula||''}</span> · ${u.ubicacion||''}${u.mesa_numero?' Mesa '+u.mesa_numero:''}<br><span class="muted small">${u.fecha_uso||''}</span></div><button class="btn sm" data-revert="${u.codigo||''}">Revertir</button></div>`).join('');
+  }catch(e){ h.textContent='Error al cargar historial'; }
+}
+document.getElementById('btnReloadHist')?.addEventListener('click', cargarHistorial);
+document.getElementById('historial')?.addEventListener('click', async e=>{
+  const code=e.target.closest('[data-revert]')?.dataset.revert;
+  if(!code) return;
+  if(!confirm(`¿Revertir ${code} a Aprobada para volver a usar?`)) return;
+  const r=await fetch('/api/revertir/'+encodeURIComponent(code),{method:'POST'});
+  const j=await r.json();
+  alert(j.msg|| (j.ok?'Revertido':'Error'));
+  if(r.ok) cargarHistorial();
+});
+// recargar historial después de cada validación exitosa
+const _origShow=show;
+show=function(ok,title,msg,meta){
+  _origShow(ok,title,msg,meta);
+  if(ok) setTimeout(cargarHistorial, 600);
+};
+cargarHistorial();
 </script>
 {% endblock %}
