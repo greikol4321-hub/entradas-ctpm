@@ -200,10 +200,11 @@ def init_admin(app, qr_folder):
     @security.login_required
     @security.role_required("admin")
     def listar_auditoria():
-        rows = database.fetch_all("SELECT id, accion, entradas_id, actor, ip, detalle, created_at FROM public.auditoria ORDER BY created_at DESC LIMIT 50")
+        # solo 3 eventos clave: aprobar (admin) + validar (escaneo portero) + revertir — con hora y quien
+        rows = database.fetch_all("SELECT id, accion, entradas_id, actor, detalle, created_at FROM public.auditoria WHERE accion IN ('aprobar','validar','revertir') ORDER BY created_at DESC LIMIT 50")
         for r in rows:
             if r.get("created_at") and isinstance(r["created_at"], datetime):
-                r["created_at"] = database.to_cr_str(r["created_at"], "%Y-%m-%d %H:%M:%S")
+                r["created_at"] = database.to_cr_str(r["created_at"], "%Y-%m-%d %H:%M")
             if isinstance(r.get("detalle"), str):
                 try: r["detalle"] = json.loads(r["detalle"])
                 except: pass
