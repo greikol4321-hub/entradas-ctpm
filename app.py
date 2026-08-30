@@ -3,7 +3,7 @@ Sistema CTPM — Venta y validación de entradas
 Soporta Postgres (Supabase) via DATABASE_URL o MySQL via variables DB_*
 Mesas numeradas + Finanzas
 """
-import os, uuid, pathlib, functools, secrets, string, io, time, json
+import os, uuid, pathlib, functools, secrets, io, time, json
 from datetime import datetime, timedelta
 from collections import defaultdict, deque
 from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, url_for, session, redirect
@@ -14,7 +14,6 @@ load_dotenv()
 
 try:
     import psycopg
-    from psycopg.rows import dict_row
     HAVE_PG = True
 except ImportError:
     HAVE_PG = False
@@ -93,7 +92,6 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "https://jyfmimxzhpvcezwilkdd.supabase.
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SERVICE_ROLE_KEY")
 # buckets creados en migración 20260104000000
 COMPROBANTES_BUCKET = "comprobantes"
-QRCODES_BUCKET = "qrcodes"
 
 def _supabase_headers(ct="application/octet-stream"):
     if not SUPABASE_SERVICE_KEY: return {}
