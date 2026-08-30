@@ -427,35 +427,17 @@ async function loadFinanzas(force){
       const totalFmt='₡'+vals.reduce((a,b)=>a+b,0).toLocaleString('es-CR');
       cEstado.innerHTML=`<div class="donut" style="background:conic-gradient(${stops});"><div class="donut-center"><span>${totalFmt}</span></div></div><div class="legend">${estados.map(([e,col],i)=>`<span class="legend-item"><span class="legend-dot" style="background:${col}"></span>${e} ₡${vals[i].toLocaleString('es-CR')}</span>`).join('')}</div>`;
     }
-    // mesas — ApexCharts barra 100% apilada (premium, fix gauge roto del radialBar)
-    const ocup=j.mesas.ocupadas||0, libres=j.mesas.libres||0, totalM=ocup+libres||1;
+    // mesas — solo texto, sin gráficos (a pedido)
+    const ocup=j.mesas.ocupadas||0, libres=j.mesas.libres||0, totalM=j.mesas.total||12;
     const cMesas=document.getElementById('chartMesas');
-    if(typeof ApexCharts !== 'undefined'){
-      if(_apexMesas) try{_apexMesas.destroy();}catch(e){}
-      cMesas.innerHTML=''; cMesas.style.minHeight='96px';
-      _apexMesas=new ApexCharts(cMesas,{
-        chart:{type:'bar', height:96, stacked:true, stackType:'100%', toolbar:{show:false}, fontFamily:'Poppins, sans-serif', animations:{enabled:true, easing:'easeinout', speed:650}},
-        series:[{name:'Ocupadas', data:[ocup]}, {name:'Libres', data:[libres]}],
-        plotOptions:{bar:{horizontal:true, barHeight:'26px', borderRadius:10, borderRadiusApplication:'end', borderRadiusWhenStacked:'all'}},
-        colors:['#B42318','#0F7A52'],
-        dataLabels:{enabled:true, formatter:(val, opts)=> opts.seriesIndex===0 ? (ocup? ocup+' ocupadas':'') : (libres? libres+' libres':''), style:{fontSize:'11px', fontWeight:800, colors:['#fff']}},
-        xaxis:{categories:['Mesas'], max:totalM, labels:{show:false}, axisBorder:{show:false}, axisTicks:{show:false}},
-        yaxis:{show:false},
-        grid:{show:false, padding:{left:0,right:8,top:0,bottom:0}},
-        tooltip:{y:{formatter:(val, opts)=> opts.seriesIndex===0 ? ocup+' ocupadas' : libres+' libres'}, x:{show:false}},
-        legend:{show:false},
-        states:{hover:{filter:{type:'darken', value:.06}}},
-        fill:{type:'gradient', gradient:{shade:'light', type:'horizontal', shadeIntensity:.1, gradientToColors:['#d93a2b','#16b67a'], opacityFrom:.95, opacityTo:.88}}
-      });
-      _apexMesas.render();
-      const leg2=document.createElement('div');
-      leg2.style.cssText='display:flex; justify-content:space-between; font-size:11px; font-weight:700; color:var(--muted); margin-top:8px;';
-      leg2.innerHTML=`<span style="color:#B42318;">● ${ocup} ocupadas</span><span style="color:#0F7A52;">● ${libres} libres</span><span>${totalM} mesas · ${Math.round(ocup/totalM*100)}% ocupación</span>`;
-      cMesas.appendChild(leg2);
-    } else {
-      const pctO=Math.round(ocup/totalM*100);
-      cMesas.innerHTML=`<div class="mesa-track"><div class="mesa-seg" style="width:${pctO}%; background:#B42318;">${ocup?ocup+' ocup.':''}</div><div class="mesa-seg" style="width:${100-pctO}%; background:#0F7A52;">${libres?libres+' libres':''}</div></div><div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; color:var(--muted); margin-top:6px;"><span>${ocup} ocupadas</span><span>${libres} libres</span><span>${totalM} total</span></div>`;
-    }
+    if(_apexMesas) try{_apexMesas.destroy();}catch(e){}
+    _apexMesas=null; cMesas.style.minHeight='';
+    const pct=Math.round(ocup/totalM*100);
+    cMesas.innerHTML=`<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; text-align:center; padding:8px 0 4px;">
+      <div><div style="font-size:22px; font-weight:800; color:#B42318;">${ocup}</div><div style="font-size:11px; font-weight:700; color:var(--muted);">Ocupadas</div></div>
+      <div><div style="font-size:22px; font-weight:800; color:#0F7A52;">${libres}</div><div style="font-size:11px; font-weight:700; color:var(--muted);">Libres</div></div>
+      <div><div style="font-size:22px; font-weight:800; color:#0a4c23;">${totalM}</div><div style="font-size:11px; font-weight:700; color:var(--muted);">${pct}% ocupación</div></div>
+    </div>`;
   }catch(e){ console.error(e); }
 }
 // tabs
