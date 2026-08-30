@@ -701,9 +701,9 @@ tr:hover td{background:#FFFEFB}
 .pill-escenario{font-size:10px; font-weight:800; letter-spacing:.10em; text-transform:uppercase; color:#fff; background:#1e3a2f; border:1px solid rgba(255,255,255,.12); padding:6px 14px; border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .vip-label{display:flex; justify-content:center; position:relative; z-index:1; margin:4px 0 2px}
 .vip-label::before{content:"ZONA DE MESAS VIP"; font-size:9px; font-weight:800; letter-spacing:.14em; color:#0a4c23; background:#fff; border:1px solid var(--line); padding:4px 10px; border-radius:999px; box-shadow:0 1px 6px rgba(0,0,0,.06)}
-.mesa-mapa-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; padding:16px; position:relative; z-index:1; background:rgba(255,255,255,.72); border:1px solid rgba(10,76,35,.08); margin:12px; border-radius:14px}
-@media(max-width:900px){ .mesa-mapa-grid{grid-template-columns:repeat(3,1fr)} }
-@media(max-width:640px){ .mesa-mapa-grid{grid-template-columns:repeat(2,1fr); gap:10px; padding:10px} }
+.mesa-mapa-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:18px; padding:20px; position:relative; z-index:1; background:rgba(255,255,255,.72); border:1px solid rgba(10,76,35,.08); margin:16px; border-radius:14px}
+@media(max-width:900px){ .mesa-mapa-grid{grid-template-columns:repeat(3,1fr); gap:16px; padding:16px} }
+@media(max-width:640px){ .mesa-mapa-grid{grid-template-columns:repeat(2,1fr); gap:12px; padding:12px} }
 .mesa-mapa-item{aspect-ratio:1; background:#fff; border:1.5px solid var(--line); border-radius:16px; padding:10px 8px 8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; cursor:pointer; position:relative; transition:border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out), transform 160ms var(--ease-out), background-color 160ms var(--ease-out)}
 .mesa-mapa-item:hover{border-color:var(--ink-2); transform:translateY(-1px); box-shadow:0 8px 18px rgba(10,76,35,.10)}
 .mesa-mapa-item:focus-visible{outline:2px solid var(--ink); outline-offset:2px}
