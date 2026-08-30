@@ -141,17 +141,25 @@ button{font:inherit}
 .nav a.active{background:var(--ink-2); color:#fff; box-shadow:0 2px 10px rgba(10,76,35,.22)}
 .nav a:active{transform:scale(0.97)}
 .nav-user{font-size:11px; font-weight:700; letter-spacing:.04em; color:var(--muted); background:#fff; border:1px solid var(--line); padding:6px 10px; border-radius:999px; margin-left:2px}
-.nav-toggle{display:none; flex-direction:column; gap:5px; background:none; border:none; cursor:pointer; padding:8px; border-radius:10px}
-.nav-toggle span{width:18px; height:2px; background:var(--ink); border-radius:2px; transition:transform 260ms var(--ease-drawer), opacity 160ms var(--ease-out)}
-.nav-toggle.is-open span:nth-child(1){ transform:translateY(3.5px) rotate(45deg); }
-.nav-toggle.is-open span:nth-child(2){ transform:translateY(-3.5px) rotate(-45deg); }
+.nav-toggle{display:none; flex-direction:column; gap:5px; background:none; border:none; cursor:pointer; padding:8px; border-radius:10px; transition:transform 140ms var(--ease-out)}
+.nav-toggle span{width:18px; height:2px; background:var(--ink); border-radius:2px; transition:transform 320ms var(--ease-drawer), opacity 160ms var(--ease-out)}
+/* anticipación + squash&stretch: el icono se agranda al tocar y estira al morfar a X */
+.nav-toggle:active{transform:scale(0.9)}
+.nav-toggle.is-open span:nth-child(1){ transform:translateY(3.5px) rotate(45deg) scaleX(1.06); }
+.nav-toggle.is-open span:nth-child(2){ transform:translateY(-3.5px) rotate(-45deg) scaleX(1.06); }
 .mobile-nav{
   max-width:1120px; margin:8px auto 0; background:rgba(255,255,255,.96); backdrop-filter:blur(16px);
   border:1px solid var(--line); border-radius:20px; padding:8px; display:flex; flex-direction:column; box-shadow:var(--shadow-lift);
   transform-origin:top center; animation:drawerIn 260ms var(--ease-drawer);
 }
 @keyframes drawerIn{from{opacity:0; transform:translateY(-6px) scale(0.98)} to{opacity:1; transform:none}}
-.mobile-nav a{padding:12px 14px; border-radius:12px; font-weight:600; font-size:14px; transition:background-color 160ms var(--ease-out)}
+/* overlapping action: los items aparecen en cascada al abrir (re-disparado porque el menú pasa de display:none) */
+.mobile-nav a{padding:12px 14px; border-radius:12px; font-weight:600; font-size:14px; transition:background-color 160ms var(--ease-out); opacity:0; animation:itemIn 240ms var(--ease-out) forwards}
+.mobile-nav a:nth-child(1){animation-delay:.04s}
+.mobile-nav a:nth-child(2){animation-delay:.08s}
+.mobile-nav a:nth-child(3){animation-delay:.12s}
+.mobile-nav a:nth-child(4){animation-delay:.16s}
+@keyframes itemIn{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
 .mobile-nav a:hover{background:var(--surface-2)}
 .hidden{display:none!important}
 .sr-only{position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important}
@@ -742,6 +750,13 @@ tr:hover td{background:#FFFEFB}
 .link-strong{font-weight:700; text-decoration:underline; text-underline-offset:2px}
 .link-strong:hover{color:var(--ink)}
 .btn-danger{color:var(--err)}
+/* logout rojo — acción destructiva (nav / móvil / footer) */
+.btn-logout{color:#fff!important; background:var(--err); border-color:var(--err)}
+.btn-logout:hover{background:#8a1a10; border-color:#8a1a10; color:#fff!important}
+.mobile-logout{color:var(--err); font-weight:700}
+.mobile-logout:hover{background:var(--err-bg)}
+.footer-logout{color:var(--err); font-weight:700}
+.footer-logout:hover{color:#8a1a10}
 .break-all{word-break:break-all}
 .modal-preview{display:flex; gap:10px; flex-wrap:wrap}
 .modal-cta{flex:1}
@@ -949,6 +964,12 @@ tr:hover td{background:#FFFEFB}
   .toast{animation:none}
   .toast-icon{animation:none}
   .toast-progress{animation-duration:3800ms; animation:none}
+}
+/* reduced-motion — menú móvil sin stagger ni drawer */
+@media(prefers-reduced-motion:reduce){
+  .mobile-nav{animation:none}
+  .mobile-nav a{opacity:1; animation:none}
+  .nav-toggle span{transition:transform 1ms}
 }
 @media(max-width:480px){
   #toast-root{ bottom:14px; gap:8px }

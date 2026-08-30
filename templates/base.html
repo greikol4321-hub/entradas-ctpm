@@ -18,10 +18,10 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="preconnect" href="https://jyfmimxzhpvcezwilkdd.supabase.co">
-<link rel="preload" href="{{ url_for('static', filename='css/style.css') }}?v=2.5" as="style">
+<link rel="preload" href="{{ url_for('static', filename='css/style.css') }}?v=2.6" as="style">
 <link rel="preload" href="{{ url_for('static', filename='img/logo_colegio_nuevo.png') }}" as="image" fetchpriority="high">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Fragment+Mono&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.5">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.6">
 </head>
 <body class="{% block body_class %}{% endblock %}">
 <a href="#main" class="skip-link">Saltar al contenido</a>
@@ -42,7 +42,7 @@
             <a href="/scanner" class="{% if request.path == '/scanner' %}active{% endif %}">Validación</a>
           {% endif %}
           <span class="nav-user" aria-label="Usuario {{ session.get('username') }}">{{ session.get('username') }} · {{ session.get('rol') }}</span>
-          <a href="/logout" class="btn sm">Salir</a>
+          <a href="/logout" class="btn sm btn-logout">Salir</a>
         {% else %}
           <a href="/" class="{% if request.path == '/' %}active{% endif %}">Comprar</a>
           <a href="/login" class="btn sm primary nav-cta">Acceso administrativo</a>
@@ -56,7 +56,7 @@
       <a href="/">Comprar entrada</a>
       {% if session.get('rol') == 'admin' %}<a href="/admin">Administración</a>
       {% else %}<a href="/scanner">Validación en puerta</a>{% endif %}
-      <a href="/logout">Cerrar sesión ({{ session.get('username') }})</a>
+      <a href="/logout" class="mobile-logout">Cerrar sesión ({{ session.get('username') }})</a>
     {% else %}
       <a href="/">Comprar entrada</a>
       <a href="/login">Acceso administrativo</a>
@@ -84,7 +84,7 @@
       {% if session.get('uid') %}
         {% if session.get('rol') == 'admin' %}<a href="/admin">Panel administrativo</a>
         {% else %}<a href="/scanner">Puesto de validación</a>{% endif %}
-        <a href="/logout">Cerrar sesión</a>
+        <a href="/logout" class="footer-logout">Cerrar sesión</a>
       {% else %}
         <a href="/login">Iniciar sesión</a>
         <span class="muted small">Solo personal autorizado</span>
@@ -102,7 +102,7 @@
 </footer>
 
 <div id="toast-root" aria-live="polite" aria-atomic="false"></div>
-<script src="{{ url_for('static', filename='js/app.js') }}?v=2.5" defer></script>
+<script src="{{ url_for('static', filename='js/app.js') }}?v=2.6" defer></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

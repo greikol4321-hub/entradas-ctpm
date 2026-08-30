@@ -989,5 +989,12 @@ async function loadLogs(){
 document.getElementById('btnReloadLogs')?.addEventListener('click', loadLogs);
 load();
 </script>
+<script>
+window.addEventListener('load', function(){
+  if(window.showToast) setTimeout(function(){
+    showToast('success', 'Bienvenido, {{ session.get("username") }}', {duration:3200});
+  }, 500);
+});
+</script>
 {% endblock %}
 <!-- v9999 force -->
