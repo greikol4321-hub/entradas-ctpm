@@ -731,6 +731,32 @@ tr:hover td{background:#FFFEFB}
 .gimnasio-bottom{display:flex; justify-content:space-between; align-items:center; padding:8px 12px; font-size:9px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#64748b; position:relative; z-index:1; background:rgba(255,255,255,.55); border-top:1px solid rgba(10,76,35,.06)}
 .gimnasio-entrada{position:absolute; left:6px; top:50%; transform:translateY(-50%) rotate(-90deg); font-size:9px; font-weight:800; letter-spacing:.14em; color:#0a4c23; background:#fff; border:1px solid var(--line); padding:4px 8px; border-radius:999px; display:none}
 @media(min-width:1100px){ .gimnasio-entrada{display:block} }
+/* Centro de datos — timeline bonito, no tabla genérica */
+.logs-header{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap;}
+.logs-header h3{margin:0; font-size:16px; font-weight:800; letter-spacing:-.01em;}
+.logs-timeline{position:relative; display:flex; flex-direction:column; gap:0;}
+.logs-timeline::before{content:""; position:absolute; left:15px; top:8px; bottom:8px; width:2px; background:linear-gradient(180deg, var(--line), transparent 90%); border-radius:2px;}
+.log-item{position:relative; display:flex; gap:12px; padding:10px 0 10px 36px; border-bottom:1px solid var(--line-2);}
+.log-item:last-child{border-bottom:none;}
+.log-dot{position:absolute; left:6px; top:14px; width:18px; height:18px; border-radius:50%; display:grid; place-items:center; background:#fff; border:2px solid var(--line); box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.log-dot.validar{background:var(--ok-bg); border-color:var(--ok-ring); color:var(--ok);}
+.log-dot.aprobar{background:#eff6ff; border-color:#bfdbfe; color:#2563eb;}
+.log-dot.comprar{background:#fffbeb; border-color:#fde68a; color:#d97706;}
+.log-dot.login_ok{background:var(--ok-bg); border-color:var(--ok-ring); color:var(--ok);}
+.log-dot.login_fail{background:var(--err-bg); border-color:var(--err-ring); color:var(--err);}
+.log-dot.revertir{background:#fef2f2; border-color:#fecaca; color:#dc2626;}
+.log-dot.crear_usuario, .log-dot.editar_usuario, .log-dot.borrar_usuario{background:#f5f1e8; border-color:var(--line); color:var(--ink);}
+.log-card{flex:1; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:4px; box-shadow:0 1px 6px rgba(15,23,42,.04);}
+.log-card-head{display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;}
+.log-action{font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; padding:3px 8px; border-radius:999px; border:1px solid var(--line); background:var(--surface-2);}
+.log-action.validar{background:var(--ok-bg); border-color:var(--ok-ring); color:var(--ok);}
+.log-action.aprobar{background:#eff6ff; border-color:#bfdbfe; color:#1e40af;}
+.log-action.comprar{background:#fffbeb; border-color:#fde68a; color:#92400e;}
+.log-time{font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums;}
+.log-user{font-size:13px; font-weight:700; color:var(--ink);}
+.log-meta{font-size:12px; color:var(--muted); display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+.log-meta .mono{font-size:11px; background:var(--surface-2); border:1px solid var(--line); padding:2px 6px; border-radius:6px;}
+@media(max-width:640px){ .logs-timeline::before{left:11px;} .log-dot{left:2px; width:16px; height:16px;} .log-item{padding-left:28px;} }
 
 /* Admin table mobile — tabla con scroll horizontal + filtros intactos */
 @media(max-width:768px){
