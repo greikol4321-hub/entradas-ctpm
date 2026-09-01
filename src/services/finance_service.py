@@ -11,17 +11,18 @@ _MESAS_CACHE = database._MESAS_CACHE
 MESAS_TTL = database.MESAS_TTL
 
 def get_finanzas_cached():
-    # SWR: fresco <TTL → HIT, viejo → STALE sirve instant + refresca bg
+    # SWR: fresco <TTL → HIT, viejo → STALE sirve instant + refresca bg (Vercel: fresh directo)
     if _FIN_CACHE["data"] is not None:
         age = time.time() - _FIN_CACHE["ts"]
         if age < FIN_TTL:
             return _FIN_CACHE["data"], _FIN_CACHE["etag"], "HIT"
         else:
-            # stale — refresca bg solo local
-            if not os.getenv("VERCEL"):
+            if os.getenv("VERCEL"):
+                pass  # ponytail: en Vercel sin bg thread, caer a MISS y traer DB fresca
+            else:
                 try: threading.Thread(target=database._refresh_fin_cache_bg, daemon=True).start()
                 except: pass
-            return _FIN_CACHE["data"], _FIN_CACHE["etag"], "STALE"
+                return _FIN_CACHE["data"], _FIN_CACHE["etag"], "STALE"
     # MISS
     payload = database._load_finanzas_payload()
     _FIN_CACHE["data"] = payload
@@ -35,10 +36,12 @@ def get_mesas_cached():
         if age < MESAS_TTL:
             return _MESAS_CACHE["data"], _MESAS_CACHE["etag"], "HIT"
         else:
-            if not os.getenv("VERCEL"):
+            if os.getenv("VERCEL"):
+                pass
+            else:
                 try: threading.Thread(target=database._refresh_mesas_bg, daemon=True).start()
                 except: pass
-            return _MESAS_CACHE["data"], _MESAS_CACHE["etag"], "STALE"
+                return _MESAS_CACHE["data"], _MESAS_CACHE["etag"], "STALE"
     rows = database.fetch_all("SELECT mesa_numero FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')")
     ocupadas = [r["mesa_numero"] for r in rows if r.get("mesa_numero")]
     todas = list(range(1, database.NUM_MESAS+1))
@@ -58,10 +61,12 @@ def get_entradas_cached(estado, ubicacion):
         if age < ENTRADAS_TTL:
             return ent["data"], ent["etag"], "HIT"
         else:
-            if not os.getenv("VERCEL"):
+            if os.getenv("VERCEL"):
+                pass
+            else:
                 try: threading.Thread(target=database._refresh_entradas_bg, args=(cache_key, estado, ubicacion), daemon=True).start()
                 except: pass
-            return ent["data"], ent["etag"], "STALE"
+                return ent["data"], ent["etag"], "STALE"
     # MISS
     base = "SELECT id,numero,codigo,nombre_completo,cedula,ubicacion,mesa_numero,monto,telefono,comprobante_path,qr_path,estado,fecha_compra,fecha_aprobacion,fecha_uso FROM entradas"
     conds = []

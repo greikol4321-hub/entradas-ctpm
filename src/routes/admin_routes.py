@@ -72,19 +72,20 @@ def init_admin(app, qr_folder):
                 return resp
             else:
                 import os, threading
-                if request.headers.get("If-None-Match") == ent["etag"]:
-                    if not os.getenv("VERCEL"):
+                if os.getenv("VERCEL"):
+                    pass  # ponytail: en Vercel sin bg, no servir STALE — caer a MISS fresco
+                else:
+                    if request.headers.get("If-None-Match") == ent["etag"]:
                         try: threading.Thread(target=database._refresh_entradas_bg, args=(cache_key, estado, ubicacion), daemon=True).start()
                         except: pass
-                    return "", 304, {"ETag": ent["etag"], "Cache-Control": "private, max-age=10, stale-while-revalidate=15", "X-Cache": "STALE"}
-                resp = jsonify(ent["data"])
-                resp.headers["ETag"] = ent["etag"]
-                resp.headers["Cache-Control"] = "private, max-age=10, stale-while-revalidate=15"
-                resp.headers["X-Cache"] = "STALE"
-                if not os.getenv("VERCEL"):
+                        return "", 304, {"ETag": ent["etag"], "Cache-Control": "private, max-age=10, stale-while-revalidate=15", "X-Cache": "STALE"}
+                    resp = jsonify(ent["data"])
+                    resp.headers["ETag"] = ent["etag"]
+                    resp.headers["Cache-Control"] = "private, max-age=10, stale-while-revalidate=15"
+                    resp.headers["X-Cache"] = "STALE"
                     try: threading.Thread(target=database._refresh_entradas_bg, args=(cache_key, estado, ubicacion), daemon=True).start()
                     except: pass
-                return resp
+                    return resp
         try:
             rows, etag, _ = finance_service.get_entradas_cached(estado, ubicacion)
             resp = jsonify(rows)
@@ -115,19 +116,20 @@ def init_admin(app, qr_folder):
                 return resp
             else:
                 import os, threading
-                if request.headers.get("If-None-Match") == etag:
-                    if not os.getenv("VERCEL"):
+                if os.getenv("VERCEL"):
+                    pass  # ponytail: en Vercel caer a MISS fresco, no STALE congelado
+                else:
+                    if request.headers.get("If-None-Match") == etag:
                         try: threading.Thread(target=database._refresh_fin_cache_bg, daemon=True).start()
                         except: pass
-                    return "", 304, {"ETag": etag, "Cache-Control": "private, max-age=30, stale-while-revalidate=30", "X-Cache": "STALE"}
-                resp = jsonify(database._FIN_CACHE["data"])
-                resp.headers["ETag"] = etag
-                resp.headers["Cache-Control"] = "private, max-age=30, stale-while-revalidate=30"
-                resp.headers["X-Cache"] = "STALE"
-                if not os.getenv("VERCEL"):
+                        return "", 304, {"ETag": etag, "Cache-Control": "private, max-age=30, stale-while-revalidate=30", "X-Cache": "STALE"}
+                    resp = jsonify(database._FIN_CACHE["data"])
+                    resp.headers["ETag"] = etag
+                    resp.headers["Cache-Control"] = "private, max-age=30, stale-while-revalidate=30"
+                    resp.headers["X-Cache"] = "STALE"
                     try: threading.Thread(target=database._refresh_fin_cache_bg, daemon=True).start()
                     except: pass
-                return resp
+                    return resp
         try:
             payload, etag, _ = finance_service.get_finanzas_cached()
             resp = jsonify(payload)

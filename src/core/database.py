@@ -231,15 +231,10 @@ def log_audit(accion, entradas_id=None, detalle=None):
 
 # warmup / caches compartidos para compatibilidad
 def invalidate_fin_cache():
-    if _FIN_CACHE["data"] is not None:
-        _FIN_CACHE["ts"] = 0
-        if not os.getenv("VERCEL"):
-            try: threading.Thread(target=_refresh_fin_cache_bg, daemon=True).start()
-            except: pass
-    else:
-        _FIN_CACHE["data"] = None
-        _FIN_CACHE["ts"] = 0
-        _FIN_CACHE["etag"] = None
+    # ponytail: clear en vez de stale — en Vercel no hay bg thread, stale servía dato viejo eternamente
+    _FIN_CACHE["data"] = None
+    _FIN_CACHE["ts"] = 0
+    _FIN_CACHE["etag"] = None
 
 def _refresh_fin_cache_bg():
     try:
@@ -295,23 +290,12 @@ def _refresh_mesas_bg():
         except: pass
 
 def invalidate_all_cache():
+    # ponytail: clear total — un MISS y DB fresca evita bug "aprobada sigue como pendiente" por STALE en Vercel
     invalidate_fin_cache()
-    for k in list(_ENTRADAS_CACHE.keys()):
-        _ENTRADAS_CACHE[k]["ts"]=0
-        if not os.getenv("VERCEL"):
-            try:
-                estado, ubic=k.split(":")
-                threading.Thread(target=_refresh_entradas_bg, args=(k, estado, ubic), daemon=True).start()
-            except: pass
-    if _MESAS_CACHE["data"] is not None:
-        _MESAS_CACHE["ts"]=0
-        if not os.getenv("VERCEL"):
-            try: threading.Thread(target=_refresh_mesas_bg, daemon=True).start()
-            except: pass
-    else:
-        _MESAS_CACHE["data"]=None
-        _MESAS_CACHE["ts"]=0
-        _MESAS_CACHE["etag"]=None
+    _ENTRADAS_CACHE.clear()
+    _MESAS_CACHE["data"]=None
+    _MESAS_CACHE["ts"]=0
+    _MESAS_CACHE["etag"]=None
 
 def _warm_all_bg():
     try: _refresh_fin_cache_bg()

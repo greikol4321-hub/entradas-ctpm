@@ -616,7 +616,7 @@ mAprobar.onclick=async()=>{
     btnQrCopy.classList.remove('hidden'); btnQrDownload.classList.remove('hidden'); btnQrPdf.classList.remove('hidden');
     if(selRow){ selRow.qr_path=j.qr_path; selRow.codigo=j.codigo; selRow.numero=j.numero; prepararBoleto(selRow); }
     mMsg.innerHTML=`Aprobada ${esc(numStr)} · Código <strong class="mono">${esc(j.codigo)}</strong> — QR solo, listo para enviar por WhatsApp.`; mMsg.className='alert ok'; mMsg.classList.remove('hidden');
-    mAprobar.classList.add('hidden'); _finETag=null; _finUpdatedAt=0; load();
+    mAprobar.classList.add('hidden'); _finETag=null; _finUpdatedAt=0; for(let k in _entrETags) delete _entrETags[k]; _lastRows=null; load();
   }catch(e){ mMsg.textContent=''+(e.message); mMsg.className='alert err'; mMsg.classList.remove('hidden'); mAprobar.disabled=false; mAprobar.innerHTML='Reintentar'; }
 };
 // Ticket vertical — canvas premium portrait (360x520 @2x) para PNG
