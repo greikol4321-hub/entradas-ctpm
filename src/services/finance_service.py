@@ -53,8 +53,14 @@ def get_mesas_cached():
     _MESAS_CACHE["etag"] = etag
     return payload, etag, "MISS"
 
-def get_entradas_cached(estado, ubicacion):
-    cache_key = f"{estado}:{ubicacion}"
+def get_entradas_cached(estado, ubicacion, page=1, limit=50):
+    # ponytail: paginación para evitar OOM (50 por defecto)
+    try: page = max(1, int(page))
+    except: page = 1
+    try: limit = min(100, max(1, int(limit)))
+    except: limit = 50
+    offset = (page - 1) * limit
+    cache_key = f"{estado}:{ubicacion}:{page}:{limit}"
     ent = _ENTRADAS_CACHE.get(cache_key)
     if ent:
         age = time.time() - ent["ts"]
@@ -78,7 +84,8 @@ def get_entradas_cached(estado, ubicacion):
     sql = base
     if conds:
         sql += " WHERE " + " AND ".join(conds)
-    sql += " ORDER BY fecha_compra DESC"
+    sql += " ORDER BY fecha_compra DESC LIMIT %s OFFSET %s"
+    params.extend([limit, offset])
     rows = database.fetch_all(sql, tuple(params))
     for r in rows:
         for k in ("fecha_compra","fecha_aprobacion","fecha_uso"):

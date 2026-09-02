@@ -106,6 +106,16 @@ def init_public(app, upload_folder, qr_folder, sinpe_numero, sinpe_nombre):
             return jsonify(ok=False, msg="Sube el comprobante SINPE"), 400
         if pathlib.Path(file.filename).suffix.lower() not in {".jpg",".jpeg",".png",".webp",".pdf"}:
             return jsonify(ok=False, msg="Formato no permitido (jpg/png/webp/pdf)"), 400
+        # ponytail: valida magic bytes, no solo extensión (evita polyglot)
+        try:
+            peek = file.stream.read(12); file.stream.seek(0)
+            is_pdf = peek[:4] == b"%PDF"
+            is_jpg = peek[:2] == b"\xff\xd8"
+            is_png = peek[:8] == b"\x89PNG\r\n\x1a\n"
+            is_webp = peek[:4] == b"RIFF" and b"WEBP" in peek
+            if not (is_pdf or is_jpg or is_png or is_webp):
+                return jsonify(ok=False, msg="Archivo no parece imagen/PDF válido"), 400
+        except: pass
         # Pydantic validación extra
         try:
             CompraIn(nombre_completo=nombre, cedula=cedula, ubicacion=ubicacion, mesa_numero=mesa_numero_raw or None, telefono=telefono)
@@ -123,7 +133,20 @@ def init_public(app, upload_folder, qr_folder, sinpe_numero, sinpe_nombre):
             file_bytes = file.read()
             if not file_bytes:
                 return jsonify(ok=False, msg="Comprobante vacío"), 400
-        except:
+            if len(file_bytes) > 8*1024*1024:
+                return jsonify(ok=False, msg="Archivo muy grande"), 400
+            # verify imagen real con Pillow cuando no es PDF
+            if pathlib.Path(file.filename).suffix.lower() != ".pdf":
+                try:
+                    from PIL import Image
+                    import io as _io
+                    im = Image.open(_io.BytesIO(file_bytes))
+                    im.verify()
+                except Exception:
+                    return jsonify(ok=False, msg="Imagen corrupta o no válida"), 400
+        except Exception as e:
+            if "corrupta" in str(e) or "válida" in str(e):
+                return jsonify(ok=False, msg=str(e)), 400
             return jsonify(ok=False, msg="No se pudo leer el comprobante"), 400
         # delegar a ticket_service (usa 1 conexión FOR UPDATE)
         import src.services.ticket_service as ticket_service
@@ -136,19 +159,30 @@ def init_public(app, upload_folder, qr_folder, sinpe_numero, sinpe_nombre):
     @public_bp.get("/static/qrcodes/<path:fname>")
     @public_bp.get("/qrcodes/<path:fname>")
     def serve_qr(fname):
+        # ponytail: path traversal guard
+        if ".." in fname or fname.startswith("/") or "\\" in fname:
+            return "No encontrado", 404
+        safe = pathlib.Path(fname).name
+        if safe != fname and "/" in fname:
+            return "No encontrado", 404
         import src.services.qr_service as qr_service
-        return qr_service.serve_qr_logic(fname, qr_folder)
+        return qr_service.serve_qr_logic(safe, qr_folder)
 
     @public_bp.get("/uploads/<path:fname>")
     @security.login_required
     def uploads(fname):
-        fpath = upload_folder / fname
+        if ".." in fname or fname.startswith("/") or "\\" in fname:
+            return "No encontrado", 404
+        safe = pathlib.Path(fname).name
+        if safe != fname and "/" in fname:
+            return "No encontrado", 404
+        fpath = upload_folder / safe
         if fpath.exists():
-            return send_from_directory(upload_folder, fname)
-        data = storage.supabase_download(storage.COMPROBANTES_BUCKET, fname)
+            return send_from_directory(upload_folder, safe)
+        data = storage.supabase_download(storage.COMPROBANTES_BUCKET, safe)
         if data:
             content, ctype = data
-            return send_file(io.BytesIO(content), mimetype=ctype, download_name=fname)
+            return send_file(io.BytesIO(content), mimetype=ctype, download_name=safe)
         return "Comprobante no encontrado", 404
 
     @public_bp.get("/health")

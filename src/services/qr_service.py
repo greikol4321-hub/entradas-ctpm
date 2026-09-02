@@ -15,6 +15,10 @@ def generar_qr(codigo, qr_folder):
     return qr_name, f"static/qrcodes/{qr_name}"
 
 def serve_qr_logic(fname, qr_folder):
+    # guard adicional aunque routes ya sanitiza
+    if ".." in fname or "/" in fname or "\\" in fname:
+        return "QR no encontrado", 404
+    fname = pathlib.Path(fname).name
     fpath = qr_folder / fname
     if not fpath.exists():
         code = pathlib.Path(fname).stem

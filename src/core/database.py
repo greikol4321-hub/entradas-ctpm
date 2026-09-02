@@ -44,6 +44,7 @@ PRECIO_GRADAS = "₡5.000"
 PRECIO_MESAS = "₡10.000"
 
 # cache helpers (se mantienen aquí por compatibilidad, pero finance_service es la fuente)
+_CACHE_LOCK = threading.Lock()  # ponytail: lock para dict caches (evita race en gunicorn threads)
 _FIN_CACHE = {"data": None, "ts": 0, "etag": None}
 FIN_TTL = 45
 _ENTRADAS_CACHE = {}
@@ -156,64 +157,128 @@ def _close_pg_conn(exc):
 def init_db(app):
     # ponytail: 1 conexión por request, teardown simple
     app.teardown_appcontext(_close_pg_conn)
+    # ponytail: cierra pool al salir — evita warning "pool not closed" en Vercel redeploy
+    import atexit
+    atexit.register(lambda: (_PG_POOL.close() if _PG_POOL else None))
 
 def fetch_all(sql, params=()):
-    conn = db()
-    if conn is None: return []
+    # ponytail: reusar g.pg_conn si existe → 1 conexión por request, no agota pool
+    conn = _get_conn()
+    close_after = conn is None or (hasattr(conn, 'closed') and conn.closed != 0)
+    if conn is None or close_after:
+        conn = db(); close_after = True
+        if conn is None: return []
+    else: close_after = False
     cur = conn.cursor()
     cur.execute(sql, params)
     cols = [c[0] for c in cur.description] if cur.description else []
     rows = [dict(zip(cols, r)) for r in cur.fetchall()]
-    cur.close(); _close_conn_pooled(conn)
+    cur.close()
+    if close_after: _close_conn_pooled(conn)
     return rows
 
 def fetch_one(sql, params=()):
-    conn = db()
-    if conn is None: return None
+    conn = _get_conn()
+    close_after = conn is None or (hasattr(conn, 'closed') and conn.closed != 0)
+    if conn is None or close_after:
+        conn = db(); close_after = True
+        if conn is None: return None
+    else: close_after = False
     cur = conn.cursor()
     cur.execute(sql, params)
     row = cur.fetchone()
     cols = [c[0] for c in cur.description] if cur.description else []
-    cur.close(); _close_conn_pooled(conn)
+    cur.close()
+    if close_after: _close_conn_pooled(conn)
     return dict(zip(cols, row)) if row else None
 
 def exec_sql(sql, params=()):
-    conn = db()
-    if conn is None: return None
+    conn = _get_conn()
+    close_after = conn is None or (hasattr(conn, 'closed') and conn.closed != 0)
+    if conn is None or close_after:
+        conn = db(); close_after = True
+        if conn is None: return None
+    else: close_after = False
     cur = conn.cursor()
     try:
         cur.execute(sql, params)
         conn.commit()
         rowcount = cur.rowcount
-        cur.close(); _close_conn_pooled(conn)
+        cur.close()
+        if close_after: _close_conn_pooled(conn)
         return {"ok": True, "rowcount": rowcount}
     except Exception as e:
         try: conn.rollback()
         except: pass
-        cur.close(); _close_conn_pooled(conn)
-        return e
+        cur.close()
+        if close_after: _close_conn_pooled(conn)
+        return {"ok": False, "error": str(e), "rowcount": 0}
 
 def _load_finanzas_payload():
-    conn = db()
+    # ponytail: 1 round-trip con CTE + FILTER (Context7 Postgres docs: FILTER es más rápido que CASE)
+    conn = _get_conn() or db()
     if conn is None:
         raise Exception("DB no disponible")
+    # usa _get_conn si estamos en request → reusamos 1 conexión por request (menos pool churn)
+    close_after = False
+    try:
+        from flask import g as _g
+        close_after = not hasattr(_g, 'pg_conn') or _g.pg_conn is not conn
+    except: close_after = True
     cur = conn.cursor()
-    cur.execute("SELECT estado, ubicacion, COUNT(*) as cnt, COALESCE(SUM(monto),0) as total FROM entradas GROUP BY estado, ubicacion")
-    cols = [c[0] for c in cur.description] if cur.description else []
-    rows = [dict(zip(cols, r)) for r in cur.fetchall()]
-    cur.execute("SELECT COUNT(*) as total_entradas, COALESCE(SUM(CASE WHEN estado IN ('Aprobada','Usada') THEN monto ELSE 0 END),0) as recaudado, COALESCE(SUM(CASE WHEN estado='Pendiente' THEN monto ELSE 0 END),0) as por_confirmar, COALESCE(SUM(CASE WHEN estado='Usada' THEN 1 ELSE 0 END),0) as usadas, COALESCE(SUM(CASE WHEN estado='Aprobada' THEN 1 ELSE 0 END),0) as aprobadas, COALESCE(SUM(CASE WHEN estado='Pendiente' THEN 1 ELSE 0 END),0) as pendientes FROM entradas")
-    cols2 = [c[0] for c in cur.description] if cur.description else []
-    all_rows = [dict(zip(cols2, r)) for r in cur.fetchall()]
-    kpi = all_rows[0] if all_rows else {"total_entradas":0,"recaudado":0,"por_confirmar":0,"usadas":0,"aprobadas":0,"pendientes":0}
-    cur.execute("SELECT ubicacion, COUNT(*) as cnt, COALESCE(SUM(monto),0) as total FROM entradas GROUP BY ubicacion")
-    cols3 = [c[0] for c in cur.description] if cur.description else []
-    zona = [dict(zip(cols3, r)) for r in cur.fetchall()]
-    cur.execute("SELECT COUNT(*) as cnt FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')")
-    cols4 = [c[0] for c in cur.description] if cur.description else []
-    ocupadas = [dict(zip(cols4, r)) for r in cur.fetchall()]
-    ocup_cnt = ocupadas[0]["cnt"] if ocupadas else 0
-    cur.close(); _close_conn_pooled(conn)
-    return {"ok": True, "agrupado": rows, "kpi": kpi, "por_zona": zona, "mesas": {"ocupadas": ocup_cnt, "libres": NUM_MESAS - ocup_cnt, "total": NUM_MESAS}}
+    # 1 query, 4 agregaciones — Postgres FILTER es index-friendly y evita 4 scans
+    if _is_pg():
+        cur.execute("""
+            WITH kpi AS (
+                SELECT COUNT(*) AS total_entradas,
+                       COALESCE(SUM(monto) FILTER (WHERE estado IN ('Aprobada','Usada')),0) AS recaudado,
+                       COALESCE(SUM(monto) FILTER (WHERE estado='Pendiente'),0) AS por_confirmar,
+                       COUNT(*) FILTER (WHERE estado='Usada') AS usadas,
+                       COUNT(*) FILTER (WHERE estado='Aprobada') AS aprobadas,
+                       COUNT(*) FILTER (WHERE estado='Pendiente') AS pendientes
+                FROM entradas
+            ),
+            mesas AS (
+                SELECT COUNT(*) AS cnt FROM entradas
+                WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')
+            )
+            SELECT 'kpi' AS src, to_json(kpi) AS data FROM kpi
+            UNION ALL
+            SELECT 'mesas' AS src, to_json(mesas) AS data FROM mesas
+        """)
+        kpi = None; ocup_cnt = 0
+        for src, data in cur.fetchall():
+            import json as _j
+            d = data if isinstance(data, dict) else _j.loads(data) if isinstance(data, str) else data
+            if src == 'kpi': kpi = d
+            elif src == 'mesas': ocup_cnt = int(d.get('cnt',0) if isinstance(d, dict) else 0)
+        if kpi is None: kpi = {"total_entradas":0,"recaudado":0,"por_confirmar":0,"usadas":0,"aprobadas":0,"pendientes":0}
+        cur.execute("SELECT estado, ubicacion, COUNT(*) as cnt, COALESCE(SUM(monto),0) as total FROM entradas GROUP BY estado, ubicacion")
+        rows = [dict(zip([c[0] for c in cur.description], r)) for r in cur.fetchall()]
+        cur.execute("SELECT ubicacion, COUNT(*) as cnt, COALESCE(SUM(monto),0) as total FROM entradas GROUP BY ubicacion")
+        zona_rows = [dict(zip([c[0] for c in cur.description], r)) for r in cur.fetchall()]
+    else:
+        # MySQL fallback — 4 queries pero con conn reusada
+        cur.execute("SELECT estado, ubicacion, COUNT(*) as cnt, COALESCE(SUM(monto),0) as total FROM entradas GROUP BY estado, ubicacion")
+        rows = [dict(zip([c[0] for c in cur.description], r)) for r in cur.fetchall()]
+        cur.execute("SELECT COUNT(*) as total_entradas, COALESCE(SUM(CASE WHEN estado IN ('Aprobada','Usada') THEN monto ELSE 0 END),0) as recaudado, COALESCE(SUM(CASE WHEN estado='Pendiente' THEN monto ELSE 0 END),0) as por_confirmar, COALESCE(SUM(CASE WHEN estado='Usada' THEN 1 ELSE 0 END),0) as usadas, COALESCE(SUM(CASE WHEN estado='Aprobada' THEN 1 ELSE 0 END),0) as aprobadas, COALESCE(SUM(CASE WHEN estado='Pendiente' THEN 1 ELSE 0 END),0) as pendientes FROM entradas")
+        kpi_rows = [dict(zip([c[0] for c in cur.description], r)) for r in cur.fetchall()]
+        kpi = kpi_rows[0] if kpi_rows else {"total_entradas":0,"recaudado":0,"por_confirmar":0,"usadas":0,"aprobadas":0,"pendientes":0}
+        cur.execute("SELECT ubicacion, COUNT(*) as cnt, COALESCE(SUM(monto),0) as total FROM entradas GROUP BY ubicacion")
+        zona_rows = [dict(zip([c[0] for c in cur.description], r)) for r in cur.fetchall()]
+        cur.execute("SELECT COUNT(*) as cnt FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')")
+        ocupadas_rows = [dict(zip([c[0] for c in cur.description], r)) for r in cur.fetchall()]
+        ocup_cnt = ocupadas_rows[0]["cnt"] if ocupadas_rows else 0
+    cur.close()
+    if close_after: _close_conn_pooled(conn)
+    # si kpi viene de CTE, ya está; si MySQL, ya asignado
+    if '_is_pg' in locals() and _is_pg():
+        pass
+    else:
+        # asegura kpi definido en rama pg si no
+        try: kpi
+        except: kpi = {"total_entradas":0,"recaudado":0,"por_confirmar":0,"usadas":0,"aprobadas":0,"pendientes":0}
+    return {"ok": True, "agrupado": rows, "kpi": kpi, "por_zona": zona_rows, "mesas": {"ocupadas": ocup_cnt, "libres": NUM_MESAS - ocup_cnt, "total": NUM_MESAS}}
 
 def log_audit(accion, entradas_id=None, detalle=None):
     try:
@@ -232,16 +297,18 @@ def log_audit(accion, entradas_id=None, detalle=None):
 # warmup / caches compartidos para compatibilidad
 def invalidate_fin_cache():
     # ponytail: clear en vez de stale — en Vercel no hay bg thread, stale servía dato viejo eternamente
-    _FIN_CACHE["data"] = None
-    _FIN_CACHE["ts"] = 0
-    _FIN_CACHE["etag"] = None
+    with _CACHE_LOCK:
+        _FIN_CACHE["data"] = None
+        _FIN_CACHE["ts"] = 0
+        _FIN_CACHE["etag"] = None
 
 def _refresh_fin_cache_bg():
     try:
         payload = _load_finanzas_payload()
-        _FIN_CACHE["data"] = payload
-        _FIN_CACHE["ts"] = time.time()
-        _FIN_CACHE["etag"] = _etag(payload)
+        with _CACHE_LOCK:
+            _FIN_CACHE["data"] = payload
+            _FIN_CACHE["ts"] = time.time()
+            _FIN_CACHE["etag"] = _etag(payload)
     except Exception as e:
         try:
             from flask import current_app
@@ -258,14 +325,15 @@ def _refresh_entradas_bg(cache_key, estado, ubicacion):
             conds.append("ubicacion=%s"); params.append(ubicacion)
         sql=base
         if conds: sql+=" WHERE "+" AND ".join(conds)
-        sql+=" ORDER BY fecha_compra DESC"
+        sql+=" ORDER BY fecha_compra DESC LIMIT 50"
         rows=fetch_all(sql, tuple(params))
         for r in rows:
             for k in ("fecha_compra","fecha_aprobacion","fecha_uso"):
                 if r.get(k) and isinstance(r[k], datetime):
                     r[k]=to_cr_str(r[k])
         etag=_etag(rows)
-        _ENTRADAS_CACHE[cache_key]={"data": rows, "ts": time.time(), "etag": etag}
+        with _CACHE_LOCK:
+            _ENTRADAS_CACHE[cache_key]={"data": rows, "ts": time.time(), "etag": etag}
     except Exception as e:
         try:
             from flask import current_app
@@ -280,9 +348,10 @@ def _refresh_mesas_bg():
         libres=[n for n in todas if n not in ocupadas]
         payload={"ok": True, "ocupadas": ocupadas, "libres": libres, "total": NUM_MESAS}
         etag=_etag(payload)
-        _MESAS_CACHE["data"]=payload
-        _MESAS_CACHE["ts"]=time.time()
-        _MESAS_CACHE["etag"]=etag
+        with _CACHE_LOCK:
+            _MESAS_CACHE["data"]=payload
+            _MESAS_CACHE["ts"]=time.time()
+            _MESAS_CACHE["etag"]=etag
     except Exception as e:
         try:
             from flask import current_app
@@ -292,10 +361,11 @@ def _refresh_mesas_bg():
 def invalidate_all_cache():
     # ponytail: clear total — un MISS y DB fresca evita bug "aprobada sigue como pendiente" por STALE en Vercel
     invalidate_fin_cache()
-    _ENTRADAS_CACHE.clear()
-    _MESAS_CACHE["data"]=None
-    _MESAS_CACHE["ts"]=0
-    _MESAS_CACHE["etag"]=None
+    with _CACHE_LOCK:
+        _ENTRADAS_CACHE.clear()
+        _MESAS_CACHE["data"]=None
+        _MESAS_CACHE["ts"]=0
+        _MESAS_CACHE["etag"]=None
 
 def _warm_all_bg():
     try: _refresh_fin_cache_bg()

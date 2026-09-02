@@ -35,8 +35,10 @@ CREATE TABLE IF NOT EXISTS usuarios (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- Admin por defecto: admin / admin123 (bcrypt) - cambia al deploy
+-- Admin por defecto: CREAR con contraseña fuerte al deploy
 -- INSERT INTO usuarios (username, password_hash, rol) VALUES ('admin', '$2b$12$...', 'admin');
+-- Usar INITIAL_ADMIN_USER / INITIAL_ADMIN_PASSWORD en entorno de producción
+-- El password mínimo es 4 caracteres pero se recomienda uno fuerte
 
--- Datos de ejemplo (opcional)
--- INSERT INTO entradas (id, nombre_completo, cedula, ubicacion, comprobante_path) VALUES (UUID(), 'Juan Perez', '1-2345-0678', 'Gradas', 'uploads/ejemplo.jpg');
+-- Columna telefono agregada (ver commit previo)
+ALTER TABLE entradas ADD COLUMN IF NOT EXISTS telefono VARCHAR(20) DEFAULT NULL AFTER ubicacion;

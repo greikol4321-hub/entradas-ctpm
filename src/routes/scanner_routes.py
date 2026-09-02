@@ -37,7 +37,9 @@ def init_scanner(app):
             row = result["row"]
             return jsonify(ok=True, estado="VALIDA", msg="¡ENTRADA VÁLIDA!", nombre=row["nombre_completo"], ubicacion=row["ubicacion"], cedula=row["cedula"], mesa_numero=row.get("mesa_numero"), monto=row.get("monto"), codigo=row.get("codigo"), numero=row.get("numero"))
         except Exception as e:
-            return jsonify(ok=False, estado="ERROR", msg=f"Error: {e}"), 500
+            try: app.logger.error(f"[validar] {e}")
+            except: pass
+            return jsonify(ok=False, estado="ERROR", msg="Error interno"), 500
 
     @scanner_bp.get("/api/historial")
     @security.login_required

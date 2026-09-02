@@ -30,6 +30,7 @@ def init_admin(app, qr_folder):
             u = database.fetch_one("SELECT id, username, password_hash, rol FROM usuarios WHERE username=%s", (username,))
             from werkzeug.security import check_password_hash
             if u and check_password_hash(u["password_hash"], password):
+                session.clear()
                 session.permanent=True
                 session["uid"]=u["id"]
                 session["username"]=u["username"]
@@ -58,7 +59,11 @@ def init_admin(app, qr_folder):
     def listar():
         estado = request.args.get("estado","")
         ubicacion = request.args.get("ubicacion","")
-        cache_key = f"{estado}:{ubicacion}"
+        try: page = int(request.args.get("page","1"))
+        except: page = 1
+        try: limit = min(100, max(1, int(request.args.get("limit","50"))))
+        except: limit = 50
+        cache_key = f"{estado}:{ubicacion}:{page}:{limit}"
         ent = database._ENTRADAS_CACHE.get(cache_key)
         if ent:
             age = time.time() - ent["ts"]
@@ -87,7 +92,7 @@ def init_admin(app, qr_folder):
                     except: pass
                     return resp
         try:
-            rows, etag, _ = finance_service.get_entradas_cached(estado, ubicacion)
+            rows, etag, _ = finance_service.get_entradas_cached(estado, ubicacion, page, limit)
             resp = jsonify(rows)
             resp.headers["ETag"] = etag
             resp.headers["Cache-Control"] = "private, max-age=10, must-revalidate"
@@ -141,7 +146,7 @@ def init_admin(app, qr_folder):
             import traceback
             try: app.logger.error(f"[CTPM] finanzas error: {e}\n{traceback.format_exc()}")
             except: pass
-            return jsonify(ok=False, msg=str(e), tb=traceback.format_exc()), 500
+            return jsonify(ok=False, msg="Error interno"), 500
 
     @admin_bp.get("/api/usuarios")
     @security.login_required
@@ -223,14 +228,32 @@ def init_admin(app, qr_folder):
             if row["estado"] != "Pendiente":
                 return jsonify(ok=False, msg=f"Ya está {row['estado']}"), 400
             codigo = row.get("codigo")
-            if not codigo:
-                import src.services.ticket_service as ts
-                codigo = ts.generar_codigo_unico()
-                database.exec_sql("UPDATE entradas SET codigo=%s WHERE id=%s", (codigo, row["id"]))
-                row["codigo"] = codigo
-            import src.services.qr_service as qr_service
-            qr_name, qr_rel = qr_service.generar_qr(codigo, qr_folder)
-            database.exec_sql("UPDATE entradas SET estado='Aprobada', qr_path=%s, fecha_aprobacion=%s WHERE id=%s", (qr_rel, database.now_cr(), row["id"]))
+            # ponytail: 1 transacción para codigo+estado — evita dejar codigo asignado si falla el segundo UPDATE
+            conn = database.db()
+            if conn is None:
+                return jsonify(ok=False, msg="DB no disponible"), 503
+            try:
+                cur = conn.cursor()
+                if not codigo:
+                    import src.services.ticket_service as ts
+                    codigo = ts.generar_codigo_unico()
+                    cur.execute("UPDATE entradas SET codigo=%s WHERE id=%s", (codigo, row["id"]))
+                    row["codigo"] = codigo
+                import src.services.qr_service as qr_service
+                qr_name, qr_rel = qr_service.generar_qr(codigo, qr_folder)
+                cur.execute("UPDATE entradas SET estado='Aprobada', qr_path=%s, fecha_aprobacion=%s WHERE id=%s", (qr_rel, database.now_cr(), row["id"]))
+                conn.commit()
+                cur.close()
+            except Exception as e:
+                try: conn.rollback()
+                except: pass
+                try: cur.close()
+                except: pass
+                database._close_conn_pooled(conn)
+                try: app.logger.error(f"[aprobar] {e}")
+                except: pass
+                return jsonify(ok=False, msg="Error interno"), 500
+            database._close_conn_pooled(conn)
             database.log_audit("aprobar", row["id"], {"codigo": codigo, "numero": row.get("numero")})
             database.invalidate_all_cache()
             try:
@@ -239,7 +262,9 @@ def init_admin(app, qr_folder):
                 qr_url = f"/static/qrcodes/{qr_name}"
             return jsonify(ok=True, msg=f"Aprobada — N° {row.get('numero')} · código {codigo}", qr_url=qr_url, qr_path=qr_rel, id=row["id"], codigo=codigo, numero=row.get("numero"))
         except Exception as e:
-            return jsonify(ok=False, msg=f"Error: {e}"), 500
+            try: app.logger.error(f"[aprobar] {e}")
+            except: pass
+            return jsonify(ok=False, msg="Error interno"), 500
 
     @admin_bp.post("/api/rechazar/<eid>")
     @security.login_required
@@ -251,8 +276,10 @@ def init_admin(app, qr_folder):
         if row["estado"] != "Pendiente":
             return jsonify(ok=False, msg=f"Ya está {row['estado']}"), 400
         r = database.exec_sql("DELETE FROM entradas WHERE id=%s", (row["id"],))
-        if isinstance(r, Exception):
-            return jsonify(ok=False, msg=str(r)), 500
+        if not r.get("ok", True):
+            try: app.logger.error(f"[rechazar] {r.get('error')}")
+            except: pass
+            return jsonify(ok=False, msg="Error interno"), 500
         database.log_audit("rechazar", row["id"], {"codigo": row.get("codigo")})
         database.invalidate_all_cache()
         return jsonify(ok=True, msg="Eliminada")
@@ -267,8 +294,10 @@ def init_admin(app, qr_folder):
         if row["estado"] == "Usada":
             return jsonify(ok=False, msg="Entrada ya usada, no se puede desbloquear"), 400
         r = database.exec_sql("DELETE FROM entradas WHERE id=%s", (row["id"],))
-        if isinstance(r, Exception):
-            return jsonify(ok=False, msg=str(r)), 500
+        if not r.get("ok", True):
+            try: app.logger.error(f"[desbloquear] {r.get('error')}")
+            except: pass
+            return jsonify(ok=False, msg="Error interno"), 500
         database.log_audit("desbloquear", row["id"], {"mesa": row.get("mesa_numero"), "ubicacion": row.get("ubicacion")})
         database.invalidate_all_cache()
         return jsonify(ok=True, msg=f"Mesa {row.get('mesa_numero') or ''} liberada" if row.get("ubicacion")=="Mesas" else "Entrada eliminada")

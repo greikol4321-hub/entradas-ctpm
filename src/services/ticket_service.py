@@ -96,8 +96,8 @@ def validar_ticket(code_raw, raw_original):
         return {"ok": False, "estado": "PENDIENTE", "msg": "Entrada pendiente de aprobación", "code": 403}
     rid = row["id"]
     r = database.exec_sql("UPDATE entradas SET estado='Usada', fecha_uso=%s WHERE id=%s AND estado='Aprobada'", (database.now_cr(), rid))
-    if isinstance(r, Exception):
-        return {"ok": False, "estado": "ERROR", "msg": f"Error: {r}", "code": 500}
+    if not r.get("ok", True):
+        return {"ok": False, "estado": "ERROR", "msg": r.get("error", "Error"), "code": 500}
     if r["rowcount"] == 0:
         row2 = database.fetch_one("SELECT estado FROM entradas WHERE id=%s", (rid,))
         if row2 and row2["estado"] == "Usada":
@@ -115,8 +115,8 @@ def revertir_ticket(codigo):
     if row["estado"] != "Usada":
         return {"ok": False, "msg": f"Solo se puede revertir Usada, está {row['estado']}", "code": 400}
     r = database.exec_sql("UPDATE entradas SET estado='Aprobada', fecha_uso=NULL WHERE id=%s", (row["id"],))
-    if isinstance(r, Exception):
-        return {"ok": False, "msg": str(r), "code": 500}
+    if not r.get("ok", True):
+        return {"ok": False, "msg": r.get("error", str(r)), "code": 500}
     database.log_audit("revertir", row["id"], {"codigo": code})
     database.invalidate_all_cache()
     return {"ok": True, "msg": f"Código {code} revertido a Aprobada"}

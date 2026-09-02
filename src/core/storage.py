@@ -1,7 +1,7 @@
 """Supabase Storage — extraído de app.py — ponytail: urllib stdlib, sin boto3/supabase-py"""
 import os
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://jyfmimxzhpvcezwilkdd.supabase.co")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")  # ponytail: no default — evita fingerprint si env falta
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SERVICE_ROLE_KEY")
 COMPROBANTES_BUCKET = "comprobantes"
 
