@@ -57,6 +57,8 @@ def comprar_ticket(nombre, cedula, ubicacion, mesa_numero_raw, telefono, file_by
             if cur.fetchone():
                 conn.rollback()
                 cur.close(); conn.close()
+                try: database.log_audit("mesa_conflicto", None, {"mesa": mesa_numero, "sha": comprobante_sha[:12]})
+                except: pass
                 return {"ok": False, "msg": f"Mesa {mesa_numero} ya está ocupada", "code": 409}
         cur.execute("INSERT INTO entradas (id, codigo, nombre_completo, cedula, ubicacion, mesa_numero, monto, telefono, comprobante_path, comprobante_sha) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                     (eid, codigo, nombre, cedula, ubicacion, mesa_numero, monto, telefono, f"uploads/{fname}", comprobante_sha))
@@ -92,7 +94,8 @@ def comprar_ticket(nombre, cedula, ubicacion, mesa_numero_raw, telefono, file_by
     database.invalidate_all_cache()
     out = {"ok": True, "id": eid, "codigo": codigo, "numero": numero, "monto": monto, "mesa": mesa_numero}
     if dup:
-        out["advertencia"] = f"Comprobante ya usado en {dup.get('codigo')} ({dup.get('nombre_completo')}) — revisar"
+        # ponytail: al comprador mensaje genérico — el código/nombre del duplicado ya quedó en auditoría, no se filtra a terceros
+        out["advertencia"] = "Este comprobante ya fue registrado antes — lo revisaremos manualmente"
     return out
 
 def validar_ticket(code_raw, raw_original):

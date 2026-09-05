@@ -163,6 +163,8 @@ def init_public(app, upload_folder, qr_folder, sinpe_numero, sinpe_nombre):
     @public_bp.get("/static/qrcodes/<path:fname>")
     @public_bp.get("/qrcodes/<path:fname>")
     @security.rate_limited(30, 60)
+    @security.login_required
+    @security.role_required("admin")
     def serve_qr(fname):
         # ponytail: path traversal guard
         if ".." in fname or fname.startswith("/") or "\\" in fname:

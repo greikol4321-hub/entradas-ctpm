@@ -10,6 +10,8 @@ def create_app():
     from dotenv import load_dotenv
     load_dotenv()
     app = Flask(__name__, template_folder=str(pathlib.Path(__file__).parent.parent / "templates"), static_folder=str(pathlib.Path(__file__).parent.parent / "static"))
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)  # Vercel es el único proxy — IP real para rate-limit
     app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
     _flask_secret = os.getenv("FLASK_SECRET")
     if not _flask_secret:

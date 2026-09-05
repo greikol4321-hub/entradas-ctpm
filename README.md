@@ -61,7 +61,7 @@ pip install -r requirements.txt  # todo pineado con == , 99/100 en audit
 
 # 3. Dale
 python app.py  # http://localhost:5000
-# /admin → admin/admin123  |  /scanner → valida (necesita https o localhost para la cámara)
+# /admin → usuario de INITIAL_ADMIN_USER  |  /scanner → valida (necesita https o localhost para la cámara)
 ```
 
 En Vercel (Production) van `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `FLASK_SECRET`, `SINPE_NUMERO` y `SINPE_NOMBRE`. En local con `.env` alcanza.
