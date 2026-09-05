@@ -16,16 +16,13 @@ class _PatchedModule(types.ModuleType):
             "src.core.database",
             "src.core.storage",
             "src.core.security",
-            "src.core.logging",
             "src.services.ticket_service",
             "src.services.finance_service",
             "src.services.user_service",
-            "src.services.qr_service",
             "src.routes.public_routes",
             "src.routes.admin_routes",
             "src.routes.scanner_routes",
             "src.schemas.ticket",
-            "src.schemas.user",
         ):
             mod = sys.modules.get(mod_name)
             if mod is not None and hasattr(mod, name):
@@ -44,14 +41,14 @@ app = create_app()
 from src.core.database import (
     db, _get_conn, fetch_all, fetch_one, exec_sql, db_kind, _pg_dsn, _is_pg, _is_mysql,
     _load_finanzas_payload, to_cr_str, now_cr, log_audit,
-    invalidate_all_cache, invalidate_fin_cache, _etag, _fin_etag,
+    invalidate_all_cache, invalidate_fin_cache, _etag,
     _FIN_CACHE, _ENTRADAS_CACHE, _MESAS_CACHE,
     NUM_MESAS, PRECIO_GRADAS_VAL, PRECIO_MESAS_VAL, PRECIO_GRADAS, PRECIO_MESAS,
     CR_TZ, FIN_TTL, ENTRADAS_TTL, MESAS_TTL, init_db,
     _refresh_fin_cache_bg, _refresh_entradas_bg, _refresh_mesas_bg, _warm_all_bg,
 )
 # storage
-from src.core.storage import supabase_upload, supabase_delete, supabase_download, _supabase_headers, COMPROBANTES_BUCKET, SUPABASE_URL, SUPABASE_SERVICE_KEY
+from src.core.storage import supabase_upload, supabase_download, _supabase_headers, COMPROBANTES_BUCKET, SUPABASE_URL, SUPABASE_SERVICE_KEY
 # security
 from src.core.security import allow_rate, rate_limited, login_required, role_required, RATE_LIMIT, security_headers_middleware
 # tickets
@@ -61,16 +58,14 @@ from src.services.ticket_service import generar_codigo, generar_codigo_unico
 import pathlib as _pl
 BASE = pathlib.Path(__file__).parent
 if os.getenv("VERCEL"):
-    UPLOAD_FOLDER = pathlib.Path("/tmp") / "uploads"
-    QR_FOLDER = pathlib.Path("/tmp") / "qrcodes"
+    UPLOAD_FOLDER = pathlib.Path("/tmp") / "uploads"  # nosec B108 - Vercel serverless sin disco
+    QR_FOLDER = pathlib.Path("/tmp") / "qrcodes"  # nosec B108 - Vercel serverless sin disco
 else:
     UPLOAD_FOLDER = BASE / "uploads"
     QR_FOLDER = BASE / "static" / "qrcodes"
 UPLOAD_FOLDER.mkdir(exist_ok=True)
 QR_FOLDER.mkdir(parents=True, exist_ok=True)
 ALLOWED_EXT = {".jpg",".jpeg",".png",".webp",".pdf"}
-def allowed(fname):
-    return _pl.Path(fname).suffix.lower() in ALLOWED_EXT
 
 SINPE_NUMERO = os.getenv("SINPE_NUMERO", "8888-8888")
 SINPE_NOMBRE = os.getenv("SINPE_NOMBRE", "Asociación CTPM")
@@ -91,4 +86,4 @@ if __name__ == "__main__":
         ensure_admin_user(DEMO_USER, DEMO_PASS, app.logger)
     except: pass
     app.logger.info(f"[CTPM] DB: {db_kind()}")
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=os.getenv("FLASK_DEBUG","0") == "1", host="0.0.0.0", port=5000, threaded=True)  # nosec B104 - dev server local

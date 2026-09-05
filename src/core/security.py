@@ -12,23 +12,23 @@ def _upstash_allow_rate(key, limit, window):
     if not url or not token:
         return None  # no configurado → fallback
     try:
-        import urllib.request, urllib.error
-        # INCR + EXPIRE vía pipeline REST: https://upstash.com/docs/redis/features/restapi
-        # Usamos EVAL con script deslizante si disponible, fallback a INCR
+        import urllib.request, urllib.error, ssl
+        if not url.startswith("https://"):
+            return False  # solo https para Upstash
+        _ssl = ssl.create_default_context()
         full_key = f"ratelimit:{key}"
-        # INCR
         req = urllib.request.Request(f"{url}/incr/{full_key}", headers={"Authorization": f"Bearer {token}"})
-        with urllib.request.urlopen(req, timeout=2) as resp:
+        with urllib.request.urlopen(req, timeout=2, context=_ssl) as resp:  # nosec B310 - URL de env UPSTASH, scheme https validado
             data = json.loads(resp.read().decode())
             count = int(data.get("result", 1))
             if count == 1:
                 # primera vez → EXPIRE
                 req2 = urllib.request.Request(f"{url}/expire/{full_key}/{window}", headers={"Authorization": f"Bearer {token}"})
-                try: urllib.request.urlopen(req2, timeout=2).read()
+                try: urllib.request.urlopen(req2, timeout=2, context=_ssl).read()  # nosec B310 - URL de env UPSTASH, scheme https validado
                 except: pass
             return count <= limit
     except Exception:
-        return None  # fallback a memoria
+        return False  # denegar si Upstash falla (multi-instance)
 
 def allow_rate(key, limit, window=60):
     # intenta Upstash distribuido primero (Vercel multi-instancia)
@@ -89,6 +89,99 @@ def role_required(*roles):
         return wrapper
     return deco
 
+def get_csrf():
+    # token determinístico por usuario (HMAC uid+secret) — ponytail: sin estado en sesión,
+    # inmune a rotación de cookies; mismo uid siempre da mismo token
+    import hmac, hashlib
+    try:
+        from flask import current_app
+        secret = current_app.secret_key or os.getenv("FLASK_SECRET", "dev")
+    except Exception:
+        secret = os.getenv("FLASK_SECRET", "dev")
+    uid = str(session.get("uid") or "")
+    if not uid:
+        return ""
+    return hmac.new(str(secret).encode(), uid.encode(), hashlib.sha256).hexdigest()[:32]
+
+def csrf_required(fn):
+    @functools.wraps(fn)
+    def wrapper(*a, **kw):
+        if request.method in ("GET", "HEAD", "OPTIONS"):
+            return fn(*a, **kw)
+        want = get_csrf()
+        got = request.headers.get("X-CSRF-Token") or (request.get_json(silent=True) or {}).get("csrf_token")
+        if not want or not got or got != want:
+            return jsonify(ok=False, msg="Token CSRF inválido"), 403
+        return fn(*a, **kw)
+    return wrapper
+
+# lockout por cuenta: 5 fallos → 15 min — ponytail: Upstash si hay, memoria si no
+_LOCKOUT = defaultdict(deque)
+LOCKOUT_MAX = 5
+LOCKOUT_WINDOW = 900
+
+def _lockout_upstash(user, hit=True):
+    url = os.getenv("UPSTASH_REDIS_REST_URL")
+    token = os.getenv("UPSTASH_REDIS_REST_TOKEN")
+    if not url or not token or not url.startswith("https://"):
+        return None
+    try:
+        import urllib.request, ssl
+        key = f"lockout:{user.lower()}"
+        ctx = ssl.create_default_context()
+        if hit:
+            req = urllib.request.Request(f"{url}/incr/{key}", headers={"Authorization": f"Bearer {token}"})
+            with urllib.request.urlopen(req, timeout=2, context=ctx) as resp:  # nosec B310 - URL UPSTASH env, https validado
+                n = int(json.loads(resp.read().decode()).get("result", 1))
+                if n == 1:
+                    req2 = urllib.request.Request(f"{url}/expire/{key}/{LOCKOUT_WINDOW}", headers={"Authorization": f"Bearer {token}"})
+                    try: urllib.request.urlopen(req2, timeout=2, context=ctx).read()  # nosec B310 - URL UPSTASH env
+                    except Exception: pass
+                return n
+        else:
+            req = urllib.request.Request(f"{url}/del/{key}", headers={"Authorization": f"Bearer {token}"})
+            try: urllib.request.urlopen(req, timeout=2, context=ctx).read()  # nosec B310 - URL UPSTASH env
+            except Exception: pass
+            return 0
+    except Exception:
+        return None
+
+def lockout_check(user):
+    # retorna True si bloqueado
+    return _lockout_count(user) >= LOCKOUT_MAX
+
+def _lockout_count(user):
+    k = user.lower()
+    url = os.getenv("UPSTASH_REDIS_REST_URL")
+    token = os.getenv("UPSTASH_REDIS_REST_TOKEN")
+    if url and token and url.startswith("https://"):
+        try:
+            import urllib.request, ssl
+            req = urllib.request.Request(f"{url}/get/lockout:{k}", headers={"Authorization": f"Bearer {token}"})
+            with urllib.request.urlopen(req, timeout=2, context=ssl.create_default_context()) as resp:  # nosec B310 - URL UPSTASH env
+                v = json.loads(resp.read().decode()).get("result")
+                return int(v) if v else 0
+        except Exception:
+            pass
+    now = time.time()
+    q = _LOCKOUT[k]
+    while q and q[0] <= now - LOCKOUT_WINDOW:
+        q.popleft()
+    return len(q)
+
+def lockout_hit(user):
+    k = user.lower()
+    n = _lockout_upstash(k, hit=True)
+    if n is not None:
+        return n
+    _LOCKOUT[k].append(time.time())
+    return len(_LOCKOUT[k])
+
+def lockout_clear(user):
+    k = user.lower()
+    _lockout_upstash(k, hit=False)
+    _LOCKOUT.pop(k, None)
+
 def security_headers_middleware(app):
     @app.after_request
     def security_headers(resp):
@@ -97,8 +190,7 @@ def security_headers_middleware(app):
         resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         resp.headers["Permissions-Policy"] = "camera=(self), microphone=(), geolocation=()"
         resp.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
-        if os.getenv("VERCEL"):
-            resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         # web-performance: cache
         try:
             import hashlib
@@ -117,7 +209,7 @@ def security_headers_middleware(app):
                 resp.headers["Vary"] = "Cookie"
             elif "text/html" in ctype and resp.status_code == 200:
                 body = resp.get_data()
-                etag = hashlib.md5(body).hexdigest()[:12]
+                etag = hashlib.sha256(body).hexdigest()[:12]
                 if request.headers.get("If-None-Match") == etag:
                     return app.response_class("", 304, headers={"ETag": etag, "Cache-Control": "private, max-age=0, must-revalidate", "Vary": "Cookie"})
                 resp.headers["ETag"] = etag

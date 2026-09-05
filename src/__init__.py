@@ -1,7 +1,7 @@
 """Factory create_app — Application Factory + Blueprints — ponytail: sin deps, 1 conexión"""
-import os, pathlib, json
+import os, pathlib, sys, json, time, uuid, logging as _logging
 from datetime import timedelta
-from flask import Flask
+from flask import Flask, g, request
 
 # constantes re-exportables para compatibilidad
 from src.core.database import NUM_MESAS, PRECIO_GRADAS, PRECIO_MESAS, PRECIO_GRADAS_VAL, PRECIO_MESAS_VAL
@@ -22,9 +22,28 @@ def create_app():
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-    # logging + request_id + sentry
-    from src.core.logging import setup_logging
-    setup_logging(app)
+    # logging + request_id (antes core/logging.py, fusionado)
+    _logging.basicConfig(level=_logging.INFO, format="%(message)s", stream=sys.stdout)
+    for h in app.logger.handlers:
+        h.setFormatter(_logging.Formatter("%(message)s"))
+    try:
+        sec = app.config.get("SECRET_KEY", "")
+        if not sec or sec.startswith("ctpm-dev"):
+            app.logger.warning(json.dumps({"event": "warn_flask_secret_dev", "request_id": "startup"}))
+    except: pass
+
+    @app.before_request
+    def _set_request_id():
+        g.request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:8]
+        g._t0 = time.time()
+
+    @app.after_request
+    def _log_request(resp):
+        try:
+            dur = int((time.time() - getattr(g, "_t0", time.time())) * 1000)
+            app.logger.info(json.dumps({"event": "request", "request_id": getattr(g, "request_id", "-"), "method": request.method, "path": request.path, "status": resp.status_code, "duration_ms": dur, "ip": request.remote_addr, "user": __import__("flask").session.get("username")}))
+        except: pass
+        return resp
 
     # security headers
     from src.core.security import security_headers_middleware
@@ -37,8 +56,8 @@ def create_app():
     # folders
     BASE = pathlib.Path(__file__).parent.parent
     if os.getenv("VERCEL"):
-        UPLOAD_FOLDER = pathlib.Path("/tmp") / "uploads"
-        QR_FOLDER = pathlib.Path("/tmp") / "qrcodes"
+        UPLOAD_FOLDER = pathlib.Path("/tmp") / "uploads"  # nosec B108 - Vercel serverless
+        QR_FOLDER = pathlib.Path("/tmp") / "qrcodes"  # nosec B108 - Vercel serverless
     else:
         UPLOAD_FOLDER = BASE / "uploads"
         QR_FOLDER = BASE / "static" / "qrcodes"

@@ -1,5 +1,5 @@
 """Finance service — cache SWR finanzas — ponytail: dict en memoria, sin redis"""
-import time, hashlib, json, threading, os
+import time, threading, os
 import src.core.database as database
 
 # re-export caches para compatibilidad con app.py (misma referencia)
@@ -23,11 +23,19 @@ def get_finanzas_cached():
                 try: threading.Thread(target=database._refresh_fin_cache_bg, daemon=True).start()
                 except: pass
                 return _FIN_CACHE["data"], _FIN_CACHE["etag"], "STALE"
-    # MISS
+    # MISS memoria → probar Upstash (capa distribuida) antes de DB
+    uhit = database.ucache_get("finanzas")
+    if uhit:
+        _FIN_CACHE["data"] = uhit
+        _FIN_CACHE["ts"] = time.time()
+        _FIN_CACHE["etag"] = database._etag(uhit)
+        return uhit, _FIN_CACHE["etag"], "HIT-U"
     payload = database._load_finanzas_payload()
     _FIN_CACHE["data"] = payload
     _FIN_CACHE["ts"] = time.time()
     _FIN_CACHE["etag"] = database._etag(payload)
+    try: threading.Thread(target=database.ucache_set, args=("finanzas", payload, FIN_TTL), daemon=True).start()
+    except Exception: pass
     return payload, _FIN_CACHE["etag"], "MISS"
 
 def get_mesas_cached():
@@ -42,7 +50,13 @@ def get_mesas_cached():
                 try: threading.Thread(target=database._refresh_mesas_bg, daemon=True).start()
                 except: pass
                 return _MESAS_CACHE["data"], _MESAS_CACHE["etag"], "STALE"
-    rows = database.fetch_all("SELECT mesa_numero FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')")
+    uhit = database.ucache_get("mesas")
+    if uhit:
+        _MESAS_CACHE["data"] = uhit
+        _MESAS_CACHE["ts"] = time.time()
+        _MESAS_CACHE["etag"] = database._etag(uhit)
+        return uhit, _MESAS_CACHE["etag"], "HIT-U"
+    rows = database.fetch_all("SELECT mesa_numero FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada','Usada')")
     ocupadas = [r["mesa_numero"] for r in rows if r.get("mesa_numero")]
     todas = list(range(1, database.NUM_MESAS+1))
     libres = [n for n in todas if n not in ocupadas]
@@ -51,6 +65,8 @@ def get_mesas_cached():
     _MESAS_CACHE["data"] = payload
     _MESAS_CACHE["ts"] = time.time()
     _MESAS_CACHE["etag"] = etag
+    try: threading.Thread(target=database.ucache_set, args=("mesas", payload, MESAS_TTL), daemon=True).start()
+    except Exception: pass
     return payload, etag, "MISS"
 
 def get_entradas_cached(estado, ubicacion, page=1, limit=50):
@@ -73,7 +89,11 @@ def get_entradas_cached(estado, ubicacion, page=1, limit=50):
                 try: threading.Thread(target=database._refresh_entradas_bg, args=(cache_key, estado, ubicacion), daemon=True).start()
                 except: pass
                 return ent["data"], ent["etag"], "STALE"
-    # MISS
+    # MISS memoria → Upstash (key incluye paginación)
+    uhit = database.ucache_get(f"entradas:{cache_key}")
+    if uhit:
+        _ENTRADAS_CACHE[cache_key] = {"data": uhit, "ts": time.time(), "etag": database._etag(uhit)}
+        return uhit, _ENTRADAS_CACHE[cache_key]["etag"], "HIT-U"
     base = "SELECT id,numero,codigo,nombre_completo,cedula,ubicacion,mesa_numero,monto,telefono,comprobante_path,qr_path,estado,fecha_compra,fecha_aprobacion,fecha_uso FROM entradas"
     conds = []
     params = []
@@ -95,4 +115,6 @@ def get_entradas_cached(estado, ubicacion, page=1, limit=50):
                     r[k] = database.to_cr_str(r[k])
     etag = database._etag(rows)
     _ENTRADAS_CACHE[cache_key] = {"data": rows, "ts": time.time(), "etag": etag}
+    try: threading.Thread(target=database.ucache_set, args=(f"entradas:{cache_key}", rows, ENTRADAS_TTL), daemon=True).start()
+    except Exception: pass
     return rows, etag, "MISS"

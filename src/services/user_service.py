@@ -69,7 +69,7 @@ def update_user(uid, username, password, rol):
     if not set_clauses:
         return {"ok": False, "msg": "Nada que actualizar", "code": 400}
     params.append(uid)
-    sql = "UPDATE public.usuarios SET " + ", ".join(set_clauses) + " WHERE id=%s"
+    sql = "UPDATE public.usuarios SET " + ", ".join(set_clauses) + " WHERE id=%s"  # nosec B608 - columnas hardcodeadas, valores por %s
     r = database.exec_sql(sql, tuple(params))
     if not r.get("ok", True):
         return {"ok": False, "msg": r.get("error", str(r)), "code": 500}

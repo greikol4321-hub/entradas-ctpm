@@ -15,6 +15,7 @@ def init_scanner(app):
     @scanner_bp.post("/api/validar")
     @security.login_required
     @security.role_required("portero")
+    @security.csrf_required
     @security.rate_limited(30, 60)
     def validar():
         data = request.get_json(silent=True) or {}
@@ -58,11 +59,15 @@ def init_scanner(app):
     @scanner_bp.post("/api/revertir/<codigo>")
     @security.login_required
     @security.role_required("portero")
+    @security.csrf_required
+    @security.rate_limited(10, 60)
     def revertir(codigo):
         if session.get("rol") not in ("portero",):
             return jsonify(ok=False, msg="No autorizado"), 403
+        data = request.get_json(silent=True) or {}
+        motivo = (data.get("motivo") or "").strip()
         import src.services.ticket_service as ticket_service
-        r = ticket_service.revertir_ticket(codigo)
+        r = ticket_service.revertir_ticket(codigo, motivo)
         if not r["ok"]:
             return jsonify(ok=False, msg=r["msg"]), r["code"]
         return jsonify(ok=True, msg=r["msg"])

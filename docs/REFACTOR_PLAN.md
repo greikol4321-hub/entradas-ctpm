@@ -14,7 +14,7 @@ src/
     database.py        # db(), get_conn(), g.db, teardown, psycopg_pool
     security.py        # SECRET_KEY check, rate_limit (Upstash Redis), permissions
     storage.py         # supabase_upload/delete , local fallback
-    logging.py         # JsonFormatter + X-Request-ID + Sentry
+    logging.py         # JsonFormatter + X-Request-ID
   services/
     ticket_service.py  # comprar, validar, revertir, generar_codigo_unico, FOR UPDATE mesa
     qr_service.py      # generar QR, serve_qr, regenerar si falta
@@ -71,4 +71,3 @@ No refactorizar ahora completo: `app.py` funciona, tests pasan, deploy verde. Re
 ## Dependencias nuevas (solo si se ejecuta)
 - `pydantic==2.*`
 - `psycopg[binary,pool]==3.*`
-- `sentry-sdk[flask]`

@@ -10,6 +10,11 @@
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://entradas-ctpm.vercel.app/static/img/logo_colegio_nuevo.png">
 <meta name="theme-color" content="#0a4c23">
+{% if session.get('csrf') %}<meta name="csrf-token" content="{{ session.get('csrf') }}">{% endif %}
+<script>
+// CSRF: adjunta X-CSRF-Token a POST/PUT/DELETE mismo-origen — ponytail: 1 wrapper, 0 cambios en callsites
+(function(){const _f=window.fetch.bind(window);window.fetch=async function(u,o){o=o||{};const m=String(o.method||'GET').toUpperCase();if(m!=='GET'&&m!=='HEAD'){try{const same=String(u).startsWith('/')||String(u).startsWith(location.origin);if(same){const t=document.querySelector('meta[name="csrf-token"]');const h=new Headers(o.headers||{});if(t&&!h.has('X-CSRF-Token')){h.set('X-CSRF-Token',t.content);o.headers=h;}}}catch(e){}}return _f(u,o);};})();
+</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Event","name":"Gran Baile de Gala - Matapalo 2026","location":{"@type":"Place","name":"Gimnasio CTP Matapalo","address":"Matapalo, Quepos, Costa Rica"},"offers":[{"@type":"Offer","name":"Gradas","price":"5000","priceCurrency":"CRC"},{"@type":"Offer","name":"Mesas","price":"10000","priceCurrency":"CRC"}],"organizer":{"@type":"Organization","name":"CTP Matapalo"}}</script>
 <title>{% block title %}Entradas CTPM — Venta oficial{% endblock %}</title>
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/logo_colegio_nuevo.png') }}">

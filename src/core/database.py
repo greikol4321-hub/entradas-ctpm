@@ -38,6 +38,7 @@ def now_cr():
 
 # constantes compartidas
 NUM_MESAS = 12
+CAP_GRADAS = 300  # aforo gradas — evita oversell
 PRECIO_GRADAS_VAL = 5000
 PRECIO_MESAS_VAL = 10000
 PRECIO_GRADAS = "₡5.000"
@@ -52,8 +53,7 @@ ENTRADAS_TTL = 15
 _MESAS_CACHE = {"data": None, "ts": 0, "etag": None}
 MESAS_TTL = 30
 
-def _etag(data): return hashlib.md5(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()[:12]
-def _fin_etag(data): return _etag(data)
+def _etag(data): return hashlib.sha256(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()[:12]
 
 def _pg_dsn():
     return os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL")
@@ -240,7 +240,7 @@ def _load_finanzas_payload():
             ),
             mesas AS (
                 SELECT COUNT(*) AS cnt FROM entradas
-                WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')
+                WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada','Usada')
             )
             SELECT 'kpi' AS src, to_json(kpi) AS data FROM kpi
             UNION ALL
@@ -266,7 +266,7 @@ def _load_finanzas_payload():
         kpi = kpi_rows[0] if kpi_rows else {"total_entradas":0,"recaudado":0,"por_confirmar":0,"usadas":0,"aprobadas":0,"pendientes":0}
         cur.execute("SELECT ubicacion, COUNT(*) as cnt, COALESCE(SUM(monto),0) as total FROM entradas GROUP BY ubicacion")
         zona_rows = [dict(zip([c[0] for c in cur.description], r)) for r in cur.fetchall()]
-        cur.execute("SELECT COUNT(*) as cnt FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')")
+        cur.execute("SELECT COUNT(*) as cnt FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada','Usada')")
         ocupadas_rows = [dict(zip([c[0] for c in cur.description], r)) for r in cur.fetchall()]
         ocup_cnt = ocupadas_rows[0]["cnt"] if ocupadas_rows else 0
     cur.close()
@@ -293,6 +293,56 @@ def log_audit(accion, entradas_id=None, detalle=None):
             from flask import current_app
             current_app.logger.warning(f"[audit] {accion} err: {e}")
         except: pass
+
+# Upstash cache-aside distribuido (Vercel multi-instance) — ponytail: urllib stdlib, sin redis-py
+# Capa 2 entre memoria (0ms) y DB (~200ms): memoria → Upstash → DB
+_UCACHE_PREFIX = "ctpm:cache:"
+
+def _upstash_req(path):
+    """GET a Upstash REST, retorna parsed JSON o None."""
+    url = os.getenv("UPSTASH_REDIS_REST_URL")
+    token = os.getenv("UPSTASH_REDIS_REST_TOKEN")
+    if not url or not token:
+        return None
+    try:
+        import urllib.request, urllib.parse, ssl
+        if not url.startswith("https://"):
+            return None
+        full = f"{url}{path}"
+        req = urllib.request.Request(full, headers={"Authorization": f"Bearer {token}"})
+        with urllib.request.urlopen(req, timeout=2, context=ssl.create_default_context()) as resp:  # nosec B310 - URL UPSTASH env, https validado
+            return json.loads(resp.read().decode())
+    except Exception:
+        return None
+
+def ucache_get(key):
+    d = _upstash_req(f"/get/{_UCACHE_PREFIX}{key}")
+    if not d:
+        return None
+    try:
+        raw = d.get("result")
+        return json.loads(raw) if raw else None
+    except Exception:
+        return None
+
+def ucache_set(key, value, ttl):
+    try:
+        import urllib.request, urllib.parse, ssl
+        url = os.getenv("UPSTASH_REDIS_REST_URL")
+        token = os.getenv("UPSTASH_REDIS_REST_TOKEN")
+        if not url or not token or not url.startswith("https://"):
+            return
+        val = urllib.parse.quote(json.dumps(value, default=str), safe="")
+        _upstash_req(f"/set/{_UCACHE_PREFIX}{key}/{val}/EX/{int(ttl)}")
+    except Exception:
+        pass
+
+def ucache_del(*keys):
+    for k in keys:
+        try:
+            _upstash_req(f"/del/{_UCACHE_PREFIX}{k}")
+        except Exception:
+            pass
 
 # warmup / caches compartidos para compatibilidad
 def invalidate_fin_cache():
@@ -342,7 +392,7 @@ def _refresh_entradas_bg(cache_key, estado, ubicacion):
 
 def _refresh_mesas_bg():
     try:
-        rows=fetch_all("SELECT mesa_numero FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada')")
+        rows=fetch_all("SELECT mesa_numero FROM entradas WHERE ubicacion='Mesas' AND mesa_numero IS NOT NULL AND estado IN ('Pendiente','Aprobada','Usada')")
         ocupadas=[r["mesa_numero"] for r in rows if r.get("mesa_numero")]
         todas=list(range(1, NUM_MESAS+1))
         libres=[n for n in todas if n not in ocupadas]
@@ -366,6 +416,11 @@ def invalidate_all_cache():
         _MESAS_CACHE["data"]=None
         _MESAS_CACHE["ts"]=0
         _MESAS_CACHE["etag"]=None
+    # capa distribuida: borrar fijas; entradas (keys dinámicas) expiran por TTL 15s
+    try:
+        ucache_del("mesas", "finanzas")
+    except Exception:
+        pass
 
 def _warm_all_bg():
     try: _refresh_fin_cache_bg()

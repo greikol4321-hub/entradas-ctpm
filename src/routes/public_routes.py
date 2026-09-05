@@ -1,5 +1,5 @@
 """Public routes — /, /api/mesas, /api/comprar, /health, /static/qrcodes, /uploads"""
-import pathlib, hashlib, time, io
+import pathlib, time, io
 from flask import Blueprint, request, jsonify, render_template, send_from_directory, send_file, url_for, session
 import src.core.database as database
 import src.core.storage as storage
@@ -41,7 +41,7 @@ def init_public(app, upload_folder, qr_folder, sinpe_numero, sinpe_nombre):
     def me():
         if not session.get("uid"):
             return jsonify(logged=False)
-        return jsonify(logged=True, username=session.get("username"), rol=session.get("rol"))
+        return jsonify(logged=True, username=session.get("username"), rol=session.get("rol"), csrf_token=security.get_csrf())
 
     @public_bp.get("/api/mesas")
     def mesas_disponibles():
@@ -116,9 +116,10 @@ def init_public(app, upload_folder, qr_folder, sinpe_numero, sinpe_nombre):
             if not (is_pdf or is_jpg or is_png or is_webp):
                 return jsonify(ok=False, msg="Archivo no parece imagen/PDF válido"), 400
         except: pass
-        # Pydantic validación extra
+        # Pydantic validación extra — usar valores saneados del modelo, no los crudos
         try:
-            CompraIn(nombre_completo=nombre, cedula=cedula, ubicacion=ubicacion, mesa_numero=mesa_numero_raw or None, telefono=telefono)
+            compra = CompraIn(nombre_completo=nombre, cedula=cedula, ubicacion=ubicacion, mesa_numero=mesa_numero_raw or None, telefono=telefono)
+            nombre = compra.nombre_completo
         except ValidationError as ve:
             # mapear a mensajes esperados por tests
             msg = str(ve.errors()[0].get("ctx",{}).get("error") or ve.errors()[0].get("msg"))
@@ -154,10 +155,14 @@ def init_public(app, upload_folder, qr_folder, sinpe_numero, sinpe_nombre):
         result = ticket_service.comprar_ticket(nombre, cedula, ubicacion, mesa_numero_raw, telefono, file_bytes, file.filename, upload_folder)
         if not result["ok"]:
             return jsonify(ok=False, msg=result["msg"]), result.get("code", 400)
-        return jsonify(ok=True, msg=f"Comprobante recibido. Tu código es {result['codigo']} · Entrada N° {result['numero'] or ''}. Te enviaremos tu QR por WhatsApp en máximo 48 horas.", id=result["id"], codigo=result["codigo"], numero=result["numero"])
+        out = dict(ok=True, msg=f"Comprobante recibido. Tu código es {result['codigo']} · Entrada N° {result['numero'] or ''}. Te enviaremos tu QR por WhatsApp en máximo 48 horas.", id=result["id"], codigo=result["codigo"], numero=result["numero"])
+        if result.get("advertencia"):
+            out["advertencia"] = result["advertencia"]
+        return jsonify(out)
 
     @public_bp.get("/static/qrcodes/<path:fname>")
     @public_bp.get("/qrcodes/<path:fname>")
+    @security.rate_limited(30, 60)
     def serve_qr(fname):
         # ponytail: path traversal guard
         if ".." in fname or fname.startswith("/") or "\\" in fname:
@@ -165,11 +170,12 @@ def init_public(app, upload_folder, qr_folder, sinpe_numero, sinpe_nombre):
         safe = pathlib.Path(fname).name
         if safe != fname and "/" in fname:
             return "No encontrado", 404
-        import src.services.qr_service as qr_service
+        import src.services.ticket_service as qr_service
         return qr_service.serve_qr_logic(safe, qr_folder)
 
     @public_bp.get("/uploads/<path:fname>")
     @security.login_required
+    @security.role_required("admin")
     def uploads(fname):
         if ".." in fname or fname.startswith("/") or "\\" in fname:
             return "No encontrado", 404
@@ -178,11 +184,11 @@ def init_public(app, upload_folder, qr_folder, sinpe_numero, sinpe_nombre):
             return "No encontrado", 404
         fpath = upload_folder / safe
         if fpath.exists():
-            return send_from_directory(upload_folder, safe)
+            return send_from_directory(upload_folder, safe, as_attachment=True)
         data = storage.supabase_download(storage.COMPROBANTES_BUCKET, safe)
         if data:
             content, ctype = data
-            return send_file(io.BytesIO(content), mimetype=ctype, download_name=safe)
+            return send_file(io.BytesIO(content), mimetype=ctype, download_name=safe, as_attachment=True)
         return "Comprobante no encontrado", 404
 
     @public_bp.get("/health")

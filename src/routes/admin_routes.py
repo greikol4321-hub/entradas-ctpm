@@ -1,8 +1,7 @@
 """Admin routes — /admin, /api/entradas, /api/finanzas, /api/usuarios, /api/auditoria, /api/aprobar, etc."""
-import time, json, hashlib
+import time, json
 from datetime import datetime
 from flask import Blueprint, request, jsonify, render_template, url_for, session
-from werkzeug.security import generate_password_hash
 import src.core.database as database
 import src.core.security as security
 import src.services.finance_service as finance_service
@@ -26,15 +25,19 @@ def init_admin(app, qr_folder):
         nxt = (data.get("nxt") or request.args.get("nxt") or "").strip()
         if not username or not password:
             return jsonify(ok=False, msg="Usuario y contraseña requeridos"), 400
+        if security.lockout_check(username):
+            return jsonify(ok=False, msg="Cuenta bloqueada 15 min por intentos fallidos"), 429
         try:
             u = database.fetch_one("SELECT id, username, password_hash, rol FROM usuarios WHERE username=%s", (username,))
             from werkzeug.security import check_password_hash
             if u and check_password_hash(u["password_hash"], password):
+                security.lockout_clear(username)
                 session.clear()
                 session.permanent=True
                 session["uid"]=u["id"]
                 session["username"]=u["username"]
                 session["rol"]=u["rol"]
+                session["csrf"]=security.get_csrf()
                 # url_for con blueprint: admin.admin / scanner.scanner, fallback a path
                 try:
                     dest_a = url_for("admin.admin")
@@ -44,13 +47,14 @@ def init_admin(app, qr_folder):
                     dest_s = url_for("scanner.scanner")
                 except:
                     dest_s = "/scanner"
-                dest = nxt if nxt.startswith("/") else (dest_a if u["rol"]=="admin" else dest_s)
+                dest = nxt if (nxt.startswith("/") and not nxt.startswith("//")) else (dest_a if u["rol"]=="admin" else dest_s)
                 database.log_audit("login_ok", None, {"user": username, "rol": u["rol"]})
                 return jsonify(ok=True, msg="Bienvenido", rol=u["rol"], redirect=dest)
         except Exception as e:
             try: app.logger.warning(f"[CTPM] login db err: {e}")
             except: pass
         database.log_audit("login_fail", None, {"user": username})
+        security.lockout_hit(username)
         return jsonify(ok=False, msg="Credenciales inválidas"), 401
 
     @admin_bp.get("/api/entradas")
@@ -158,15 +162,18 @@ def init_admin(app, qr_folder):
     @admin_bp.post("/api/usuarios")
     @security.login_required
     @security.role_required("admin")
+    @security.csrf_required
     @security.rate_limited(10, 60)
     def crear_usuario():
         data = request.get_json() or {}
         username = (data.get("username") or "").strip()
         password = data.get("password") or ""
-        rol = (data.get("rol") or "admin").strip()
+        rol = (data.get("rol") or "").strip()
+        if not rol:
+            return jsonify(ok=False, msg="rol es requerido"), 400
         # validación Pydantic
         try:
-            from src.schemas.user import UserCreate
+            from src.schemas.ticket import UserCreate
             UserCreate(username=username, password=password, rol=rol)
         except Exception as e:
             # extraer mensaje
@@ -184,6 +191,7 @@ def init_admin(app, qr_folder):
     @admin_bp.put("/api/usuarios/<int:uid>")
     @security.login_required
     @security.role_required("admin")
+    @security.csrf_required
     def editar_usuario(uid):
         data = request.get_json() or {}
         username = (data.get("username") or "").strip()
@@ -197,6 +205,7 @@ def init_admin(app, qr_folder):
     @admin_bp.delete("/api/usuarios/<int:uid>")
     @security.login_required
     @security.role_required("admin")
+    @security.csrf_required
     def borrar_usuario(uid):
         r = user_service.delete_user(uid, session.get("uid"), session.get("username"))
         if not r["ok"]:
@@ -220,6 +229,7 @@ def init_admin(app, qr_folder):
     @admin_bp.post("/api/aprobar/<eid>")
     @security.login_required
     @security.role_required("admin")
+    @security.csrf_required
     @security.rate_limited(20, 60)
     def aprobar(eid):
         try:
@@ -239,7 +249,7 @@ def init_admin(app, qr_folder):
                     codigo = ts.generar_codigo_unico()
                     cur.execute("UPDATE entradas SET codigo=%s WHERE id=%s", (codigo, row["id"]))
                     row["codigo"] = codigo
-                import src.services.qr_service as qr_service
+                import src.services.ticket_service as qr_service
                 qr_name, qr_rel = qr_service.generar_qr(codigo, qr_folder)
                 cur.execute("UPDATE entradas SET estado='Aprobada', qr_path=%s, fecha_aprobacion=%s WHERE id=%s", (qr_rel, database.now_cr(), row["id"]))
                 conn.commit()
@@ -269,6 +279,7 @@ def init_admin(app, qr_folder):
     @admin_bp.post("/api/rechazar/<eid>")
     @security.login_required
     @security.role_required("admin")
+    @security.csrf_required
     @security.rate_limited(20, 60)
     def rechazar(eid):
         row = database.fetch_one("SELECT id, estado FROM entradas WHERE codigo=%s OR id::text=%s", (eid, eid))
@@ -287,6 +298,7 @@ def init_admin(app, qr_folder):
     @admin_bp.post("/api/desbloquear/<eid>")
     @security.login_required
     @security.role_required("admin")
+    @security.csrf_required
     @security.rate_limited(20, 60)
     def desbloquear(eid):
         row = database.fetch_one("SELECT id, estado, ubicacion, mesa_numero FROM entradas WHERE codigo=%s OR id::text=%s", (eid, eid))

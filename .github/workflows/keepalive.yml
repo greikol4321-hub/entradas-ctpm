@@ -1,0 +1,12 @@
+name: Keep Alive
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"  # cada 10 min — evita cold start Supabase free + Vercel
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS -m 25 https://entradas-ctpm.vercel.app/health || true

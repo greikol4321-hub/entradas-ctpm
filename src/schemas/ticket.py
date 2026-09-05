@@ -1,4 +1,4 @@
-"""Pydantic CompraIn — validación centralizada (cédula 9-12, teléfono, ubicacion, mesa 1..12, monto)"""
+"""Pydantic schemas — CompraIn + UserCreate (fusionado user.py)"""
 import re
 from pydantic import BaseModel, Field, field_validator
 
@@ -9,6 +9,15 @@ class CompraIn(BaseModel):
     mesa_numero: int | None = Field(None, ge=1, le=12)
     telefono: str  # validado en field_validator, sin pattern para aceptar 88888888 y +50688888888
     monto: int | None = None
+
+    @field_validator("nombre_completo")
+    @classmethod
+    def nombre_sin_html(cls, v):
+        # defensa en profundidad: el render ya escapa, pero no guardar tags
+        v = re.sub(r"[<>]", "", v).strip()
+        if not v:
+            raise ValueError("nombre requerido")
+        return v
 
     @field_validator("cedula")
     def cedula_cr(cls, v):
@@ -40,9 +49,7 @@ class CompraIn(BaseModel):
         except:
             raise ValueError("mesa inválida")
 
-# validación de monto según ubicación
-    def validate_monto(self):
-        expected = 10000 if self.ubicacion == "Mesas" else 5000
-        if self.monto is not None and self.monto != expected:
-            raise ValueError(f"monto debe ser {expected}")
-        return expected
+class UserCreate(BaseModel):
+    username: str = Field(min_length=3, max_length=32, pattern=r"^[a-zA-Z0-9_\-\.]+$")
+    password: str = Field(min_length=4, max_length=128)
+    rol: str = Field(pattern="^(admin|portero)$")
